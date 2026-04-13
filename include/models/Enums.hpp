@@ -6,6 +6,12 @@ enum class TileCategory {
     SPECIAL
 };
 
+enum class PropertyType {
+    STREET,
+    RAILROAD,
+    UTILITY
+};
+
 enum class ColorGroup {
     COKLAT,
     BIRU_MUDA,
