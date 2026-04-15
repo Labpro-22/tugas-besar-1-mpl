@@ -1,1 +1,17 @@
 #pragma once
+
+#include "models/cards/ActionCard.hpp"
+
+class MoveBackCard : public ActionCard {
+private:
+    int steps;
+
+public:
+    MoveBackCard();
+    explicit MoveBackCard(int steps);
+
+    int getSteps() const;
+    void execute(Player& player, GameContext& gameContext) override;
+};
+
+
