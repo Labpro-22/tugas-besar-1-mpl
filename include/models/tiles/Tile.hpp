@@ -17,10 +17,10 @@ public:
     Tile();
     Tile(int index, string code, string name, TileCategory TileCategory);
     virtual ~Tile() = default;
- 
+
+    int getIndex() const;
     string getCode() const;
     string getName() const;
-    int getIndex() const;
     TileCategory getCategory() const;
 
     virtual void onLanded(Player& player, GameContext& gameContext) = 0;
