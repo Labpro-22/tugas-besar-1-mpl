@@ -28,16 +28,10 @@ public:
         const MiscConfig& miscConfig
     );
 
-    std::vector<PropertyConfig>& getPropertyConfigs();
     const std::vector<PropertyConfig>& getPropertyConfigs() const;
-    std::map<int, int>& getRailroadRents();
     const std::map<int, int>& getRailroadRents() const;
-    std::map<int, int>& getUtilityMultipliers();
     const std::map<int, int>& getUtilityMultipliers() const;
-    TaxConfig& getTaxConfig();
     const TaxConfig& getTaxConfig() const;
-    SpecialConfig& getSpecialConfig();
     const SpecialConfig& getSpecialConfig() const;
-    MiscConfig& getMiscConfig();
     const MiscConfig& getMiscConfig() const;
 };
