@@ -1,9 +1,12 @@
 #pragma once
 
+#include <random>
+
 class Dice {
 private:
     int die1;
     int die2;
+    std::mt19937 rng;
 
 public:
     Dice();
