@@ -5,6 +5,7 @@
 
 #include "core/GameContext.hpp"
 #include "models/Player.hpp"
+#include "models/state/Command.hpp"
 #include "models/state/LogEntry.hpp"
 #include "views/BoardRenderer.hpp"
 #include "views/CommandParser.hpp"
@@ -18,6 +19,7 @@ private:
 
 public:
     int showMainMenu();
+    Command promptLoadCommand();
     int promptPlayerCount();
     std::vector<std::string> promptPlayerNames(int n);
 

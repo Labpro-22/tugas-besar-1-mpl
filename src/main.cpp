@@ -3,8 +3,9 @@
 #include <vector>
 
 #include "core/GameEngine.hpp"
-#include "views/GameUI.hpp"
+#include "models/state/Command.hpp"
 #include "utils/TransactionLogger.hpp"
+#include "views/GameUI.hpp"
 
 int main() {
     try {
@@ -12,12 +13,10 @@ int main() {
         GameEngine engine(&logger);
         GameUI ui;
 
-        ui.showMessage("Nimonspoli started.");
-        ui.showMessage("Bootstrap minimal aktif.");
-
         int choice = ui.showMainMenu();
 
         if (choice == 1) {
+            ui.showMessage("Memulai game baru...");
             int playerCount = ui.promptPlayerCount();
             std::vector<std::string> playerNames = ui.promptPlayerNames(playerCount);
 
@@ -26,9 +25,22 @@ int main() {
             }
 
             engine.startNewGame();
-            ui.showMessage("Bootstrap berhasil. Implementasi game loop menyusul.");
+            ui.showMessage("Game baru berhasil diinisialisasi.");
+            ui.showMessage("Game loop utama belum diimplementasikan.");
         } else if (choice == 2) {
-            ui.showMessage("Fitur load game belum diimplementasikan.");
+            Command loadCommand = ui.promptLoadCommand();
+            const std::string& keyword = loadCommand.getKeyword();
+
+            if (keyword != "MUAT") {
+                ui.showMessage("Load game hanya dapat dimulai dengan command MUAT <filename>.");
+            } else if (loadCommand.getArgCount() != 1) {
+                ui.showMessage("Format MUAT belum lengkap. Gunakan: MUAT <filename>");
+            } else {
+                const std::string filename = loadCommand.getArg(0);
+                ui.showMessage("Memuat permainan...");
+                ui.showMessage("Alur MUAT terdeteksi, tetapi fitur load game belum diimplementasikan.");
+                ui.showMessage("File target: " + filename);
+            }
         } else {
             ui.showMessage("Pilihan tidak valid.");
         }

@@ -5,13 +5,21 @@ int GameUI::showMainMenu() {
     int choice;
 
     std::cout << "=== Nimonspoli ===" << std::endl;
-    std::cout << "1. New Game" << std::endl;
-    std::cout << "2. Load Game" << std::endl;
+    std::cout << "1. Game Baru" << std::endl;
+    std::cout << "2. Muat Game" << std::endl;
+    std::cout << "Catatan: load game dimulai dengan command MUAT <filename>." << std::endl;
     std::cout << "Pilih menu: ";
     std::cin >> choice;
     std::cin.ignore();
 
     return choice;
+}
+
+Command GameUI::promptLoadCommand() {
+    std::cout << "Masukkan command load sesuai spesifikasi." << std::endl;
+    std::cout << "Contoh: MUAT game_sesi1.txt" << std::endl;
+    std::cout << "> ";
+    return cmdParser.readCommand();
 }
 
 int GameUI::promptPlayerCount() {
