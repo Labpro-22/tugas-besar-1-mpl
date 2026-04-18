@@ -9,7 +9,6 @@
 #include "TurnManager.hpp"
 #include "AuctionManager.hpp"
 #include "BankruptcyHandler.hpp"
-#include "GameContext.hpp"
 #include "utils/CardDeck.hpp"
 
 class ActionCard;
@@ -18,7 +17,7 @@ class ConfigData;
 class GameState;
 class Command;
 class TransactionLogger;
-class GoTile;
+class GameContext;
 
 class GameEngine {
 private:
@@ -40,7 +39,6 @@ private:
     void buildBoard();
     void buildDecks();
     void randomizeTurnOrder();
-    void applyGoSalary(Player& player);
 
 public:
     GameEngine(TransactionLogger* logger);

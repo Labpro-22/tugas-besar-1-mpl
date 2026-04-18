@@ -8,6 +8,8 @@ private:
     int flatAmount;
     int percentage;
 
+    int calculateWealth(const Player& player) const;
+
 public:
     TaxTile();
     TaxTile(
@@ -21,7 +23,6 @@ public:
 
     void onLanded(Player& player, GameContext& gameContext) override;
     std::string getDisplayLabel() const override;
-    int calculateWealth(Player& player) const;
     TaxType getTaxType() const;
     int getFlatAmount() const;
     int getPercentage() const;

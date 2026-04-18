@@ -5,7 +5,7 @@
 
 class PropertyCardRenderer {
 public:
-    void renderDeed(PropertyTile* property);
-    void renderPlayerProperties(Player& player);
-    void renderAuctionUI(PropertyTile* property, int currentBid, Player* bidder);
+    void renderDeed(const PropertyTile* property) const;
+    void renderPlayerProperties(const Player& player) const;
+    void renderAuctionUI(const PropertyTile* property, int currentBid, const Player* bidder) const;
 };

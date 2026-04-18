@@ -6,7 +6,6 @@ class PropertyTile : public Tile {
 private:
     Player* owner;
     PropertyStatus status;
-    int buyPrice;
     int mortgageValue;
 
 public:
@@ -15,8 +14,6 @@ public:
         int index,
         const std::string& code,
         const std::string& name,
-        TileCategory category,
-        int buyPrice,
         int mortgageValue
     );
     virtual ~PropertyTile() = default;
@@ -29,10 +26,9 @@ public:
     void transferTo(Player& newOwner);
     void returnToBank();
 
-    bool isOwnedBy(Player& player) const;
+    bool isOwnedBy(const Player& player) const;
     bool isMortgaged() const;
     Player* getOwner() const;
     PropertyStatus getStatus() const;
-    int getBuyPrice() const;
     int getMortgageValue() const;
 };

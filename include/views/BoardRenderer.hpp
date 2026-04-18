@@ -15,8 +15,8 @@ private:
     std::map<TileCategory, std::string> colorMap;
 
 public:
-    void render(Board& board, std::vector<Player>& players, TurnManager& turnManager);
-    std::string renderTileCell(Tile* tile, std::vector<Player>& players);
-    void renderLegend(std::vector<Player>& players);
-    std::string colorize(const std::string& text, const std::string& ansiCode);
+    void render(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager);
+    std::string renderTileCell(const Tile* tile, const std::vector<Player>& players) const;
+    void renderLegend(const std::vector<Player>& players) const;
+    std::string colorize(const std::string& text, const std::string& ansiCode) const;
 };

@@ -57,7 +57,3 @@ void GameEngine::buildDecks() {
 
 void GameEngine::randomizeTurnOrder() {
 }
-
-void GameEngine::applyGoSalary(Player& player) {
-    (void)player;
-}

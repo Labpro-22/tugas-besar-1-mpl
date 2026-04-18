@@ -5,6 +5,7 @@
 class StreetTile : public PropertyTile {
 private:
     ColorGroup colorGroup;
+    int buyPrice;
     int rentTable[6];
     int houseCost;
     int hotelCost;
@@ -38,7 +39,8 @@ public:
     ColorGroup getColorGroup() const;
     int getFestivalMultiplier() const;
     int getFestivalDuration() const;
-    bool canBuildNext(ColorGroup colorGroup) const;
+    bool canBuildNext() const;
+    int getBuyPrice() const;
     int getSellValueToBank() const override;
     std::string getDisplayLabel() const override;
 };
