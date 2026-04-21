@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "exceptions/InsufficientFundsException.hpp"
-#include "exceptions/CardHandFullException.hpp"
+#include "utils/exceptions/InsufficientFundsException.hpp"
+#include "utils/exceptions/CardHandFullException.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
 #include "models/cards/SkillCard.hpp"
@@ -64,7 +64,7 @@ bool Player::moveTo(int newIndex) {
         newIndex = newIndex % 40;
     } else if (newIndex < 0) {
         newIndex = ((newIndex % 40) + 40) % 40;
-    } else if (newIndex == 0 && position != 0); {
+    } else if (newIndex == 0 && position != 0) {
         passedGo = true;
     }
 

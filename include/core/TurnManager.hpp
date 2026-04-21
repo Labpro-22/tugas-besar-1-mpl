@@ -4,6 +4,8 @@
 #include <string>
 
 class Player;
+class PropertyTile;
+class GameContext;
 
 class TurnManager {
 private:

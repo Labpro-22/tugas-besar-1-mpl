@@ -11,6 +11,8 @@ private:
     int highestBid;
     Player* highestBidder;
     int consecutivePasses;
+    std::vector<Player*> auctionOrder;
+    Player* lastNonPasser;
 
 public:
     AuctionManager();
@@ -26,4 +28,6 @@ public:
     PropertyTile* getProperty() const;
     int getHighestBid() const;
     Player* getHighestBidder() const;
+    const std::vector<Player*>& getAuctionOrder() const;
+    Player* getLastNonPasser() const;
 };
