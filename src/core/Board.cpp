@@ -87,7 +87,6 @@ int Board::getTileCount() const {
 }
 
 void Board::tickFestivals(Player& player) {
-    // Sesuai aturan, durasi festival berkurang pada giliran pemain terkait
     for (auto const& pair : propertyIndex) {
         StreetTile* street = dynamic_cast<StreetTile*>(pair.second);
         if (street && street->isOwnedBy(player)) {
