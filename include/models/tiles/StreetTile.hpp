@@ -41,4 +41,7 @@ public:
     bool canBuildNext() const;
     int getSellValueToBank() const override;
     std::string getDisplayLabel() const override;
+
+    int getHouseCost() const;
+    int getHotelCost() const;
 };
