@@ -7,10 +7,7 @@
 #include "utils/exceptions/InsufficientFundsException.hpp"
 
 AuctionManager::AuctionManager()
-    : property(nullptr),
-      highestBid(0),
-      highestBidder(nullptr),
-      consecutivePasses(0) {}
+    : property(nullptr), highestBid(0), highestBidder(nullptr), consecutivePasses(0) {}
 
 void AuctionManager::conductAuction(PropertyTile* property, const std::vector<Player*>& players, Player* startingPlayer) {
   (void) players;
