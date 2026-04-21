@@ -1,4 +1,6 @@
 #include "models/tiles/StreetTile.hpp"
+#include "core/GameContext.hpp"
+#include "models/Player.hpp"
 
 StreetTile::StreetTile() : PropertyTile(), colorGroup(ColorGroup::DEFAULT), houseCost(0), hotelCost(0), buildingLevel(0), festivalMultiplier(1), festivalDuration(0) {
     for(int i=0; i<6; i++) rentTable[i] = 0;
@@ -18,24 +20,18 @@ StreetTile::StreetTile(
 }
 
 void StreetTile::onLanded(Player& player, GameContext& gameContext) {
-    // Logika pendaratan dasar (Trigger Beli/Sewa/Lelang) 
-    // biasanya diorkestrasi melalui GameContext, namun di sini
-    // mendelegasikan event jika diperlukan.
-    // gameContext.triggerStreetEvent(player, *this);
+    gameContext.triggerStreetEvent(player, *this);
 }
 
 int StreetTile::calculateRent(int diceTotal, const GameContext& gameContext) {
-    if (getStatus() != PropertyStatus::OWNED) return 0;
-
+    if (getStatus() != PropertyStatus::OWNED){
+        return 0;
+    } 
     int rent = rentTable[buildingLevel];
-
-    // Jika monopoli dan belum ada bangunan, sewa dikali 2
-    // if (buildingLevel == 0 && gameContext.hasMonopoly(*getOwner(), colorGroup)) {
-    //     rent *= 2;
-    // }
-
-    // // Terapkan multiplier festival
-    // return rent * festivalMultiplier;
+    if (buildingLevel == 0 && gameContext.hasMonopoly(*getOwner(), colorGroup)) {
+        rent *= 2;
+    }
+    return rent * festivalMultiplier;
 }
 
 void StreetTile::build() {
@@ -53,12 +49,10 @@ int StreetTile::sellBuilding() {
 }
 
 void StreetTile::applyFestival() {
-    // Maksimal kenaikan adalah 8x (2 -> 4 -> 8)
     if (festivalMultiplier < 8) {
         festivalMultiplier *= 2;
     } 
     else{}
-    // Durasi di-reset menjadi 3 giliran
     festivalDuration = 3;
 }
 
@@ -78,9 +72,8 @@ int StreetTile::getFestivalDuration() const { return festivalDuration; }
 bool StreetTile::canBuildNext() const { return buildingLevel < 5; }
 
 int StreetTile::getSellValueToBank() const {
-    // Harga jual = Harga dasar + (1/2 harga total bangunan yang terpasang)
-    // int totalBuildingValue = (buildingLevel * houseCost) / 2; // Asumsi hotel = houseCost secara nilai
-    // return getBuyPrice() + totalBuildingValue;
+    int totalBuildingValue = (buildingLevel * houseCost) / 2;
+    return getBuyPrice() + totalBuildingValue;
 }
 
 std::string StreetTile::getDisplayLabel() const {

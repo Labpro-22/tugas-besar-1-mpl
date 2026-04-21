@@ -1,4 +1,6 @@
 #include "models/tiles/RailroadTile.hpp"
+#include "core/GameContext.hpp"
+#include "models/Player.hpp"
 
 RailroadTile::RailroadTile() : PropertyTile() {}
 
@@ -8,26 +10,26 @@ RailroadTile::RailroadTile(
 ) : PropertyTile(index, code, name, 0, mortgageValue), rentTable(rentTable) {}
 
 void RailroadTile::onLanded(Player& player, GameContext& gameContext) {
-    // if (getStatus() == PropertyStatus::BANK) {
-    //     transferTo(player);
-    //     gameContext.logEvent("RAILROAD", player.getName() + " mendapatkan " + getName() + " secara otomatis.");
-    // } else {
-    //     gameContext.triggerRentEvent(player, *this);
-    // }
+    if (getStatus() == PropertyStatus::BANK) {
+        transferTo(player);
+        gameContext.logEvent("RAILROAD", player.getUsername() + " mendapatkan " + getName() + " secara otomatis.");
+    } else {
+        gameContext.triggerRentEvent(player, *this);
+    }
 }
 
 int RailroadTile::calculateRent(int diceTotal, const GameContext& gameContext) {
-    if (getStatus() != PropertyStatus::OWNED) return 0;
-    
-    // int count = gameContext.getRailroadCount(*getOwner());
-    // if (rentTable.find(count) != rentTable.end()) {
-    //     return rentTable.at(count);
-    // }
+    if (getStatus() != PropertyStatus::OWNED) {
+        return 0;
+    }
+    int count = gameContext.getRailroadCount(*getOwner());
+    if (rentTable.find(count) != rentTable.end()) {
+        return rentTable.at(count);
+    }
     return 0;
 }
 
 int RailroadTile::getSellValueToBank() const {
-    // Sesuai config, harga lahan Railroad adalah 0. 
     return 0; 
 }
 
