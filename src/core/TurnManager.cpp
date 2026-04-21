@@ -4,6 +4,8 @@
 #include <stdexcept>
 
 #include "models/Player.hpp"
+#include "core/GameContext.hpp"
+#include "models/tiles/PropertyTile.hpp"
 
 TurnManager::TurnManager(int maxTurn)
     : currentIndex(0),
@@ -135,4 +137,32 @@ void TurnManager::setCurrentIndex(int index) {
   }
 
   currentIndex = index;
+}
+
+void TurnManager::handlePropertyLanded(Player& player, PropertyTile& tile, GameContext& context) {
+    if (tile.getStatus() == PropertyStatus::BANK) {
+        // [TODO: Panggil UI/Controller untuk opsi beli]
+        // Jika pemain tidak beli / tidak cukup uang -> panggil context.getAuctionManager()->startAuction(tile);
+    } else if (tile.getStatus() == PropertyStatus::OWNED && !tile.isOwnedBy(player)) {
+        handleRentPayment(player, tile, context);
+    }
+}
+
+void TurnManager::handleRentPayment(Player& player, PropertyTile& tile, GameContext& context) {
+    if (tile.isMortgaged() || tile.isOwnedBy(player)) {
+        return;
+    }
+
+    int lastDiceTotal = 0; 
+    // if (context.getDice()) {
+    //     lastDiceTotal = context.getDice()->getTotal(); 
+    // }
+
+    int rentAmount = tile.calculateRent(lastDiceTotal, context);
+    
+    if (rentAmount > 0) {
+        Player* owner = tile.getOwner();
+        // [TODO: Lakukan proses transfer atau masuk ke BankruptcyHandler jika uang player tidak cukup]
+        context.logEvent("SEWA", player.getUsername() + " membayar sewa ke " + owner->getUsername() + " sebesar M" + std::to_string(rentAmount));
+    }
 }

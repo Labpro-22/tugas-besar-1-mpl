@@ -7,13 +7,14 @@ private:
     Player* owner;
     PropertyStatus status;
     int mortgageValue;
-
+    int buyPrice;
 public:
     PropertyTile();
     PropertyTile(
         int index,
         const std::string& code,
         const std::string& name,
+        int buyPrice,
         int mortgageValue
     );
     virtual ~PropertyTile() = default;
@@ -31,4 +32,5 @@ public:
     Player* getOwner() const;
     PropertyStatus getStatus() const;
     int getMortgageValue() const;
+    int getBuyPrice() const;
 };

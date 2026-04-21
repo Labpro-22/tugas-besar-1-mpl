@@ -30,4 +30,8 @@ public:
     RailroadTile* getNearestRailroad(int fromIndex) const;
     int getTileCount() const;
     void tickFestivals(Player& player);
+
+    bool hasMonopoly(const Player& player, ColorGroup colorGroup) const;
+    int getRailroadCount(const Player& player) const;
+    int getUtilityCount(const Player& player) const;
 };
