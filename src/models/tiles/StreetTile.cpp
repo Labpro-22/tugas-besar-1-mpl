@@ -86,3 +86,11 @@ int StreetTile::getSellValueToBank() const {
 std::string StreetTile::getDisplayLabel() const {
     return "[" + getCode() + "] " + getName();
 }
+
+int StreetTile::getHouseCost() const {
+    return houseCost;
+}
+
+int StreetTile::getHotelCost() const {
+    return hotelCost;
+}
