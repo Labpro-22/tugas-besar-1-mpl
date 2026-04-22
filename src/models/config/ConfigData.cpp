@@ -4,6 +4,7 @@ ConfigData::ConfigData() {}
 
 ConfigData::ConfigData(
     const std::vector<PropertyConfig>& propertyConfigs,
+    const std::vector<ActionTileConfig>& actionTileConfigs,
     const std::map<int, int>& railroadRents,
     const std::map<int, int>& utilityMultipliers,
     const TaxConfig& taxConfig,
@@ -11,6 +12,7 @@ ConfigData::ConfigData(
     const MiscConfig& miscConfig
 )
     : propertyConfigs(propertyConfigs),
+      actionTileConfigs(actionTileConfigs),
       railroadRents(railroadRents),
       utilityMultipliers(utilityMultipliers),
       taxConfig(taxConfig),
@@ -19,6 +21,10 @@ ConfigData::ConfigData(
 
 const std::vector<PropertyConfig>& ConfigData::getPropertyConfigs() const {
     return propertyConfigs;
+}
+
+const std::vector<ActionTileConfig>& ConfigData::getActionTileConfigs() const {
+    return actionTileConfigs;
 }
 
 const std::map<int, int>& ConfigData::getRailroadRents() const {

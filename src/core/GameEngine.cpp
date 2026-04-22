@@ -23,6 +23,7 @@
 #include "models/cards/ShieldCard.hpp"
 #include "models/cards/SkillCard.hpp"
 #include "models/cards/TeleportCard.hpp"
+#include "models/config/ActionTileConfig.hpp"
 #include "models/config/ConfigData.hpp"
 #include "models/config/MiscConfig.hpp"
 #include "models/config/PropertyConfig.hpp"
@@ -104,24 +105,59 @@ namespace {
         return new UtilityTile(index, config.getCode(), config.getName(), config.getMortgageValue(), utilityMultipliers);
     }
 
-    Tile* createFixedActionTile(int index, const ConfigData& configData) {
+    Tile* createActionTile(const ActionTileConfig& actionConfig, const ConfigData& configData) {
         const TaxConfig& taxConfig = configData.getTaxConfig();
         const SpecialConfig& specialConfig = configData.getSpecialConfig();
+        int index = actionConfig.getId() - 1;
+        const std::string& code = actionConfig.getCode();
+        const std::string& name = actionConfig.getName();
+        const std::string& tileType = actionConfig.getTileType();
 
-        if (index == 0) return new GoTile(0, "GO", "Petak Mulai", specialConfig.getGoSalary());
-        if (index == 2) return new CardTile(2, "DNU", "Dana Umum", CardType::COMMUNITY_CHEST);
-        if (index == 4) return new TaxTile(4, "PPH", "Pajak Penghasilan", TaxType::PPH, taxConfig.getPphFlat(), taxConfig.getPphPercentage());
-        if (index == 7) return new FestivalTile(7, "FES", "Festival");
-        if (index == 10) return new JailTile(10, "PEN", "Penjara", specialConfig.getJailFine());
-        if (index == 17) return new CardTile(17, "DNU", "Dana Umum", CardType::COMMUNITY_CHEST);
-        if (index == 20) return new FreeParkingTile(20, "PRK", "Parkir Gratis");
-        if (index == 22) return new CardTile(22, "KSM", "Kesempatan", CardType::CHANCE);
-        if (index == 30) return new GoToJailTile(30, "GTJ", "Masuk Penjara");
-        if (index == 33) return new TaxTile(33, "PBM", "Pajak Barang Mewah", TaxType::PBM, taxConfig.getPbmFlat(), 0);
-        if (index == 36) return new CardTile(36, "KSM", "Kesempatan", CardType::CHANCE);
-        if (index == 38) return new FestivalTile(38, "FES", "Festival");
+        if (tileType == "KARTU") {
+            if (code == "DNU") {
+                return new CardTile(index, code, name, CardType::COMMUNITY_CHEST);
+            }
+            if (code == "KSP") {
+                return new CardTile(index, code, name, CardType::CHANCE);
+            }
+        }
 
-        return nullptr;
+        if (tileType == "PAJAK") {
+            if (code == "PPH") {
+                return new TaxTile(
+                    index,
+                    code,
+                    name,
+                    TaxType::PPH,
+                    taxConfig.getPphFlat(),
+                    taxConfig.getPphPercentage());
+            }
+            if (code == "PBM") {
+                return new TaxTile(index, code, name, TaxType::PBM, taxConfig.getPbmFlat(), 0);
+            }
+        }
+
+        if (tileType == "FESTIVAL") {
+            return new FestivalTile(index, code, name);
+        }
+
+        if (tileType == "SPESIAL") {
+            if (code == "GO") {
+                return new GoTile(index, code, name, specialConfig.getGoSalary());
+            }
+            if (code == "PEN") {
+                return new JailTile(index, code, name, specialConfig.getJailFine());
+            }
+            if (code == "BBP") {
+                return new FreeParkingTile(index, code, name);
+            }
+            if (code == "PPJ") {
+                return new GoToJailTile(index, code, name);
+            }
+        }
+
+        throw std::runtime_error(
+            "Konfigurasi petak aksi tidak dikenali: " + code + " (" + tileType + ")");
     }
 
     std::vector<Player*> buildPlayerPointers(std::vector<Player>& players) {
@@ -771,22 +807,42 @@ void GameEngine::buildBoard() {
     std::vector<const PropertyConfig*> propertyById(41, nullptr);
     for (const PropertyConfig& config : configData->getPropertyConfigs()) {
         if (config.getId() >= 1 && config.getId() <= 40) {
+            if (propertyById[config.getId()] != nullptr) {
+                throw std::runtime_error(
+                    "Duplikasi konfigurasi properti pada petak "
+                    + std::to_string(config.getId()));
+            }
             propertyById[config.getId()] = &config;
+        }
+    }
+
+    std::vector<const ActionTileConfig*> actionTileById(41, nullptr);
+    for (const ActionTileConfig& config : configData->getActionTileConfigs()) {
+        if (config.getId() >= 1 && config.getId() <= 40) {
+            if (actionTileById[config.getId()] != nullptr) {
+                throw std::runtime_error(
+                    "Duplikasi konfigurasi petak aksi pada petak "
+                    + std::to_string(config.getId()));
+            }
+            actionTileById[config.getId()] = &config;
         }
     }
 
     std::vector<Tile*> boardTiles;
     boardTiles.reserve(40);
     for (int index = 0; index < 40; ++index) {
-        Tile* actionTile = createFixedActionTile(index, *configData);
-        if (actionTile != nullptr) {
-            boardTiles.push_back(actionTile);
+        int tileId = index + 1;
+
+        const ActionTileConfig* actionConfig = actionTileById[tileId];
+        if (actionConfig != nullptr) {
+            boardTiles.push_back(createActionTile(*actionConfig, *configData));
             continue;
         }
 
-        const PropertyConfig* propertyConfig = propertyById[index + 1];
+        const PropertyConfig* propertyConfig = propertyById[tileId];
         if (propertyConfig == nullptr) {
-            throw std::runtime_error("Konfigurasi properti tidak ditemukan untuk petak " + std::to_string(index + 1));
+            throw std::runtime_error(
+                "Konfigurasi petak tidak ditemukan untuk indeks " + std::to_string(tileId));
         }
 
         boardTiles.push_back(createPropertyTile(*propertyConfig, configData->getRailroadRents(), configData->getUtilityMultipliers()));
