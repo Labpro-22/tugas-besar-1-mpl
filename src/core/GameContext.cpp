@@ -1,5 +1,6 @@
 #include "core/GameContext.hpp"
 #include "core/Board.hpp"
+#include "core/PropertyTransactionService.hpp"
 #include "core/TurnManager.hpp"
 #include "utils/TransactionLogger.hpp"
 
@@ -67,17 +68,11 @@ CardDeck<SkillCard>* GameContext::getSkillDeck() const {
 }
 
 void GameContext::triggerStreetEvent(Player& player, PropertyTile& tile) {
-    if (turnManager) {
-        // Mendelegasikan alur beli/sewa/lelang lahan ke TurnManager
-        turnManager->handlePropertyLanded(player, tile, *this); 
-    }
+    PropertyTransactionService::handlePropertyLanded(player, tile, *this);
 }
 
 void GameContext::triggerRentEvent(Player& player, PropertyTile& tile) {
-    if (turnManager) {
-        // Mendelegasikan alur bayar sewa khusus ke TurnManager
-        turnManager->handleRentPayment(player, tile, *this);
-    }
+    PropertyTransactionService::handleRentPayment(player, tile, *this);
 }
 
 bool GameContext::hasMonopoly(const Player& player, ColorGroup colorGroup) const {

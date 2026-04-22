@@ -4,7 +4,6 @@
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
 #include "models/Player.hpp"
-#include "models/tiles/GoTile.hpp"
 #include "models/tiles/RailroadTile.hpp"
 #include "models/tiles/Tile.hpp"
 
@@ -26,7 +25,7 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
     if (passedGo) {
         Tile* goTile = board->getTile("GO");
         if (goTile != nullptr) {
-            static_cast<GoTile*>(goTile)->awardSalary(player);
+            goTile->onPassed(player, gameContext);
         }
     }
 

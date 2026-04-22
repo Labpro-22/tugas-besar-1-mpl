@@ -35,6 +35,14 @@ int RailroadTile::calculateRent(int, const GameContext& gameContext) {
     return 0;
 }
 
+RailroadTile* RailroadTile::asRailroadTile() {
+    return this;
+}
+
+const RailroadTile* RailroadTile::asRailroadTile() const {
+    return this;
+}
+
 int RailroadTile::getSellValueToBank() const {
     return 0; 
 }

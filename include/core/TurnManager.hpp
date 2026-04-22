@@ -4,8 +4,6 @@
 #include <string>
 
 class Player;
-class PropertyTile;
-class GameContext;
 
 class TurnManager {
 private:
@@ -28,8 +26,6 @@ public:
     int getCurrentTurn() const;
     int getMaxTurn() const;
     void setCurrentTurn(int turn);
+    void setMaxTurn(int maxTurn);
     void setCurrentIndex(int index);
-
-    void handlePropertyLanded(Player& player, PropertyTile& tile, GameContext& context);
-    void handleRentPayment(Player& player, PropertyTile& tile, GameContext& context);
 };

@@ -71,6 +71,7 @@ namespace {
             logger->log(turnManager->getCurrentTurn(), player.getUsername(), action, code);
         }
     }
+
 }
 
 void AssetManager::mortgageProperty(Player& player, GameContext& context) {
@@ -103,7 +104,10 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
     PropertyTile* selected = available[choice - 1];
 
     if (selected->getPropertyType() == PropertyType::STREET) {
-        StreetTile* selectedStreet = static_cast<StreetTile*>(selected);
+        StreetTile* selectedStreet = selected->asStreetTile();
+        if (selectedStreet == nullptr) {
+            return;
+        }
         int received = sellBuildingsInColorGroup(*board, player, *selectedStreet);
         if (received > 0) {
             player += received;
@@ -170,7 +174,10 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
             continue;
         }
 
-        StreetTile* street = static_cast<StreetTile*>(property);
+        StreetTile* street = property->asStreetTile();
+        if (street == nullptr) {
+            continue;
+        }
         if (street->getStatus() == PropertyStatus::OWNED &&
             street->canBuildNext() && canBuildEvenly(*board, player, *street)) {
             buildable.push_back(street);

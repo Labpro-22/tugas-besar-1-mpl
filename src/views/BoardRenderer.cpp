@@ -54,11 +54,11 @@ namespace {
     }
 
     ColorGroup getTileColorGroup(const Tile* tile) {
-        if (tile == nullptr || tile->getCategory() != TileCategory::PROPERTY) {
+        if (tile == nullptr || tile->asPropertyTile() == nullptr) {
             return ColorGroup::DEFAULT;
         }
 
-        const PropertyTile* property = static_cast<const PropertyTile*>(tile);
+        const PropertyTile* property = tile->asPropertyTile();
         if (property->getPropertyType() == PropertyType::STREET) {
             return property->getColorGroup();
         }
@@ -112,11 +112,11 @@ namespace {
     }
 
     std::string buildPropertyStatus(const Tile* tile, const std::vector<Player>& players) {
-        if (tile == nullptr || tile->getCategory() != TileCategory::PROPERTY) {
+        if (tile == nullptr || tile->asPropertyTile() == nullptr) {
             return "";
         }
 
-        const PropertyTile* property = static_cast<const PropertyTile*>(tile);
+        const PropertyTile* property = tile->asPropertyTile();
         if (property->getStatus() == PropertyStatus::BANK) {
             return "";
         }
