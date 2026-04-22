@@ -27,8 +27,11 @@ namespace {
                keyword == "BANGUN" ||
                keyword == "SIMPAN" ||
                keyword == "MUAT" ||
-               keyword == "CETAL_LOG" ||
-               keyword == "GUNAKAN_KEMAMPUAN";
+               keyword == "CETAK_LOG" ||
+               keyword == "BAYAR_DENDA" ||
+               keyword == "GUNAKAN_KEMAMPUAN" ||
+               keyword == "HELP" ||
+               keyword == "KELUAR";
     }
 
     bool isValidArgCount(const std::string& keyword, int argCount) {
@@ -76,7 +79,15 @@ namespace {
             return argCount == 0 || argCount == 1;
         }
 
+        if (keyword == "BAYAR_DENDA") {
+            return argCount == 0;
+        }
+
         if (keyword == "GUNAKAN_KEMAMPUAN") {
+            return argCount == 0;
+        }
+
+        if (keyword == "HELP" || keyword == "KELUAR") {
             return argCount == 0;
         }
 
@@ -87,7 +98,7 @@ namespace {
 Command::Command() : keyword(""), args() {}
 
 Command::Command(const std::string& keyword, const std::vector<std::string>& args)
-    : keyword(keyword), args(args) {}
+    : keyword(normalizeKeyword(keyword)), args(args) {}
 
 const std::string& Command::getKeyword() const {
     return keyword;

@@ -2,9 +2,10 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
-#include "models/tiles/GoTile.hpp"
 #include "models/tiles/RailroadTile.hpp"
+#include "models/tiles/Tile.hpp"
 
 MoveToNearestStationCard::MoveToNearestStationCard()
     : ActionCard("Pergi ke stasiun terdekat.") {}
@@ -22,11 +23,16 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
 
     bool passedGo = player.moveTo(nearestRailroad->getIndex());
     if (passedGo) {
-        GoTile* goTile = dynamic_cast<GoTile*>(board->getTile("GO"));
+        Tile* goTile = board->getTile("GO");
         if (goTile != nullptr) {
-            goTile->awardSalary(player);
+            goTile->onPassed(player, gameContext);
         }
     }
 
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            "Bidak dipindahkan ke stasiun terdekat: " + nearestRailroad->getName() +
+                " (" + nearestRailroad->getCode() + ").");
+    }
     nearestRailroad->onLanded(player, gameContext);
 }

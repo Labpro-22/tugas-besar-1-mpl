@@ -1,12 +1,8 @@
 #include "models/cards/TeleportCard.hpp"
 
-#include "models/cards/TeleportCard.hpp"
-
-#include <iostream>
-#include <limits>
-
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
 
@@ -17,6 +13,10 @@ std::string TeleportCard::getTypeName() const {
     return "TeleportCard";
 }
 
+bool TeleportCard::canUseWhileJailed() const {
+    return false;
+}
+
 void TeleportCard::use(Player& player, GameContext& gameContext) {
     Board* board = gameContext.getBoard();
     if (board == nullptr || board->getTileCount() <= 0) {
@@ -24,18 +24,17 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     }
 
     int tileCount = board->getTileCount();
-    int targetIndex = -1;
-
-    while (true) {
-        std::cout << "Pilih index petak tujuan teleport (0-" << tileCount - 1 << "): ";
-        if (std::cin >> targetIndex && targetIndex >= 0 && targetIndex < tileCount) {
-            break;
-        }
-
-        std::cout << "Index tidak valid. Masukkan angka 0 sampai " << tileCount - 1 << ".\n";
-        std::cin.clear();
+    GameIO* io = gameContext.getIO();
+    if (io == nullptr) {
+        return;
     }
 
+    int targetPosition = io->promptIntInRange(
+        "Pilih nomor petak tujuan teleport (1-" + std::to_string(tileCount) + "): ",
+        1,
+        tileCount);
+
+    int targetIndex = targetPosition - 1;
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile == nullptr) {
         return;
@@ -44,9 +43,10 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     player.moveTo(targetIndex);
     player.setUsedSkillThisTurn(true);
 
-    std::cout << "Teleport berhasil! " << player.getUsername()
-              << " berpindah ke " << targetTile->getName()
-              << " (" << targetTile->getCode() << ").\n";
+    io->showMessage(
+        "Teleport berhasil! " + player.getUsername()
+            + " berpindah ke " + targetTile->getName()
+            + " (" + targetTile->getCode() + ").");
 
     targetTile->onLanded(player, gameContext);
 }

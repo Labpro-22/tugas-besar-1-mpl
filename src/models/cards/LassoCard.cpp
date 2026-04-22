@@ -1,10 +1,10 @@
 #include "models/cards/LassoCard.hpp"
 
-#include <iostream>
 #include <vector>
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
@@ -19,12 +19,15 @@ std::string LassoCard::getTypeName() const {
 void LassoCard::use(Player& player, GameContext& gameContext) {
     Board* board = gameContext.getBoard();
     TurnManager* turnManager = gameContext.getTurnManager();
+    GameIO* io = gameContext.getIO();
+
     if (board == nullptr || turnManager == nullptr || board->getTileCount() <= 0) {
         return;
     }
 
     Player* target = nullptr;
-    int nearestDistance = board->getTileCount() + 1;
+    int boardSize = board->getTileCount();
+    int nearestDistance = boardSize + 1;
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
 
     for (Player* otherPlayer : activePlayers) {
@@ -36,7 +39,12 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
             continue;
         }
 
-        int distance = otherPlayer->getPosition() - player.getPosition();
+        if (otherPlayer->isJailed()) {
+            continue;
+        }
+
+        int distance = (otherPlayer->getPosition() - player.getPosition() + boardSize) % boardSize;
+
         if (distance > 0 && distance < nearestDistance) {
             target = otherPlayer;
             nearestDistance = distance;
@@ -44,7 +52,9 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
     }
 
     if (target == nullptr) {
-        std::cout << "Tidak ada pemain lawan di depan posisi Anda yang dapat ditarik.\n";
+        if (io != nullptr) {
+            io->showMessage("Tidak ada pemain lawan di depan posisi Anda yang dapat ditarik.");
+        }
         return;
     }
 
@@ -54,8 +64,10 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
     target->moveTo(destinationIndex);
     player.setUsedSkillThisTurn(true);
 
-    std::cout << target->getUsername() << " ditarik ke posisi "
-              << player.getUsername() << ".\n";
+    if (io != nullptr) {
+        io->showMessage(target->getUsername() + " ditarik ke posisi " +
+                        player.getUsername() + ".");
+    }
 
     if (destinationTile != nullptr) {
         destinationTile->onLanded(*target, gameContext);

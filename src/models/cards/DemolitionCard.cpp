@@ -1,10 +1,9 @@
 #include "models/cards/DemolitionCard.hpp"
 
-#include <iostream>
-#include <limits>
 #include <vector>
 
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
@@ -18,7 +17,8 @@ std::string DemolitionCard::getTypeName() const {
 
 void DemolitionCard::use(Player& player, GameContext& gameContext) {
     TurnManager* turnManager = gameContext.getTurnManager();
-    if (turnManager == nullptr) {
+    GameIO* io = gameContext.getIO();
+    if (turnManager == nullptr || io == nullptr) {
         return;
     }
 
@@ -47,28 +47,23 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     }
 
     if (targetProperties.empty()) {
-        std::cout << "Tidak ada properti lawan yang dapat dihancurkan.\n";
+        io->showMessage("Tidak ada properti lawan yang dapat dihancurkan.");
         return;
     }
 
-    std::cout << "Pilih properti lawan yang ingin dihancurkan:\n";
+    io->showMessage("Pilih properti lawan yang ingin dihancurkan:");
     for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
-        std::cout << i + 1 << ". "
-                  << targetOwners[i]->getUsername()
-                  << " - " << targetProperties[i]->getName()
-                  << " (" << targetProperties[i]->getCode() << ")\n";
+        io->showMessage(
+            std::to_string(i + 1) + ". "
+                + targetOwners[i]->getUsername()
+                + " - " + targetProperties[i]->getName()
+                + " (" + targetProperties[i]->getCode() + ")");
     }
 
-    int choice = 0;
-    while (true) {
-        std::cout << "Pilihan (1-" << targetProperties.size() << "): ";
-        if (std::cin >> choice && choice >= 1 && choice <= static_cast<int>(targetProperties.size())) {
-            break;
-        }
-
-        std::cout << "Pilihan tidak valid.\n";
-        std::cin.clear();
-    }
+    int choice = io->promptIntInRange(
+        "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
+        1,
+        static_cast<int>(targetProperties.size()));
 
     PropertyTile* targetProperty = targetProperties[choice - 1];
     Player* owner = targetOwners[choice - 1];
@@ -77,8 +72,9 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     targetProperty->returnToBank();
     player.setUsedSkillThisTurn(true);
 
-    std::cout << targetProperty->getName()
-              << " (" << targetProperty->getCode() << ") milik "
-              << owner->getUsername()
-              << " telah dihancurkan dan dikembalikan ke Bank.\n";
+    io->showMessage(
+        targetProperty->getName()
+            + " (" + targetProperty->getCode() + ") milik "
+            + owner->getUsername()
+            + " telah dihancurkan dan dikembalikan ke Bank.");
 }

@@ -2,6 +2,7 @@
 
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 
@@ -35,5 +36,10 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
 
         *otherPlayer -= amount;
         player += amount;
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage(
+                otherPlayer->getUsername() + " memberi M" + std::to_string(amount) +
+                    " kepada " + player.getUsername() + ".");
+        }
     }
 }

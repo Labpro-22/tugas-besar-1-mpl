@@ -20,16 +20,16 @@ namespace {
 
     namespace ANSI {
         const std::string RESET = "\033[0m";
-        const std::string COKLAT = "\033[43m\033[30m";
-        const std::string BIRU_MUDA = "\033[46m\033[30m";
-        const std::string PINK = "\033[45m\033[97m";
-        const std::string ORANGE = "\033[41m\033[97m";
-        const std::string MERAH = "\033[101m\033[30m";
-        const std::string KUNING = "\033[103m\033[30m";
-        const std::string HIJAU = "\033[42m\033[30m";
-        const std::string BIRU_TUA = "\033[44m\033[97m";
-        const std::string UTILITAS = "\033[47m\033[30m";
-        const std::string DEFAULT_BG = "\033[100m\033[97m";
+        const std::string COKLAT = "\033[48;5;94m\033[97m";
+        const std::string BIRU_MUDA = "\033[48;5;117m\033[30m";
+        const std::string PINK = "\033[48;5;218m\033[30m";
+        const std::string ORANGE = "\033[48;5;208m\033[30m";
+        const std::string MERAH = "\033[48;5;196m\033[97m";
+        const std::string KUNING = "\033[48;5;226m\033[30m";
+        const std::string HIJAU = "\033[48;5;46m\033[30m";
+        const std::string BIRU_TUA = "\033[48;5;19m\033[97m";
+        const std::string UTILITAS = "\033[48;5;250m\033[30m";
+        const std::string DEFAULT_BG = "\033[48;5;240m\033[97m";
     }
 
     const int CELL_WIDTH = 10;
@@ -53,40 +53,17 @@ namespace {
         colorMap[ColorGroup::DEFAULT] = ANSI::DEFAULT_BG;
     }
 
-    std::string categoryLabel(ColorGroup colorGroup) {
-        switch (colorGroup) {
-            case ColorGroup::COKLAT:
-                return "CK";
-            case ColorGroup::BIRU_MUDA:
-                return "BM";
-            case ColorGroup::MERAH_MUDA:
-                return "PK";
-            case ColorGroup::ORANGE:
-                return "OR";
-            case ColorGroup::MERAH:
-                return "MR";
-            case ColorGroup::KUNING:
-                return "KN";
-            case ColorGroup::HIJAU:
-                return "HJ";
-            case ColorGroup::BIRU_TUA:
-                return "BT";
-            case ColorGroup::ABU_ABU:
-                return "AB";
-            case ColorGroup::DEFAULT:
-            default:
-                return "DF";
-        }
-    }
-
     ColorGroup getTileColorGroup(const Tile* tile) {
-        const StreetTile* street = dynamic_cast<const StreetTile*>(tile);
-        if (street != nullptr) {
-            return street->getColorGroup();
+        if (tile == nullptr || tile->asPropertyTile() == nullptr) {
+            return ColorGroup::DEFAULT;
         }
 
-        const UtilityTile* utility = dynamic_cast<const UtilityTile*>(tile);
-        if (utility != nullptr) {
+        const PropertyTile* property = tile->asPropertyTile();
+        if (property->getPropertyType() == PropertyType::STREET) {
+            return property->getColorGroup();
+        }
+
+        if (property->getPropertyType() == PropertyType::UTILITY) {
             return ColorGroup::ABU_ABU;
         }
 
@@ -135,8 +112,12 @@ namespace {
     }
 
     std::string buildPropertyStatus(const Tile* tile, const std::vector<Player>& players) {
-        const PropertyTile* property = dynamic_cast<const PropertyTile*>(tile);
-        if (property == nullptr || property->getStatus() == PropertyStatus::BANK) {
+        if (tile == nullptr || tile->asPropertyTile() == nullptr) {
+            return "";
+        }
+
+        const PropertyTile* property = tile->asPropertyTile();
+        if (property->getStatus() == PropertyStatus::BANK) {
             return "";
         }
 
@@ -153,12 +134,11 @@ namespace {
             return ownerLabel + "[M]";
         }
 
-        const StreetTile* street = dynamic_cast<const StreetTile*>(property);
-        if (street == nullptr) {
+        if (property->getPropertyType() != PropertyType::STREET) {
             return ownerLabel;
         }
 
-        int level = street->getBuildingLevel();
+        int level = property->getBuildingLevel();
         if (level == 5) {
             return ownerLabel + " *";
         }
@@ -178,6 +158,15 @@ namespace {
 
         return ANSI::DEFAULT_BG;
     }
+
+    std::string tileHeader(const Tile* tile) {
+        std::string displayIndex = std::to_string(tile->getIndex() + 1);
+        if (tile->getIndex() + 1 < 10) {
+            displayIndex = "0" + displayIndex;
+        }
+
+        return displayIndex + " " + tile->getCode();
+    }
 }  // namespace
 
 std::string BoardRenderer::colorize(const std::string& text, const std::string& ansiCode) const {
@@ -188,15 +177,17 @@ std::string BoardRenderer::renderTileCell(const Tile* tile, const std::vector<Pl
     ColorGroup colorGroup = getTileColorGroup(tile);
     std::string ansiCode = getAnsiCode(colorMap, colorGroup);
 
-    std::string line1 = padToWidth("[" + categoryLabel(colorGroup) + "] " + tile->getCode(), CELL_WIDTH);
+    std::string line1 = padToWidth(tileHeader(tile), CELL_WIDTH);
     std::string line2 = padToWidth(buildPropertyStatus(tile, players), CELL_WIDTH);
 
     return colorize(line1, ansiCode) + "\n" + colorize(line2, ansiCode);
 }
 
 void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
-    std::cout << " ---------------------------------- \n";
-    std::cout << " LEGENDA KEPEMILIKAN & STATUS\n";
+    std::cout << "\n";
+    std::cout << "+--------------------------------------+\n";
+    std::cout << "| LEGENDA KEPEMILIKAN & STATUS         |\n";
+    std::cout << "+--------------------------------------+\n";
 
     for (int i = 0; i < static_cast<int>(players.size()); ++i) {
         const Player& player = players[i];
@@ -212,28 +203,26 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
                   << " (M" << player.getBalance() << ") " << status << "\n";
     }
 
-    std::cout << " ^ : Rumah Level 1\n";
-    std::cout << " ^^ : Rumah Level 2\n";
-    std::cout << " ^^^ : Rumah Level 3\n";
-    std::cout << " ^^^^ : Rumah Level 4\n";
-    std::cout << " * : Hotel (Maksimal)\n";
-    std::cout << " (N) : Bidak Pemain N\n";
-    std::cout << " IN:N : Pemain N di Penjara\n";
-    std::cout << " V:N : Pemain N Hanya Mampir\n";
-    std::cout << " [M] : Properti Digadaikan\n";
-    std::cout << " ---------------------------------- \n";
+    std::cout << "\n";
+    std::cout << " ^/^^/^^^/^^^^ : Rumah level 1-4\n";
+    std::cout << " *             : Hotel\n";
+    std::cout << " NN KODE       : Nomor petak 1-40 dan kode petak\n";
+    std::cout << " (N), *N*      : Bidak pemain, *N* = giliran aktif\n";
+    std::cout << " IN:N / V:N    : Di penjara / hanya mampir penjara\n";
+    std::cout << " [M]           : Properti digadaikan\n";
+    std::cout << "\n";
     std::cout << " KODE WARNA:\n";
-    std::cout << " " << colorize("[CK]=Coklat  ", ANSI::COKLAT)
-              << " " << colorize("[MR]=Merah   ", ANSI::MERAH) << "\n";
-    std::cout << " " << colorize("[BM]=Biru Muda", ANSI::BIRU_MUDA)
-              << " " << colorize("[KN]=Kuning  ", ANSI::KUNING) << "\n";
-    std::cout << " " << colorize("[PK]=Pink    ", ANSI::PINK)
-              << " " << colorize("[HJ]=Hijau   ", ANSI::HIJAU) << "\n";
-    std::cout << " " << colorize("[OR]=Orange  ", ANSI::ORANGE)
-              << " " << colorize("[BT]=Biru Tua", ANSI::BIRU_TUA) << "\n";
-    std::cout << " " << colorize("[DF]=Aksi    ", ANSI::DEFAULT_BG)
-              << " " << colorize("[AB]=Utilitas", ANSI::UTILITAS) << "\n";
-    std::cout << " ---------------------------------- \n";
+    std::cout << " " << colorize("[CK]=Coklat    ", ANSI::COKLAT)
+              << " " << colorize("[MR]=Merah    ", ANSI::MERAH) << "\n";
+    std::cout << " " << colorize("[BM]=Biru Muda ", ANSI::BIRU_MUDA)
+              << " " << colorize("[KN]=Kuning   ", ANSI::KUNING) << "\n";
+    std::cout << " " << colorize("[PK]=Pink      ", ANSI::PINK)
+              << " " << colorize("[HJ]=Hijau    ", ANSI::HIJAU) << "\n";
+    std::cout << " " << colorize("[OR]=Orange    ", ANSI::ORANGE)
+              << " " << colorize("[BT]=Biru Tua ", ANSI::BIRU_TUA) << "\n";
+    std::cout << " " << colorize("[DF]=Aksi      ", ANSI::DEFAULT_BG)
+              << " " << colorize("[AB]=Utilitas ", ANSI::UTILITAS) << "\n";
+    std::cout << "+--------------------------------------+\n";
 }
 
 void BoardRenderer::render(const Board& board,
@@ -254,7 +243,7 @@ void BoardRenderer::render(const Board& board,
         ColorGroup colorGroup = getTileColorGroup(tile);
         std::string ansiCode = getAnsiCode(colorMap, colorGroup);
 
-        std::string line1 = padToWidth("[" + categoryLabel(colorGroup) + "] " + tile->getCode(), CELL_WIDTH);
+        std::string line1 = padToWidth(tileHeader(tile), CELL_WIDTH);
         std::string propertyStatus = buildPropertyStatus(tile, players);
         std::string pawns = buildPawnIndicators(tileIndex, players, turnManager);
         std::string line2 = propertyStatus.empty() ? pawns : propertyStatus + " " + pawns;

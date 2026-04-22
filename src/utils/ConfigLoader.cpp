@@ -1,23 +1,24 @@
 #include "utils/ConfigLoader.hpp"
 
+#include "models/config/ActionTileConfig.hpp"
 #include "models/config/ConfigData.hpp"
-#include "models/config/PropertyConfig.hpp"
-#include "models/config/TaxConfig.hpp"
-#include "models/config/SpecialConfig.hpp"
 #include "models/config/MiscConfig.hpp"
+#include "models/config/PropertyConfig.hpp"
+#include "models/config/SpecialConfig.hpp"
+#include "models/config/TaxConfig.hpp"
 
+#include <array>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
-#include <array>
 
-PropertyType stringToType(const std::string& s) {
+PropertyType ConfigLoader::stringToType(const std::string& s) {
     if (s == "STREET") return PropertyType::STREET;
     if (s == "RAILROAD") return PropertyType::RAILROAD;
     return PropertyType::UTILITY;
 }
 
-ColorGroup stringToColor(const std::string& s) {
+ColorGroup ConfigLoader::stringToColor(const std::string& s) {
     if (s == "COKLAT") return ColorGroup::COKLAT;
     if (s == "BIRU_MUDA") return ColorGroup::BIRU_MUDA;
     if (s == "MERAH_MUDA") return ColorGroup::MERAH_MUDA;
@@ -38,13 +39,14 @@ ConfigLoader::ConfigLoader(const std::string& configPath) : configPath(configPat
 
 ConfigData ConfigLoader::loadAll() const {
     std::vector<PropertyConfig> properties = parsePropertyFile(configPath + "property.txt");
+    std::vector<ActionTileConfig> actionTiles = parseActionTileFile(configPath + "aksi.txt");
     std::map<int, int> railroads = parseRailroadFile(configPath + "railroad.txt");
     std::map<int, int> utilities = parseUtilityFile(configPath + "utility.txt");
     TaxConfig tax = parseTaxFile(configPath + "tax.txt");
     SpecialConfig special = parseSpecialFile(configPath + "special.txt");
     MiscConfig misc = parseMiscFile(configPath + "misc.txt");
  
-    return ConfigData(properties, railroads, utilities, tax, special, misc);
+    return ConfigData(properties, actionTiles, railroads, utilities, tax, special, misc);
 }
 
 std::vector<PropertyConfig>
@@ -88,6 +90,39 @@ ConfigLoader::parsePropertyFile(const std::string& path) const {
         );
     }
  
+    return result;
+}
+
+std::vector<ActionTileConfig>
+ConfigLoader::parseActionTileFile(const std::string& path) const {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+    }
+
+    std::vector<ActionTileConfig> result;
+    std::string line;
+    bool isHeader = true;
+
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        if (isHeader) {
+            isHeader = false;
+            continue;
+        }
+
+        std::istringstream ss(line);
+        int id = 0;
+        std::string code;
+        std::string name;
+        std::string tileType;
+        std::string colorStr;
+
+        if (ss >> id >> code >> name >> tileType >> colorStr) {
+            result.emplace_back(id, code, name, tileType, stringToColor(colorStr));
+        }
+    }
+
     return result;
 }
 

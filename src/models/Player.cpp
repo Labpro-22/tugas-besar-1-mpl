@@ -3,8 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "utils/exceptions/InsufficientFundsException.hpp"
-#include "utils/exceptions/CardHandFullException.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
 #include "models/cards/SkillCard.hpp"
@@ -19,7 +18,8 @@ Player::Player()
       shieldActive(false),
       discountPercent(0),
       usedSkillThisTurn(false),
-      rolledThisTurn(false) {}
+      rolledThisTurn(false),
+      actionTakenThisTurn(false) {}
 
 Player::Player(const std::string& username, int initialBalance)
     : username(username),
@@ -31,19 +31,29 @@ Player::Player(const std::string& username, int initialBalance)
       shieldActive(false),
       discountPercent(0),
       usedSkillThisTurn(false),
-      rolledThisTurn(false) {}
+      rolledThisTurn(false),
+      actionTakenThisTurn(false) {}
 
 // OPERATOR OVERLOADING
 
 Player& Player::operator+=(int amount) {
-    if (balance < amount) {
-        throw InsufficientFundsException(amount, balance);
+    if (amount < 0) {
+        return (*this) -= -amount;
     }
+
     balance += amount;
     return *this;
 }
     
 Player& Player::operator-=(int amount) {
+    if (amount < 0) {
+        return (*this) += -amount;
+    }
+
+    if (balance < amount) {
+        throw InsufficientFundsException(amount, balance);
+    }
+    
     balance -= amount;
     return *this;
 }
@@ -100,6 +110,10 @@ void Player::removeCard(SkillCard* card) {
     }
 }
 
+void Player::clearHand() {
+    hand.clear();
+}
+
 // Query/Calculation
 int Player::getTotalWealth() const {
     int total = balance;
@@ -146,7 +160,7 @@ bool Player::isMonopolizing(ColorGroup colorGroup, const std::vector<StreetTile*
 
         bool owned = false;
         for (const PropertyTile* prop : properties) {
-            if (prop == static_cast<const PropertyTile*>(tile)) {
+            if (prop == tile) {
                 owned = true;
                 break;
             }
@@ -163,6 +177,7 @@ void Player::resetTurnState() {
     discountPercent = 0;
     usedSkillThisTurn = false;
     rolledThisTurn = false;
+    actionTakenThisTurn = false;
 }
 
 // Getters
@@ -214,39 +229,47 @@ bool Player::hasRolledThisTurn() const {
     return rolledThisTurn;
 }
 
+bool Player::hasTakenActionThisTurn() const {
+    return actionTakenThisTurn;
+}
+
 // Setters
 void Player::setBalance(int balance) {
-    balance = balance;
+    this->balance = balance;
 }
 
 void Player::setPosition(int position) {
-    position = position;
+    this->position = position;
 }
 
 void Player::setStatus(PlayerStatus status) {
-    status = status;
+    this->status = status;
 }
 
 void Player::setJailTurns(int jailTurns) {
-    jailTurns = jailTurns;
+    this->jailTurns = jailTurns;
 }
 
 void Player::setConsecutiveDoubles(int consecutiveDoubles) {
-    consecutiveDoubles = consecutiveDoubles;
+    this->consecutiveDoubles = consecutiveDoubles;
 }
 
 void Player::setShieldActive(bool shieldActive) {
-    shieldActive = shieldActive;
+    this->shieldActive = shieldActive;
 }
 
 void Player::setDiscountPercent(int discountPercent) {
-    discountPercent = discountPercent;
+    this->discountPercent = discountPercent;
 }
 
 void Player::setUsedSkillThisTurn(bool usedSkillThisTurn) {
-    usedSkillThisTurn = usedSkillThisTurn;
+    this->usedSkillThisTurn = usedSkillThisTurn;
 }
     
 void Player::setHasRolledThisTurn(bool hasRolledThisTurn) {
-    hasRolledThisTurn = hasRolledThisTurn;
+    this->rolledThisTurn = hasRolledThisTurn;
+}
+
+void Player::setActionTakenThisTurn(bool actionTakenThisTurn) {
+    this->actionTakenThisTurn = actionTakenThisTurn;
 }

@@ -7,7 +7,10 @@
 
 Command CommandParser::readCommand() {
     std::string line;
-    std::getline(std::cin, line);
+    if (!std::getline(std::cin, line)) {
+        std::cin.clear();
+        return Command("KELUAR", {});
+    }
 
     std::stringstream ss(line);
     std::string keyword;

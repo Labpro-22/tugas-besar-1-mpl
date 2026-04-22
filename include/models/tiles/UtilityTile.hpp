@@ -21,5 +21,6 @@ public:
     void onLanded(Player& player, GameContext& gameContext) override;
     int calculateRent(int diceTotal, const GameContext& gameContext) override;
     int getSellValueToBank() const override;
+    PropertyType getPropertyType() const override;
     std::string getDisplayLabel() const override;
 };

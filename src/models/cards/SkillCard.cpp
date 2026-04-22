@@ -19,3 +19,7 @@ int SkillCard::getRemainingDuration() const {
 void SkillCard::setRemainingDuration(int remainingDuration) {
     this->remainingDuration = (remainingDuration < 0 ? 0 : remainingDuration);
 }
+
+bool SkillCard::canUseWhileJailed() const {
+    return true;
+}

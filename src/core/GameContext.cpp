@@ -1,5 +1,6 @@
 #include "core/GameContext.hpp"
 #include "core/Board.hpp"
+#include "core/PropertyTransactionService.hpp"
 #include "core/TurnManager.hpp"
 #include "utils/TransactionLogger.hpp"
 
@@ -9,6 +10,7 @@ GameContext::GameContext(
         AuctionManager* auctionManager,
         BankruptcyHandler* bankruptcyHandler,
         TransactionLogger* logger,
+        GameIO* io,
         Dice* dice,
         CardDeck<ActionCard>* chanceDeck,
         CardDeck<ActionCard>* communityDeck,
@@ -19,6 +21,7 @@ GameContext::GameContext(
     auctionManager(auctionManager),
     bankruptcyHandler(bankruptcyHandler),
     logger(logger),
+    io(io),
     dice(dice),
     chanceDeck(chanceDeck),
     communityDeck(communityDeck),
@@ -44,6 +47,10 @@ TransactionLogger* GameContext::getLogger() const {
     return logger;
 }
 
+GameIO* GameContext::getIO() const {
+    return io;
+}
+
 Dice* GameContext::getDice() const {
     return dice;
 }
@@ -61,17 +68,11 @@ CardDeck<SkillCard>* GameContext::getSkillDeck() const {
 }
 
 void GameContext::triggerStreetEvent(Player& player, PropertyTile& tile) {
-    if (turnManager) {
-        // Mendelegasikan alur beli/sewa/lelang lahan ke TurnManager
-        turnManager->handlePropertyLanded(player, tile, *this); 
-    }
+    PropertyTransactionService::handlePropertyLanded(player, tile, *this);
 }
 
 void GameContext::triggerRentEvent(Player& player, PropertyTile& tile) {
-    if (turnManager) {
-        // Mendelegasikan alur bayar sewa khusus ke TurnManager
-        turnManager->handleRentPayment(player, tile, *this);
-    }
+    PropertyTransactionService::handleRentPayment(player, tile, *this);
 }
 
 bool GameContext::hasMonopoly(const Player& player, ColorGroup colorGroup) const {
@@ -100,8 +101,15 @@ int GameContext::getUtilityCount(const Player& player) const {
 
 void GameContext::logEvent(const std::string& actionType, const std::string& detail) {
     if (logger) {
-        // Mendelegasikan pencatatan ke TransactionLogger
-        // Asumsi TransactionLogger memiliki fungsi addLog
-        // logger->addLog(actionType, detail);
+        int turn = 0;
+        std::string username = "SYSTEM";
+        if (turnManager != nullptr) {
+            turn = turnManager->getCurrentTurn();
+            Player* currentPlayer = turnManager->getCurrentPlayer();
+            if (currentPlayer != nullptr) {
+                username = currentPlayer->getUsername();
+            }
+        }
+        logger->log(turn, username, actionType, detail);
     }
 }

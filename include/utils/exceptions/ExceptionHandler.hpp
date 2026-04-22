@@ -68,6 +68,20 @@ public:
             return "Gagal membaca file konfigurasi. Pastikan format file valid.";
         }
 
+        if (startsWith(rawMessage, "CardDeck:")) {
+            return "Deck kartu kosong atau tidak dapat digunakan.";
+        }
+
+        if (rawMessage.find("Board belum terbangun") != std::string::npos) {
+            return "Papan permainan belum siap. Pastikan game berhasil diinisialisasi.";
+        }
+
+        if (rawMessage.find("Konfigurasi petak") != std::string::npos ||
+            rawMessage.find("Konfigurasi properti") != std::string::npos ||
+            rawMessage.find("ConfigData") != std::string::npos) {
+            return "Konfigurasi permainan tidak valid: " + rawMessage;
+        }
+
         if (!rawMessage.empty()) {
             return rawMessage;
         }

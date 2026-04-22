@@ -1,6 +1,7 @@
 #include "models/tiles/GoTile.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "utils/TransactionLogger.hpp"
 
@@ -10,14 +11,34 @@ GoTile::GoTile(int index, const std::string &code, const std::string &name, int 
     : ActionTile(index, code, name, TileCategory::DEFAULT), salary(salary) {}
 
 void GoTile::onLanded(Player& player, GameContext& gameContext) {
-    // Gajian saat mendarat
+    int beforeBalance = player.getBalance();
     awardSalary(player);
-    int currentTurn = gameContext.getTurnManager()->getCurrentTurn();
-    gameContext.getLogger()->log(currentTurn, player.getUsername(), "GO", "Mendarat di GO, mendapatkan gaji " + std::to_string(salary));
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            "Kamu mendarat di GO. Mendapatkan gaji M" + std::to_string(salary) + ".");
+        gameContext.getIO()->showMessage(
+            "Uang kamu: M" + std::to_string(beforeBalance) +
+                " -> M" + std::to_string(player.getBalance()));
+    }
+    if (gameContext.getLogger() != nullptr) {
+        int currentTurn = 0;
+        if (gameContext.getTurnManager() != nullptr) {
+            currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+        }
+        gameContext.getLogger()->log(
+            currentTurn,
+            player.getUsername(),
+            "GO",
+            "Mendarat di GO, mendapatkan gaji " + std::to_string(salary));
+    }
+}
+
+void GoTile::onPassed(Player& player, GameContext&) {
+    awardSalary(player);
 }
 
 void GoTile::awardSalary(Player &player) {
-    player += salary; // Transfer gaji pake operator overloading += dari Player
+    player += salary;
 }
 
 std::string GoTile::getDisplayLabel() const {
