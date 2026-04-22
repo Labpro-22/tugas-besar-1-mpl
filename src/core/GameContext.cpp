@@ -100,8 +100,15 @@ int GameContext::getUtilityCount(const Player& player) const {
 
 void GameContext::logEvent(const std::string& actionType, const std::string& detail) {
     if (logger) {
-        // Mendelegasikan pencatatan ke TransactionLogger
-        // Asumsi TransactionLogger memiliki fungsi addLog
-        // logger->addLog(actionType, detail);
+        int turn = 0;
+        std::string username = "SYSTEM";
+        if (turnManager != nullptr) {
+            turn = turnManager->getCurrentTurn();
+            Player* currentPlayer = turnManager->getCurrentPlayer();
+            if (currentPlayer != nullptr) {
+                username = currentPlayer->getUsername();
+            }
+        }
+        logger->log(turn, username, actionType, detail);
     }
 }

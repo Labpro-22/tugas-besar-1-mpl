@@ -1,5 +1,10 @@
 #include "models/tiles/PropertyTile.hpp"
 
+#include <algorithm>
+#include <vector>
+
+#include "models/Player.hpp"
+
 PropertyTile::PropertyTile() : Tile(), owner(nullptr), status(PropertyStatus::BANK), mortgageValue(0) {}
 
 PropertyTile::PropertyTile(int index, const std::string& code, const std::string& name, int mortgageValue, int buyPrice)
@@ -20,11 +25,23 @@ void PropertyTile::redeem() {
 }
 
 void PropertyTile::transferTo(Player& newOwner) {
+    if (owner != nullptr && owner != &newOwner) {
+        owner->removeProperty(this);
+    }
+
     owner = &newOwner;
     status = PropertyStatus::OWNED;
+
+    const std::vector<PropertyTile*>& ownedProperties = newOwner.getProperties();
+    if (std::find(ownedProperties.begin(), ownedProperties.end(), this) == ownedProperties.end()) {
+        newOwner.addProperty(this);
+    }
 }
 
 void PropertyTile::returnToBank() {
+    if (owner != nullptr) {
+        owner->removeProperty(this);
+    }
     owner = nullptr;
     status = PropertyStatus::BANK;
 }

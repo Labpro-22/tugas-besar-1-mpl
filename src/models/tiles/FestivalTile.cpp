@@ -11,10 +11,11 @@ FestivalTile::FestivalTile(int index, const std::string& code, const std::string
     : ActionTile(index, code, name, TileCategory::DEFAULT) {}
 
 void FestivalTile::onLanded(Player& player, GameContext& gameContext) {
-    // NOTE: Tile hanya handle logic, bukan output
-    // GameEngine akan manage display info dan user input via command handler
-    // Untuk sekarang: tile hanya check apakah ada properti street yang bisa di-festival
-    // Jika tidak ada, tidak perlu action tambahan
+    std::vector<StreetTile*> streets;
+    getPlayerStreets(player, streets);
+    if (!streets.empty()) {
+        applyFestivalEffect(streets.front(), player, gameContext);
+    }
 }
 
 void FestivalTile::getPlayerStreets(const Player& player, std::vector<StreetTile*>& outStreets) const {

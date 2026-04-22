@@ -39,6 +39,7 @@ private:
     void buildBoard();
     void buildDecks();
     void randomizeTurnOrder();
+    GameState createGameState() const;
 
 public:
     GameEngine(TransactionLogger* logger);

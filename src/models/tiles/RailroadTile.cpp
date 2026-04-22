@@ -18,7 +18,7 @@ void RailroadTile::onLanded(Player& player, GameContext& gameContext) {
     }
 }
 
-int RailroadTile::calculateRent(int diceTotal, const GameContext& gameContext) {
+int RailroadTile::calculateRent(int, const GameContext& gameContext) {
     if (getStatus() != PropertyStatus::OWNED) {
         return 0;
     }

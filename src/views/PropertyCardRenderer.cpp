@@ -112,8 +112,13 @@ void PropertyCardRenderer::renderDeed(const PropertyTile* property) const {
             ? "HOTEL"
             : std::to_string(street->getBuildingLevel()));
 
-        std::cout << "Info Sewa          : mengikuti tabel sewa internal StreetTile." << std::endl;
-        std::cout << "Info Bangunan      : level 0-4 = rumah, level 5 = hotel." << std::endl;
+        std::cout << "Tabel Sewa:" << std::endl;
+        for (int level = 0; level <= 5; ++level) {
+            std::cout << "  Level " << level << " : M" << street->getRentAtLevel(level) << std::endl;
+        }
+        
+        printKeyValue("Biaya Rumah", street->getHouseCost());
+        printKeyValue("Biaya Hotel", street->getHotelCost());
 
         if (street->getFestivalDuration() > 0) {
             std::cout << "Festival Aktif     : x" << street->getFestivalMultiplier()

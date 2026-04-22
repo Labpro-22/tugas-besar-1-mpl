@@ -63,11 +63,13 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     while (true) {
         std::cout << "Pilihan (1-" << targetProperties.size() << "): ";
         if (std::cin >> choice && choice >= 1 && choice <= static_cast<int>(targetProperties.size())) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             break;
         }
 
         std::cout << "Pilihan tidak valid.\n";
         std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 
     PropertyTile* targetProperty = targetProperties[choice - 1];

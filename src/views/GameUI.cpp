@@ -1,33 +1,52 @@
 #include <iostream>
+#include <limits>
+
+#include "core/TurnManager.hpp"
 #include "views/GameUI.hpp"
 
 int GameUI::showMainMenu() {
-    int choice;
+    std::cout << "+------------------------------+" << std::endl;
+    std::cout << "|          NIMONSPOLI          |" << std::endl;
+    std::cout << "+------------------------------+" << std::endl;
+    std::cout << "| 1. Game Baru                 |" << std::endl;
+    std::cout << "| 2. Muat Game                 |" << std::endl;
+    std::cout << "+------------------------------+" << std::endl;
+    std::cout << "Catatan load: MUAT <filename>" << std::endl;
 
-    std::cout << "=== Nimonspoli ===" << std::endl;
-    std::cout << "1. Game Baru" << std::endl;
-    std::cout << "2. Muat Game" << std::endl;
-    std::cout << "Catatan: load game dimulai dengan command MUAT <filename>." << std::endl;
-    std::cout << "Pilih menu: ";
-    std::cin >> choice;
-    std::cin.ignore();
+    int choice = 0;
+    while (true) {
+        std::cout << "Pilih menu (1-2): ";
+        if (std::cin >> choice && (choice == 1 || choice == 2)) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return choice;
+        }
 
-    return choice;
+        std::cout << "Input tidak valid. Masukkan 1 untuk Game Baru atau 2 untuk Muat Game." << std::endl;
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
 }
 
 Command GameUI::promptLoadCommand() {
-    std::cout << "Masukkan command load sesuai spesifikasi." << std::endl;
+    std::cout << "\nMasukkan command load sesuai spesifikasi." << std::endl;
     std::cout << "Contoh: MUAT game_sesi1.txt" << std::endl;
     std::cout << "> ";
     return cmdParser.readCommand();
 }
 
 int GameUI::promptPlayerCount() {
-    int n;
-    std::cout << "Masukkan jumlah pemain (2-4): ";
-    std::cin >> n;
-    std::cin.ignore();
-    return n;
+    int n = 0;
+    while (true) {
+        std::cout << "\nMasukkan jumlah pemain (2-4): ";
+        if (std::cin >> n && n >= 2 && n <= 4) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return n;
+        }
+
+        std::cout << "Jumlah pemain tidak valid. Masukkan angka 2 sampai 4." << std::endl;
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
 }
 
 std::vector<std::string> GameUI::promptPlayerNames(int n) {
@@ -35,8 +54,13 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
 
     for (int i = 0; i < n; i++) {
         std::string name;
-        std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
-        std::getline(std::cin, name);
+        do {
+            std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
+            std::getline(std::cin, name);
+            if (name.empty()) {
+                std::cout << "Nama pemain tidak boleh kosong." << std::endl;
+            }
+        } while (name.empty());
         names.push_back(name);
     }
 
@@ -45,10 +69,22 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
 
 bool GameUI::confirmYN(const std::string& message) {
     char ans;
-    std::cout << message << " (y/n): ";
-    std::cin >> ans;
-    std::cin.ignore();
-    return ans == 'y' || ans == 'Y';
+    while (true) {
+        std::cout << message << " (y/n): ";
+        if (std::cin >> ans) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            if (ans == 'y' || ans == 'Y') {
+                return true;
+            }
+            if (ans == 'n' || ans == 'N') {
+                return false;
+            }
+        }
+
+        std::cout << "Input tidak valid. Masukkan y atau n." << std::endl;
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
 }
 
 void GameUI::showMessage(const std::string& message) {
@@ -56,8 +92,10 @@ void GameUI::showMessage(const std::string& message) {
 }
 
 void GameUI::showWinner(const std::vector<Player*>& winners, GameContext& context) {
-    (void)context;
     std::cout << "=== Pemenang ===" << std::endl;
+    if (context.getTurnManager() != nullptr) {
+        std::cout << "Turn akhir: " << context.getTurnManager()->getCurrentTurn() << std::endl;
+    }
     for (Player* player : winners) {
         if (player != nullptr) {
             std::cout << "- " << player->getUsername() << std::endl;

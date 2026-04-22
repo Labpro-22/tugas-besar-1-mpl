@@ -32,7 +32,7 @@ void Board::buildBoard(const std::vector<Tile*>& boardTiles) {
 }
 
 Tile* Board::getTile(int index) const {
-    if (index >= 0 && index < tiles.size()) {
+    if (index >= 0 && index < static_cast<int>(tiles.size())) {
         return tiles[index];
     }
     return nullptr;

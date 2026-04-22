@@ -1,7 +1,5 @@
 #include "models/cards/TeleportCard.hpp"
 
-#include "models/cards/TeleportCard.hpp"
-
 #include <iostream>
 #include <limits>
 
@@ -24,18 +22,21 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     }
 
     int tileCount = board->getTileCount();
-    int targetIndex = -1;
+    int targetPosition = -1;
 
     while (true) {
-        std::cout << "Pilih index petak tujuan teleport (0-" << tileCount - 1 << "): ";
-        if (std::cin >> targetIndex && targetIndex >= 0 && targetIndex < tileCount) {
+        std::cout << "Pilih nomor petak tujuan teleport (1-" << tileCount << "): ";
+        if (std::cin >> targetPosition && targetPosition >= 1 && targetPosition <= tileCount) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
             break;
         }
 
-        std::cout << "Index tidak valid. Masukkan angka 0 sampai " << tileCount - 1 << ".\n";
+        std::cout << "Nomor petak tidak valid. Masukkan angka 1 sampai " << tileCount << ".\n";
         std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 
+    int targetIndex = targetPosition - 1;
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile == nullptr) {
         return;

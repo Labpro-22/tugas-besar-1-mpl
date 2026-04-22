@@ -100,6 +100,10 @@ PlayerState SaveManager::parsePlayer(const std::string& line) const {
 		parts.push_back(token);
 	}
 
+	if (parts.size() == 5) {
+		parts.push_back("");
+	}
+
 	if (parts.size() != 6) {
 		throw std::runtime_error("SaveManager: invalid PLAYER line -> '" + line + "'");
 	}

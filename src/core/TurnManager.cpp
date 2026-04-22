@@ -1,168 +1,293 @@
 #include "core/TurnManager.hpp"
 
 #include <algorithm>
+#include <iostream>
+#include <limits>
 #include <stdexcept>
 
-#include "models/Player.hpp"
+#include "core/AuctionManager.hpp"
+#include "core/BankruptcyHandler.hpp"
+#include "core/Dice.hpp"
 #include "core/GameContext.hpp"
+#include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "utils/TransactionLogger.hpp"
 
 TurnManager::TurnManager(int maxTurn)
-    : currentIndex(0),
-      currentTurn(1),
-      maxTurn(maxTurn) {}
-
+    : currentIndex(0), currentTurn(1), maxTurn(maxTurn) {}
 
 void TurnManager::initializeTurnOrder(const std::vector<Player*>& players) {
-  turnOrder.clear();
+    turnOrder.clear();
 
-  for (Player* player : players) {
-    if (player != nullptr && !player->isBankrupt()) {
-      turnOrder.push_back(player);
+    for (Player* player : players) {
+        if (player != nullptr && !player->isBankrupt()) {
+            turnOrder.push_back(player);
+        }
     }
-  }
 
-  currentIndex = 0;
-  currentTurn = 1;
+    currentIndex = 0;
+    currentTurn = 1;
 }
 
-void TurnManager::restoreTurnOrder(const std::vector<std::string>& orderedUsernames, const std::vector<Player*>& allPlayers) {
-  turnOrder.clear();
-  
-  for (const std::string& username : orderedUsernames) {
-    for (Player* player : allPlayers) {
-      if (player != nullptr && player->getUsername() == username && !player->isBankrupt()) {
-        turnOrder.push_back(player);
-        break;
-      }
-    }
-  }
+void TurnManager::restoreTurnOrder(const std::vector<std::string>& orderedUsernames,
+                                   const std::vector<Player*>& allPlayers) {
+    turnOrder.clear();
 
-  currentIndex = 0;
-  if (turnOrder.empty()) {
-    currentTurn = 1;
-  }
+    for (const std::string& username : orderedUsernames) {
+        for (Player* player : allPlayers) {
+            if (player != nullptr &&
+                player->getUsername() == username &&
+                !player->isBankrupt()) {
+                turnOrder.push_back(player);
+                break;
+            }
+        }
+    }
+
+    currentIndex = 0;
+    if (turnOrder.empty()) {
+        currentTurn = 1;
+    }
 }
 
 Player* TurnManager::getCurrentPlayer() const {
-  if (turnOrder.empty()) {
-    return nullptr;
-  }
+    if (turnOrder.empty()) {
+        return nullptr;
+    }
 
-  return turnOrder[currentIndex];
+    return turnOrder[currentIndex];
 }
 
 void TurnManager::advance() {
-  if (turnOrder.empty()) {
-    return;
-  }
+    if (turnOrder.empty()) {
+        return;
+    }
 
-  currentIndex = (currentIndex + 1) % static_cast<int>(turnOrder.size());
+    currentIndex = (currentIndex + 1) % static_cast<int>(turnOrder.size());
 
-  if (currentIndex == 0) {
-    ++currentTurn;
-  }
+    if (currentIndex == 0) {
+        ++currentTurn;
+    }
 }
 
 bool TurnManager::isMaxTurnReached() const {
-  return currentTurn >= maxTurn;
+    return currentTurn >= maxTurn;
 }
 
 void TurnManager::removePlayer(Player* player) {
-  if (player == nullptr || turnOrder.empty()) {
-    return;
-  }
-
-  std::vector<Player*>::iterator it = std::find(turnOrder.begin(), turnOrder.end(), player);
-
-  if (it == turnOrder.end()) {
-    return;
-  }
-
-  int removedIndex = static_cast<int>(it - turnOrder.begin());
-  turnOrder.erase(it);
-
-  if (turnOrder.empty()) {
-    currentIndex = 0;
-    return;
-  }
-
-  if (removedIndex < currentIndex) {
-    --currentIndex;
-  } else if (removedIndex == currentIndex) {
-    if (currentIndex >= static_cast<int>(turnOrder.size())) {
-      currentIndex = 0;
+    if (player == nullptr || turnOrder.empty()) {
+        return;
     }
-  }
+
+    auto it = std::find(turnOrder.begin(), turnOrder.end(), player);
+    if (it == turnOrder.end()) {
+        return;
+    }
+
+    int removedIndex = static_cast<int>(it - turnOrder.begin());
+    turnOrder.erase(it);
+
+    if (turnOrder.empty()) {
+        currentIndex = 0;
+        return;
+    }
+
+    if (removedIndex < currentIndex) {
+        --currentIndex;
+    } else if (removedIndex == currentIndex) {
+        if (currentIndex >= static_cast<int>(turnOrder.size())) {
+            currentIndex = 0;
+        }
+    }
 }
 
 std::vector<Player*> TurnManager::getActivePlayers() const {
-  return turnOrder;
+    return turnOrder;
 }
 
 Player* TurnManager::getPlayerAfter(Player* player) const {
-  if (player == nullptr || turnOrder.empty()) {
-    return nullptr;
-  }
-
-  for (int i = 0; i < static_cast<int>(turnOrder.size()); ++i) {
-    if (turnOrder[i] == player) {
-      return turnOrder[(i + 1) % static_cast<int>(turnOrder.size())];
+    if (player == nullptr || turnOrder.empty()) {
+        return nullptr;
     }
-  }
 
-  return nullptr;
+    for (int i = 0; i < static_cast<int>(turnOrder.size()); ++i) {
+        if (turnOrder[i] == player) {
+            return turnOrder[(i + 1) % static_cast<int>(turnOrder.size())];
+        }
+    }
+
+    return nullptr;
 }
 
 int TurnManager::getCurrentTurn() const {
-  return currentTurn;
+    return currentTurn;
 }
 
 int TurnManager::getMaxTurn() const {
-  return maxTurn;
+    return maxTurn;
 }
 
 void TurnManager::setCurrentTurn(int turn) {
-  currentTurn = (turn < 1) ? 1 : turn;
+    currentTurn = (turn < 1) ? 1 : turn;
 }
 
 void TurnManager::setCurrentIndex(int index) {
-  if (turnOrder.empty()) {
-    currentIndex = 0;
-    return;
-  }
+    if (turnOrder.empty()) {
+        currentIndex = 0;
+        return;
+    }
 
-  if (index < 0 || index >= static_cast<int>(turnOrder.size())) {
-    throw std::out_of_range("TurnManager::setCurrentIndex index di luat batas.");
-  }
+    if (index < 0 || index >= static_cast<int>(turnOrder.size())) {
+        throw std::out_of_range("TurnManager::setCurrentIndex index di luar batas.");
+    }
 
-  currentIndex = index;
+    currentIndex = index;
 }
 
-void TurnManager::handlePropertyLanded(Player& player, PropertyTile& tile, GameContext& context) {
+void TurnManager::handlePropertyLanded(Player& player,
+                                       PropertyTile& tile,
+                                       GameContext& context) {
     if (tile.getStatus() == PropertyStatus::BANK) {
-        // [TODO: Panggil UI/Controller untuk opsi beli]
-        // Jika pemain tidak beli / tidak cukup uang -> panggil context.getAuctionManager()->startAuction(tile);
-    } else if (tile.getStatus() == PropertyStatus::OWNED && !tile.isOwnedBy(player)) {
+        int price = tile.getBuyPrice();
+
+        if (price <= 0 || player.canAfford(price)) {
+            if (price > 0) {
+                player -= price;
+            }
+
+            tile.transferTo(player);
+            context.logEvent(
+                "BELI",
+                player.getUsername() + " membeli " + tile.getName() +
+                    " seharga M" + std::to_string(price));
+            return;
+        }
+
+        AuctionManager* auction = context.getAuctionManager();
+        if (auction == nullptr) {
+            context.logEvent(
+                "LELANG",
+                tile.getName() + " belum terbeli karena saldo tidak cukup.");
+            return;
+        }
+
+        std::vector<Player*> activePlayers = getActivePlayers();
+        auction->conductAuction(&tile, activePlayers, &player);
+
+        std::vector<Player*> auctionOrder = auction->getAuctionOrder();
+        int totalPlayers = static_cast<int>(auctionOrder.size());
+
+        std::cout << "=== Lelang " << tile.getName()
+                  << " (" << tile.getCode() << ") ===" << std::endl;
+
+        while (!auction->isFinished(totalPlayers)) {
+            for (Player* bidder : auctionOrder) {
+                if (bidder == nullptr || bidder->isBankrupt()) {
+                    continue;
+                }
+
+                if (auction->isFinished(totalPlayers)) {
+                    break;
+                }
+
+                std::cout << bidder->getUsername()
+                          << " saldo M" << bidder->getBalance()
+                          << ", bid tertinggi M" << auction->getHighestBid()
+                          << ". Masukkan bid (0 untuk pass): ";
+
+                int amount = 0;
+                while (!(std::cin >> amount)) {
+                    std::cout << "Input bid tidak valid. Masukkan angka, atau 0 untuk pass: ";
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                }
+
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+
+                if (amount <= 0) {
+                    auction->processPass(bidder);
+                    continue;
+                }
+
+                try {
+                    if (!auction->processBid(bidder, amount)) {
+                        std::cout << "Bid harus lebih besar dari bid tertinggi." << std::endl;
+                    }
+                } catch (const std::exception& e) {
+                    std::cout << "Bid gagal: " << e.what() << std::endl;
+                }
+            }
+        }
+
+        Player* winner = auction->getHighestBidder();
+        int winningBid = auction->getHighestBid();
+        auction->finalizeAuction();
+
+        if (winner != nullptr) {
+            context.logEvent(
+                "LELANG",
+                winner->getUsername() + " memenangkan " + tile.getName() +
+                    " seharga M" + std::to_string(winningBid));
+        } else {
+            context.logEvent("LELANG", tile.getName() + " tidak terjual.");
+        }
+
+        return;
+    }
+
+    if (tile.getStatus() == PropertyStatus::OWNED && !tile.isOwnedBy(player)) {
         handleRentPayment(player, tile, context);
     }
 }
 
-void TurnManager::handleRentPayment(Player& player, PropertyTile& tile, GameContext& context) {
+void TurnManager::handleRentPayment(Player& player,
+                                    PropertyTile& tile,
+                                    GameContext& context) {
     if (tile.isMortgaged() || tile.isOwnedBy(player)) {
         return;
     }
 
-    int lastDiceTotal = 0; 
-    // if (context.getDice()) {
-    //     lastDiceTotal = context.getDice()->getTotal(); 
-    // }
+    if (player.isShieldActive()) {
+        context.logEvent(
+            "SEWA",
+            player.getUsername() + " terlindungi ShieldCard dari tagihan sewa.");
+        return;
+    }
+
+    int lastDiceTotal = 0;
+    Dice* dice = context.getDice();
+    if (dice != nullptr) {
+        lastDiceTotal = dice->getTotal();
+    }
 
     int rentAmount = tile.calculateRent(lastDiceTotal, context);
-    
-    if (rentAmount > 0) {
-        Player* owner = tile.getOwner();
-        // [TODO: Lakukan proses transfer atau masuk ke BankruptcyHandler jika uang player tidak cukup]
-        context.logEvent("SEWA", player.getUsername() + " membayar sewa ke " + owner->getUsername() + " sebesar M" + std::to_string(rentAmount));
+
+    if (player.getDiscountPercent() > 0) {
+        rentAmount -= (rentAmount * player.getDiscountPercent()) / 100;
     }
+
+    if (rentAmount <= 0) {
+        return;
+    }
+
+    Player* owner = tile.getOwner();
+    if (owner == nullptr) {
+        return;
+    }
+
+    if (!player.canAfford(rentAmount)) {
+        BankruptcyHandler* bankruptcyHandler = context.getBankruptcyHandler();
+        if (bankruptcyHandler != nullptr) {
+            bankruptcyHandler->handleBankruptcy(player, owner, rentAmount, context);
+        }
+        return;
+    }
+
+    player -= rentAmount;
+    *owner += rentAmount;
+
+    context.logEvent(
+        "SEWA",
+        player.getUsername() + " membayar sewa ke " + owner->getUsername() +
+            " sebesar M" + std::to_string(rentAmount));
 }

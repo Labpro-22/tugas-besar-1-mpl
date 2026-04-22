@@ -36,14 +36,23 @@ Player::Player(const std::string& username, int initialBalance)
 // OPERATOR OVERLOADING
 
 Player& Player::operator+=(int amount) {
-    if (balance < amount) {
-        throw InsufficientFundsException(amount, balance);
+    if (amount < 0) {
+        return (*this) -= -amount;
     }
+
     balance += amount;
     return *this;
 }
     
 Player& Player::operator-=(int amount) {
+    if (amount < 0) {
+        return (*this) += -amount;
+    }
+
+    if (balance < amount) {
+        throw InsufficientFundsException(amount, balance);
+    }
+    
     balance -= amount;
     return *this;
 }
@@ -216,37 +225,37 @@ bool Player::hasRolledThisTurn() const {
 
 // Setters
 void Player::setBalance(int balance) {
-    balance = balance;
+    this->balance = balance;
 }
 
 void Player::setPosition(int position) {
-    position = position;
+    this->position = position;
 }
 
 void Player::setStatus(PlayerStatus status) {
-    status = status;
+    this->status = status;
 }
 
 void Player::setJailTurns(int jailTurns) {
-    jailTurns = jailTurns;
+    this->jailTurns = jailTurns;
 }
 
 void Player::setConsecutiveDoubles(int consecutiveDoubles) {
-    consecutiveDoubles = consecutiveDoubles;
+    this->consecutiveDoubles = consecutiveDoubles;
 }
 
 void Player::setShieldActive(bool shieldActive) {
-    shieldActive = shieldActive;
+    this->shieldActive = shieldActive;
 }
 
 void Player::setDiscountPercent(int discountPercent) {
-    discountPercent = discountPercent;
+    this->discountPercent = discountPercent;
 }
 
 void Player::setUsedSkillThisTurn(bool usedSkillThisTurn) {
-    usedSkillThisTurn = usedSkillThisTurn;
+    this->usedSkillThisTurn = usedSkillThisTurn;
 }
     
 void Player::setHasRolledThisTurn(bool hasRolledThisTurn) {
-    hasRolledThisTurn = hasRolledThisTurn;
+    this->rolledThisTurn = hasRolledThisTurn;
 }

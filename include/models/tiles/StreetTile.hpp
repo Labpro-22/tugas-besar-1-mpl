@@ -44,4 +44,7 @@ public:
 
     int getHouseCost() const;
     int getHotelCost() const;
+    int getRentAtLevel(int level) const;
+    void setBuildingLevel(int level);
+    void setFestivalState(int multiplier, int duration);
 };

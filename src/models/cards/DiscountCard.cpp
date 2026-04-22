@@ -14,9 +14,11 @@ std::string DiscountCard::getTypeName() const {
 }
 
 void DiscountCard::use(Player& player, GameContext& gameContext) {
-    (void)gameContext;
-
     player.setDiscountPercent(getValue());
     player.setUsedSkillThisTurn(true);
     setRemainingDuration(1);
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " mengaktifkan DiscountCard diskon " + std::to_string(getValue()) + "%."
+    );
 }

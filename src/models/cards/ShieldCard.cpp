@@ -11,8 +11,7 @@ std::string ShieldCard::getTypeName() const {
 }
 
 void ShieldCard::use(Player& player, GameContext& gameContext) {
-    (void)gameContext;
-
     player.setShieldActive(true);
     player.setUsedSkillThisTurn(true);
+    gameContext.logEvent("KARTU", player.getUsername() + " mengaktifkan ShieldCard.");
 }
