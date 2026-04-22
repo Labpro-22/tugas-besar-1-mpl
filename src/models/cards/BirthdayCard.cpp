@@ -1,3 +1,39 @@
 #include "models/cards/BirthdayCard.hpp"
 
-// TODO: Implement BirthdayCard.
+#include "core/BankruptcyHandler.hpp"
+#include "core/GameContext.hpp"
+#include "core/TurnManager.hpp"
+#include "models/Player.hpp"
+
+BirthdayCard::BirthdayCard()
+    : BirthdayCard(100) {}
+
+BirthdayCard::BirthdayCard(int amount)
+    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan M100 dari setiap pemain."),
+      amount(amount) {}
+
+int BirthdayCard::getAmount() const {
+    return amount;
+}
+
+void BirthdayCard::execute(Player& player, GameContext& gameContext) {
+    TurnManager* turnManager = gameContext.getTurnManager();
+    if (turnManager == nullptr) {
+        return;
+    }
+
+    std::vector<Player*> activePlayers = turnManager->getActivePlayers();
+    for (Player* otherPlayer : activePlayers) {
+        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive() || otherPlayer->isShieldActive()) {
+            continue;
+        }
+
+        if (!otherPlayer->canAfford(amount)) {
+            gameContext.getBankruptcyHandler()->handleBankruptcy(*otherPlayer, &player, amount, gameContext);
+            continue;
+        }
+
+        *otherPlayer -= amount;
+        player += amount;
+    }
+}
