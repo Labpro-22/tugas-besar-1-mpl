@@ -1,4 +1,7 @@
 #include "models/tiles/StreetTile.hpp"
+
+#include <stdexcept>
+
 #include "core/GameContext.hpp"
 #include "models/Player.hpp"
 
@@ -23,7 +26,7 @@ void StreetTile::onLanded(Player& player, GameContext& gameContext) {
     gameContext.triggerStreetEvent(player, *this);
 }
 
-int StreetTile::calculateRent(int diceTotal, const GameContext& gameContext) {
+int StreetTile::calculateRent(int, const GameContext& gameContext) {
     if (getStatus() != PropertyStatus::OWNED){
         return 0;
     } 
@@ -76,6 +79,10 @@ int StreetTile::getSellValueToBank() const {
     return getBuyPrice() + totalBuildingValue;
 }
 
+PropertyType StreetTile::getPropertyType() const {
+    return PropertyType::STREET;
+}
+
 std::string StreetTile::getDisplayLabel() const {
     return "[" + getCode() + "] " + getName();
 }
@@ -86,4 +93,29 @@ int StreetTile::getHouseCost() const {
 
 int StreetTile::getHotelCost() const {
     return hotelCost;
+}
+
+int StreetTile::getRentAtLevel(int level) const {
+    if (level < 0 || level > 5) {
+        throw std::out_of_range("level sewa harus berada pada rentang 0..5");
+    }
+    return rentTable[level];
+}
+
+void StreetTile::setBuildingLevel(int level) {
+    if (level < 0) {
+        buildingLevel = 0;
+    } else if (level > 5) {
+        buildingLevel = 5;
+    } else {
+        buildingLevel = level;
+    }
+}
+
+void StreetTile::setFestivalState(int multiplier, int duration) {
+    festivalMultiplier = (multiplier < 1) ? 1 : multiplier;
+    festivalDuration = (duration < 0) ? 0 : duration;
+    if (festivalDuration == 0) {
+        festivalMultiplier = 1;
+    }
 }

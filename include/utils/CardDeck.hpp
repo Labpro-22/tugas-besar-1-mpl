@@ -5,16 +5,54 @@
 #include <algorithm>
 #include <random>
 #include <stdexcept>
+#include <utility>
 
 template <typename T>
 class CardDeck {
 private:
     std::vector<T*> deck;
     std::vector<T*> discard;
+    std::vector<T*> ownedCards;
+
+    void clearOwnedCards() {
+        for (T* card : ownedCards) {
+            delete card;
+        }
+        ownedCards.clear();
+        deck.clear();
+        discard.clear();
+    }
 
 public:
     CardDeck() = default;
-    ~CardDeck() = default;
+    ~CardDeck() {
+        clearOwnedCards();
+    }
+
+    CardDeck(const CardDeck&) = delete;
+    CardDeck& operator=(const CardDeck&) = delete;
+
+    CardDeck(CardDeck&& other) noexcept
+        : deck(std::move(other.deck)),
+          discard(std::move(other.discard)),
+          ownedCards(std::move(other.ownedCards)) {
+        other.deck.clear();
+        other.discard.clear();
+        other.ownedCards.clear();
+    }
+
+    CardDeck& operator=(CardDeck&& other) noexcept {
+        if (this != &other) {
+            clearOwnedCards();
+            deck = std::move(other.deck);
+            discard = std::move(other.discard);
+            ownedCards = std::move(other.ownedCards);
+            other.deck.clear();
+            other.discard.clear();
+            other.ownedCards.clear();
+        }
+        return *this;
+    }
 
     T* draw() {
         if (deck.empty()) {
@@ -36,7 +74,9 @@ public:
     }
 
     void discardCard(T* card) {
-        discard.push_back(card);
+        if (card != nullptr) {
+            discard.push_back(card);
+        }
     }
 
     bool isEmpty() const {
@@ -52,11 +92,25 @@ public:
     }
 
     void initializeDeck(const std::vector<T*>& cards) {
+        clearOwnedCards();
         deck = cards;
+        ownedCards = cards;
         discard.clear();
     }
 
+    void adoptCard(T* card) {
+        if (card != nullptr) {
+            ownedCards.push_back(card);
+        }
+    }
+
     std::vector<std::string> getDeckState() const {
-        return {};
+        std::vector<std::string> state;
+        for (T* card : deck) {
+            if (card != nullptr) {
+                state.push_back(card->getTypeName());
+            }
+        }
+        return state;
     }
 };

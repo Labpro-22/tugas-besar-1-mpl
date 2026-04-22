@@ -8,5 +8,6 @@ public:
     MoveCard(int value, int remainingDuration);
 
     std::string getTypeName() const override;
+    bool canUseWhileJailed() const override;
     void use(Player& player, GameContext& gameContext) override;
 };

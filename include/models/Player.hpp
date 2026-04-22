@@ -23,6 +23,7 @@ private:
     int discountPercent;
     bool usedSkillThisTurn;
     bool rolledThisTurn;
+    bool actionTakenThisTurn;
 
 public:
     Player();
@@ -39,6 +40,7 @@ public:
 
     void addCard(SkillCard* card);
     void removeCard(SkillCard* card);
+    void clearHand();
 
     int getTotalWealth() const;
     int getLiquidationMax() const;
@@ -61,6 +63,7 @@ public:
     int getDiscountPercent() const;
     bool hasUsedSkillThisTurn() const;
     bool hasRolledThisTurn() const;
+    bool hasTakenActionThisTurn() const;
 
     void setBalance(int balance);
     void setPosition(int position);
@@ -71,4 +74,5 @@ public:
     void setDiscountPercent(int discountPercent);
     void setUsedSkillThisTurn(bool usedSkillThisTurn);
     void setHasRolledThisTurn(bool hasRolledThisTurn);
+    void setActionTakenThisTurn(bool actionTakenThisTurn);
 };

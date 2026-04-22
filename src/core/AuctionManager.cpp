@@ -5,7 +5,7 @@
 
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
-#include "utils/exceptions/InsufficientFundsException.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 
 
 AuctionManager::AuctionManager()

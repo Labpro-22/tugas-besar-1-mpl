@@ -2,6 +2,7 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/GoTile.hpp"
 #include "models/tiles/Tile.hpp"
@@ -16,6 +17,10 @@ std::string MoveCard::getTypeName() const {
     return "MoveCard";
 }
 
+bool MoveCard::canUseWhileJailed() const {
+    return false;
+}
+
 void MoveCard::use(Player& player, GameContext& gameContext) {
     Board* board = gameContext.getBoard();
     if (board == nullptr || board->getTileCount() <= 0) {
@@ -27,15 +32,26 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     bool passedGo = player.moveTo(targetIndex);
     player.setUsedSkillThisTurn(true);
 
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            "MoveCard digunakan! " + player.getUsername() +
+                " maju " + std::to_string(getValue()) + " petak.");
+    }
+
     if (passedGo) {
-        GoTile* goTile = dynamic_cast<GoTile*>(board->getTile("GO"));
+        Tile* goTile = board->getTile("GO");
         if (goTile != nullptr) {
-            goTile->awardSalary(player);
+            static_cast<GoTile*>(goTile)->awardSalary(player);
         }
     }
 
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile != nullptr) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage(
+                "Bidak mendarat di: " + targetTile->getName() +
+                    " (" + targetTile->getCode() + ").");
+        }
         targetTile->onLanded(player, gameContext);
     }
 }

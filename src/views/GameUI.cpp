@@ -1,33 +1,76 @@
 #include <iostream>
+#include <limits>
+#include <stdexcept>
+
+#include "core/TurnManager.hpp"
+#include "models/cards/SkillCard.hpp"
+#include "models/tiles/Tile.hpp"
+#include "utils/exceptions/ExceptionHandler.hpp"
 #include "views/GameUI.hpp"
 
+namespace {
+    void throwIfInputClosed() {
+        if (std::cin.eof()) {
+            throw std::runtime_error("Input dihentikan sebelum perintah selesai diproses.");
+        }
+    }
+
+    bool hasUsableSkillCard(const Player& player) {
+        for (SkillCard* card : player.getHand()) {
+            if (card != nullptr && (!player.isJailed() || card->canUseWhileJailed())) {
+                return true;
+            }
+        }
+        return false;
+    }
+}
+
 int GameUI::showMainMenu() {
-    int choice;
+    std::cout << "+------------------------------+" << std::endl;
+    std::cout << "|          NIMONSPOLI          |" << std::endl;
+    std::cout << "+------------------------------+" << std::endl;
+    std::cout << "| 1. Game Baru                 |" << std::endl;
+    std::cout << "| 2. Muat Game                 |" << std::endl;
+    std::cout << "+------------------------------+" << std::endl;
+    std::cout << "Catatan load: MUAT <filename> dari folder data/" << std::endl;
 
-    std::cout << "=== Nimonspoli ===" << std::endl;
-    std::cout << "1. Game Baru" << std::endl;
-    std::cout << "2. Muat Game" << std::endl;
-    std::cout << "Catatan: load game dimulai dengan command MUAT <filename>." << std::endl;
-    std::cout << "Pilih menu: ";
-    std::cin >> choice;
-    std::cin.ignore();
+    int choice = 0;
+    while (true) {
+        std::cout << "Pilih menu (1-2): ";
+        if (std::cin >> choice && (choice == 1 || choice == 2)) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return choice;
+        }
 
-    return choice;
+        std::cout << "Input tidak valid. Masukkan 1 untuk Game Baru atau 2 untuk Muat Game." << std::endl;
+        throwIfInputClosed();
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
 }
 
 Command GameUI::promptLoadCommand() {
-    std::cout << "Masukkan command load sesuai spesifikasi." << std::endl;
+    std::cout << "\nMasukkan command load sesuai spesifikasi." << std::endl;
     std::cout << "Contoh: MUAT game_sesi1.txt" << std::endl;
+    std::cout << "File akan dicari dari folder data/." << std::endl;
     std::cout << "> ";
     return cmdParser.readCommand();
 }
 
 int GameUI::promptPlayerCount() {
-    int n;
-    std::cout << "Masukkan jumlah pemain (2-4): ";
-    std::cin >> n;
-    std::cin.ignore();
-    return n;
+    int n = 0;
+    while (true) {
+        std::cout << "\nMasukkan jumlah pemain (2-4): ";
+        if (std::cin >> n && n >= 2 && n <= 4) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return n;
+        }
+
+        std::cout << "Jumlah pemain tidak valid. Masukkan angka 2 sampai 4." << std::endl;
+        throwIfInputClosed();
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
 }
 
 std::vector<std::string> GameUI::promptPlayerNames(int n) {
@@ -35,8 +78,15 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
 
     for (int i = 0; i < n; i++) {
         std::string name;
-        std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
-        std::getline(std::cin, name);
+        do {
+            std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
+            if (!std::getline(std::cin, name)) {
+                throwIfInputClosed();
+            }
+            if (name.empty()) {
+                std::cout << "Nama pemain tidak boleh kosong." << std::endl;
+            }
+        } while (name.empty());
         names.push_back(name);
     }
 
@@ -45,19 +95,157 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
 
 bool GameUI::confirmYN(const std::string& message) {
     char ans;
-    std::cout << message << " (y/n): ";
-    std::cin >> ans;
-    std::cin.ignore();
-    return ans == 'y' || ans == 'Y';
+    while (true) {
+        std::cout << message << " (y/n): ";
+        if (std::cin >> ans) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            if (ans == 'y' || ans == 'Y') {
+                return true;
+            }
+            if (ans == 'n' || ans == 'N') {
+                return false;
+            }
+        }
+
+        std::cout << "Input tidak valid. Masukkan y atau n." << std::endl;
+        throwIfInputClosed();
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+}
+
+int GameUI::promptInt(const std::string& prompt) {
+    int value = 0;
+
+    while (true) {
+        std::cout << prompt;
+        if (std::cin >> value) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return value;
+        }
+
+        std::cout << "Input tidak valid. Masukkan angka." << std::endl;
+        throwIfInputClosed();
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+}
+
+int GameUI::promptIntInRange(const std::string& prompt, int minValue, int maxValue) {
+    int value = 0;
+
+    while (true) {
+        std::cout << prompt;
+        if (std::cin >> value && value >= minValue && value <= maxValue) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return value;
+        }
+
+        std::cout << "Input tidak valid. Masukkan angka "
+                  << minValue << " sampai " << maxValue << "." << std::endl;
+        throwIfInputClosed();
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+}
+
+Command GameUI::promptPlayerCommand(const std::string& username) {
+    std::cout << "\n";
+    std::cout << "Bingung? ketik HELP ea...";
+    std::cout << "> [" << username << "]: ";
+    return cmdParser.readCommand();
 }
 
 void GameUI::showMessage(const std::string& message) {
     std::cout << message << std::endl;
 }
 
+void GameUI::showError(
+    const std::exception& exception,
+    TransactionLogger* logger,
+    int turn,
+    const std::string& username
+) {
+    ExceptionHandler::handle(exception, std::cout, logger, turn, username);
+}
+
+void GameUI::showUnknownError(
+    TransactionLogger* logger,
+    int turn,
+    const std::string& username
+) {
+    ExceptionHandler::handleUnknown(std::cout, logger, turn, username);
+}
+
+void GameUI::showHelp(const Player& player) {
+    std::cout << "\n";
+    std::cout << "+-------------------------------------------------------------+\n";
+    std::cout << "| COMMAND TERSEDIA                                            |\n";
+    std::cout << "+-------------------------------------------------------------+\n";
+    std::cout << "| CETAK_PAPAN             | tampilkan papan                   |\n";
+    std::cout << "| CETAK_AKTA KODE         | tampilkan akta properti           |\n";
+    std::cout << "| CETAK_PROPERTI          | tampilkan properti pemain         |\n";
+    std::cout << "| CETAK_LOG [n]           | tampilkan log transaksi           |\n";
+    std::cout << "| SIMPAN file             | simpan game ke folder data/       |\n";
+
+    if (player.isJailed()) {
+        std::cout << "| BAYAR_DENDA             | keluar dari penjara dengan denda  |\n";
+        if (!player.hasUsedSkillThisTurn() && hasUsableSkillCard(player)) {
+            std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu non-pergerakan        |\n";
+        }
+        if (!player.hasRolledThisTurn() && player.getJailTurns() <= 3) {
+            std::cout << "| LEMPAR_DADU             | coba keluar penjara dengan double |\n";
+            std::cout << "| ATUR_DADU X Y           | set dadu untuk percobaan double   |\n";
+        }
+    } else {
+        if (!player.hasRolledThisTurn()) {
+            std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
+            std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
+            if (!player.hasUsedSkillThisTurn() && hasUsableSkillCard(player)) {
+                std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
+            }
+        }
+        std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
+    }
+
+    std::cout << "| HELP / KELUAR           | bantuan / keluar                  |\n";
+    std::cout << "+-------------------------------------------------------------+\n";
+}
+
+void GameUI::showSection(const std::string& title) {
+    std::cout << "\n";
+    std::cout << "============================================================\n";
+    std::cout << " " << title << "\n";
+    std::cout << "============================================================\n";
+}
+
+void GameUI::showTurnSummary(const Player& player, int turn) {
+    showSection("TURN " + std::to_string(turn) + " - " + player.getUsername());
+    std::cout << "Saldo     : M" << player.getBalance() << "\n";
+    std::cout << "Posisi    : " << (player.getPosition() + 1) << "\n";
+    std::cout << "Properti  : " << player.getProperties().size() << "\n";
+    std::cout << "Kartu     : " << player.getHand().size() << "\n";
+}
+
+void GameUI::showDiceLanding(
+    int die1,
+    int die2,
+    int total,
+    const std::string& playerName,
+    const std::string& tileName,
+    const std::string& tileCode
+) {
+    std::cout << "\n";
+    std::cout << "Hasil: " << die1 << " + " << die2 << " = " << total << "\n";
+    std::cout << "Memajukan Bidak " << playerName << " sebanyak " << total << " petak...\n";
+    std::cout << "Bidak mendarat di: " << tileName << " (" << tileCode << ")\n";
+}
+
 void GameUI::showWinner(const std::vector<Player*>& winners, GameContext& context) {
-    (void)context;
     std::cout << "=== Pemenang ===" << std::endl;
+    if (context.getTurnManager() != nullptr) {
+        std::cout << "Turn akhir: " << context.getTurnManager()->getCurrentTurn() << std::endl;
+    }
     for (Player* player : winners) {
         if (player != nullptr) {
             std::cout << "- " << player->getUsername() << std::endl;

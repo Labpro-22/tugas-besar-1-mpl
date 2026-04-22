@@ -23,16 +23,14 @@ void Board::buildBoard(const std::vector<Tile*>& boardTiles) {
     propertyIndex.clear();
     for (Tile* tile : tiles) {
         if (tile->getCategory() == TileCategory::PROPERTY) {
-            PropertyTile* prop = dynamic_cast<PropertyTile*>(tile);
-            if (prop) {
-                propertyIndex[prop->getCode()] = prop;
-            }
+            PropertyTile* prop = static_cast<PropertyTile*>(tile);
+            propertyIndex[prop->getCode()] = prop;
         }
     }
 }
 
 Tile* Board::getTile(int index) const {
-    if (index >= 0 && index < tiles.size()) {
+    if (index >= 0 && index < static_cast<int>(tiles.size())) {
         return tiles[index];
     }
     return nullptr;
@@ -58,8 +56,9 @@ std::vector<PropertyTile*> Board::getProperties() const {
 std::vector<StreetTile*> Board::getProperties(ColorGroup colorGroup) const {
     std::vector<StreetTile*> streets;
     for (const auto& pair : propertyIndex) {
-        StreetTile* street = dynamic_cast<StreetTile*>(pair.second);
-        if (street && street->getColorGroup() == colorGroup) {
+        if (pair.second->getPropertyType() == PropertyType::STREET &&
+            pair.second->getColorGroup() == colorGroup) {
+            StreetTile* street = static_cast<StreetTile*>(pair.second);
             streets.push_back(street);
         }
     }
@@ -73,9 +72,9 @@ RailroadTile* Board::getNearestRailroad(int fromIndex) const {
         int idx = (fromIndex + i) % n;
         Tile* tile = tiles[idx];
         if (tile && tile->getCategory() == TileCategory::PROPERTY) {
-            RailroadTile* rr = dynamic_cast<RailroadTile*>(tile);
-            if (rr) {
-                return rr;
+            PropertyTile* property = static_cast<PropertyTile*>(tile);
+            if (property->getPropertyType() == PropertyType::RAILROAD) {
+                return static_cast<RailroadTile*>(property);
             }
         }
     }
@@ -88,8 +87,9 @@ int Board::getTileCount() const {
 
 void Board::tickFestivals(Player& player) {
     for (auto const& pair : propertyIndex) {
-        StreetTile* street = dynamic_cast<StreetTile*>(pair.second);
-        if (street && street->isOwnedBy(player)) {
+        if (pair.second->getPropertyType() == PropertyType::STREET &&
+            pair.second->isOwnedBy(player)) {
+            StreetTile* street = static_cast<StreetTile*>(pair.second);
             street->tickFestival();
         }
     }
@@ -110,8 +110,8 @@ bool Board::hasMonopoly(const Player& player, ColorGroup colorGroup) const {
 int Board::getRailroadCount(const Player& player) const {
     int count = 0;
     for (auto const& pair : propertyIndex) {
-        RailroadTile* rr = dynamic_cast<RailroadTile*>(pair.second);
-        if (rr && rr->isOwnedBy(player)) {
+        if (pair.second->getPropertyType() == PropertyType::RAILROAD &&
+            pair.second->isOwnedBy(player)) {
             count++;
         }
     }
@@ -121,8 +121,8 @@ int Board::getRailroadCount(const Player& player) const {
 int Board::getUtilityCount(const Player& player) const {
     int count = 0;
     for (auto const& pair : propertyIndex) {
-        UtilityTile* util = dynamic_cast<UtilityTile*>(pair.second);
-        if (util && util->isOwnedBy(player)) {
+        if (pair.second->getPropertyType() == PropertyType::UTILITY &&
+            pair.second->isOwnedBy(player)) {
             count++;
         }
     }

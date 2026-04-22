@@ -1,5 +1,6 @@
 #include "utils/SaveManager.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
@@ -9,355 +10,352 @@
 #include "models/state/PlayerState.hpp"
 #include "models/state/PropertyState.hpp"
 
-std::string SaveManager::serializePlayer(const PlayerState& ps) const {
-	std::string statusStr = "ACTIVE";
-	if (ps.getStatus() == PlayerStatus::JAILED) {
-		statusStr = "JAILED";
-	} else if (ps.getStatus() == PlayerStatus::BANKRUPT) {
-		statusStr = "BANKRUPT";
-	}
+std::string SaveManager::resolveDataPath(const std::string& filename) const {
+    std::string normalized = filename;
+    for (char& c : normalized) {
+        if (c == '\\') {
+            c = '/';
+        }
+    }
 
-	std::ostringstream oss;
-	oss << ps.getUsername() << "|"
-		<< ps.getBalance() << "|"
-		<< ps.getPosition() << "|"
-		<< statusStr << "|"
-		<< ps.getJailTurns() << "|";
+    const std::string dataPrefix = "data/";
+    if (normalized.rfind(dataPrefix, 0) == 0) {
+        if (normalized.size() < 4 || normalized.substr(normalized.size() - 4) != ".txt") {
+            throw std::runtime_error("SaveManager: save file must use .txt extension");
+        }
+        return normalized;
+    }
 
-	const std::vector<std::string>& hand = ps.getCardHand();
-	for (size_t i = 0; i < hand.size(); ++i) {
-		if (i > 0) {
-			oss << ",";
-		}
-		oss << hand[i];
-	}
-
-	return oss.str();
+    if (normalized.size() < 4 || normalized.substr(normalized.size() - 4) != ".txt") {
+        throw std::runtime_error("SaveManager: save file must use .txt extension");
+    }
+    return dataPrefix + normalized;
 }
 
-std::string SaveManager::serializeProperty(const PropertyState& ps) const {
-	std::string propertyType = "UTILITY";
-	if (ps.getPropertyType() == PropertyType::STREET) {
-		propertyType = "STREET";
-	} else if (ps.getPropertyType() == PropertyType::RAILROAD) {
-		propertyType = "RAILROAD";
-	}
-
-	std::string propertyStatus = "BANK";
-	if (ps.getStatus() == PropertyStatus::OWNED) {
-		propertyStatus = "OWNED";
-	} else if (ps.getStatus() == PropertyStatus::MORTGAGED) {
-		propertyStatus = "MORTGAGED";
-	}
-
-	std::ostringstream oss;
-	oss << ps.getCode() << "|"
-		<< propertyType << "|"
-		<< ps.getOwnerUsername() << "|"
-		<< propertyStatus << "|"
-		<< ps.getFestivalMultiplier() << "|"
-		<< ps.getFestivalDuration() << "|"
-		<< ps.getBuildingLevel();
-
-	return oss.str();
+std::string SaveManager::statusToString(PlayerStatus status) const {
+    if (status == PlayerStatus::JAILED) {
+        return "JAILED";
+    }
+    if (status == PlayerStatus::BANKRUPT) {
+        return "BANKRUPT";
+    }
+    return "ACTIVE";
 }
 
-std::string SaveManager::serializeDeck(const std::vector<std::string>& deck) const {
-	std::ostringstream oss;
-
-	for (size_t i = 0; i < deck.size(); ++i) {
-		if (i > 0) {
-			oss << ",";
-		}
-		oss << deck[i];
-	}
-
-	return oss.str();
+std::string SaveManager::propertyTypeToString(PropertyType type) const {
+    if (type == PropertyType::RAILROAD) {
+        return "railroad";
+    }
+    if (type == PropertyType::UTILITY) {
+        return "utility";
+    }
+    return "street";
 }
 
-std::string SaveManager::serializeLog(const std::vector<LogEntry>& entries) const {
-	std::ostringstream oss;
-
-	for (size_t i = 0; i < entries.size(); ++i) {
-		if (i > 0) {
-			oss << "\n";
-		}
-
-		oss << entries[i].getTurn() << "|"
-			<< entries[i].getUsername() << "|"
-			<< entries[i].getActionType() << "|"
-			<< entries[i].getDetail();
-	}
-
-	return oss.str();
+std::string SaveManager::propertyStatusToString(PropertyStatus status) const {
+    if (status == PropertyStatus::OWNED) {
+        return "OWNED";
+    }
+    if (status == PropertyStatus::MORTGAGED) {
+        return "MORTGAGED";
+    }
+    return "BANK";
 }
 
-PlayerState SaveManager::parsePlayer(const std::string& line) const {
-	std::vector<std::string> parts;
-	std::istringstream ss(line);
-	std::string token;
-	while (std::getline(ss, token, '|')) {
-		parts.push_back(token);
-	}
+std::string SaveManager::serializeCard(const std::string& encodedCard) const {
+    std::size_t separator = encodedCard.find(':');
+    if (separator == std::string::npos) {
+        return encodedCard;
+    }
 
-	if (parts.size() != 6) {
-		throw std::runtime_error("SaveManager: invalid PLAYER line -> '" + line + "'");
-	}
+    std::string type = encodedCard.substr(0, separator);
+    std::string value = encodedCard.substr(separator + 1);
+    if (type == "DiscountCard") {
+        return type + " " + value + " 1";
+    }
+    return type + " " + value;
+}
 
-	PlayerStatus status = PlayerStatus::ACTIVE;
-	if (parts[3] == "JAILED") {
-		status = PlayerStatus::JAILED;
-	} else if (parts[3] == "BANKRUPT") {
-		status = PlayerStatus::BANKRUPT;
-	} else if (parts[3] != "ACTIVE") {
-		throw std::runtime_error("SaveManager: invalid PlayerStatus '" + parts[3] + "'");
-	}
+std::string SaveManager::readLineOrThrow(std::istream& input, const std::string& section) const {
+    std::string line;
+    if (!std::getline(input, line)) {
+        throw std::runtime_error("SaveManager: unexpected end while reading " + section);
+    }
+    return line;
+}
 
-	int balance = 0;
-	int position = 0;
-	int jailTurns = 0;
-	try {
-		balance = std::stoi(parts[1]);
-		position = std::stoi(parts[2]);
-		jailTurns = std::stoi(parts[4]);
-	} catch (const std::exception&) {
-		throw std::runtime_error("SaveManager: invalid numeric PLAYER line -> '" + line + "'");
-	}
+int SaveManager::parseIntStrict(const std::string& value, const std::string& fieldName) const {
+    try {
+        size_t parsed = 0;
+        int number = std::stoi(value, &parsed);
+        if (parsed != value.size()) {
+            throw std::runtime_error("invalid suffix");
+        }
+        return number;
+    } catch (const std::exception&) {
+        throw std::runtime_error("SaveManager: invalid integer for " + fieldName + " -> '" + value + "'");
+    }
+}
 
-	std::vector<std::string> cardHand;
-	if (!parts[5].empty()) {
-		std::istringstream cardSS(parts[5]);
-		std::string card;
-		while (std::getline(cardSS, card, ',')) {
-			cardHand.push_back(card);
-		}
-	}
+std::vector<std::string> SaveManager::splitWhitespace(const std::string& value) const {
+    std::vector<std::string> result;
+    std::istringstream stream(value);
+    std::string token;
+    while (stream >> token) {
+        result.push_back(token);
+    }
+    return result;
+}
 
-	return PlayerState(parts[0], balance, position, status, jailTurns, cardHand);
+std::string SaveManager::parseCard(const std::string& line) const {
+    std::vector<std::string> parts = splitWhitespace(line);
+    if (parts.empty()) {
+        throw std::runtime_error("SaveManager: invalid card line");
+    }
+
+    if (parts[0] == "MoveCard" || parts[0] == "DiscountCard") {
+        if (parts.size() < 2) {
+            throw std::runtime_error("SaveManager: missing card value for " + parts[0]);
+        }
+        parseIntStrict(parts[1], "card.value");
+        return parts[0] + ":" + parts[1];
+    }
+
+    return parts[0];
+}
+
+LogEntry SaveManager::parseLog(const std::string& line) const {
+    std::istringstream stream(line);
+    std::string turnText;
+    std::string username;
+    std::string actionType;
+
+    if (!(stream >> turnText >> username >> actionType)) {
+        throw std::runtime_error("SaveManager: invalid log line");
+    }
+
+    std::string detail;
+    std::getline(stream, detail);
+    if (!detail.empty() && detail[0] == ' ') {
+        detail.erase(0, 1);
+    }
+
+    return LogEntry(parseIntStrict(turnText, "log.turn"), username, actionType, detail);
+}
+
+PlayerState SaveManager::parsePlayer(std::istream& input) const {
+    std::string header = readLineOrThrow(input, "player state");
+    std::vector<std::string> parts = splitWhitespace(header);
+    if (parts.size() != 4) {
+        throw std::runtime_error("SaveManager: invalid PLAYER header -> '" + header + "'");
+    }
+
+    PlayerStatus status = PlayerStatus::ACTIVE;
+    if (parts[3] == "JAILED") {
+        status = PlayerStatus::JAILED;
+    } else if (parts[3] == "BANKRUPT") {
+        status = PlayerStatus::BANKRUPT;
+    } else if (parts[3] != "ACTIVE") {
+        throw std::runtime_error("SaveManager: invalid PlayerStatus '" + parts[3] + "'");
+    }
+
+    int cardCount = parseIntStrict(readLineOrThrow(input, "player card count"), "player.cardCount");
+    if (cardCount < 0) {
+        throw std::runtime_error("SaveManager: negative player card count");
+    }
+
+    std::vector<std::string> cardHand;
+    cardHand.reserve(static_cast<size_t>(cardCount));
+    for (int i = 0; i < cardCount; ++i) {
+        cardHand.push_back(parseCard(readLineOrThrow(input, "player card")));
+    }
+
+    return PlayerState(
+        parts[0],
+        parseIntStrict(parts[1], "player.balance"),
+        0,
+        parts[2],
+        status,
+        0,
+        cardHand
+    );
 }
 
 PropertyState SaveManager::parseProperty(const std::string& line) const {
-	std::vector<std::string> parts;
-	std::istringstream ss(line);
-	std::string token;
-	while (std::getline(ss, token, '|')) {
-		parts.push_back(token);
-	}
+    std::vector<std::string> parts = splitWhitespace(line);
+    if (parts.size() != 7) {
+        throw std::runtime_error("SaveManager: invalid PROPERTY line -> '" + line + "'");
+    }
 
-	if (parts.size() != 7) {
-		throw std::runtime_error("SaveManager: invalid PROPERTY line -> '" + line + "'");
-	}
+    PropertyType propertyType = PropertyType::STREET;
+    if (parts[1] == "railroad" || parts[1] == "RAILROAD") {
+        propertyType = PropertyType::RAILROAD;
+    } else if (parts[1] == "utility" || parts[1] == "UTILITY") {
+        propertyType = PropertyType::UTILITY;
+    } else if (parts[1] != "street" && parts[1] != "STREET") {
+        throw std::runtime_error("SaveManager: invalid PropertyType '" + parts[1] + "'");
+    }
 
-	PropertyType propertyType = PropertyType::UTILITY;
-	if (parts[1] == "STREET") {
-		propertyType = PropertyType::STREET;
-	} else if (parts[1] == "RAILROAD") {
-		propertyType = PropertyType::RAILROAD;
-	} else if (parts[1] != "UTILITY") {
-		throw std::runtime_error("SaveManager: invalid PropertyType '" + parts[1] + "'");
-	}
+    PropertyStatus propertyStatus = PropertyStatus::BANK;
+    if (parts[3] == "OWNED") {
+        propertyStatus = PropertyStatus::OWNED;
+    } else if (parts[3] == "MORTGAGED") {
+        propertyStatus = PropertyStatus::MORTGAGED;
+    } else if (parts[3] != "BANK") {
+        throw std::runtime_error("SaveManager: invalid PropertyStatus '" + parts[3] + "'");
+    }
 
-	PropertyStatus propertyStatus = PropertyStatus::BANK;
-	if (parts[3] == "OWNED") {
-		propertyStatus = PropertyStatus::OWNED;
-	} else if (parts[3] == "MORTGAGED") {
-		propertyStatus = PropertyStatus::MORTGAGED;
-	} else if (parts[3] != "BANK") {
-		throw std::runtime_error("SaveManager: invalid PropertyStatus '" + parts[3] + "'");
-	}
-
-	int festivalMultiplier = 0;
-	int festivalDuration = 0;
-	try {
-		festivalMultiplier = std::stoi(parts[4]);
-		festivalDuration = std::stoi(parts[5]);
-	} catch (const std::exception&) {
-		throw std::runtime_error("SaveManager: invalid numeric PROPERTY line -> '" + line + "'");
-	}
-
-	return PropertyState(
-		parts[0],
-		propertyType,
-		parts[2],
-		propertyStatus,
-		festivalMultiplier,
-		festivalDuration,
-		parts[6]
-	);
+    return PropertyState(
+        parts[0],
+        propertyType,
+        parts[2],
+        propertyStatus,
+        parseIntStrict(parts[4], "property.festivalMultiplier"),
+        parseIntStrict(parts[5], "property.festivalDuration"),
+        parts[6]
+    );
 }
 
 void SaveManager::saveGame(const std::string& filename, const GameState& gameState) const {
-	std::ofstream file(filename);
-	if (!file.is_open()) {
-		throw std::runtime_error("SaveManager: cannot open '" + filename + "' for writing");
-	}
+    std::filesystem::create_directories("data");
+    std::string path = resolveDataPath(filename);
+    std::ofstream file(path);
+    if (!file.is_open()) {
+        throw std::runtime_error("SaveManager: cannot open '" + path + "' for writing");
+    }
 
-	file << "CURRENT_TURN|" << gameState.getCurrentTurn() << "\n";
-	file << "MAX_TURN|" << gameState.getMaxTurn() << "\n";
-	file << "ACTIVE_PLAYER|" << gameState.getActivePlayerUsername() << "\n";
-	file << "TURN_ORDER|";
+    file << gameState.getCurrentTurn() << " " << gameState.getMaxTurn() << "\n";
 
-	const std::vector<std::string>& turnOrder = gameState.getTurnOrder();
-	for (size_t i = 0; i < turnOrder.size(); ++i) {
-		if (i > 0) {
-			file << ",";
-		}
-		file << turnOrder[i];
-	}
-	file << "\n";
+    const std::vector<PlayerState>& players = gameState.getPlayerStates();
+    file << players.size() << "\n";
+    for (const PlayerState& player : players) {
+        file << player.getUsername() << " "
+             << player.getBalance() << " "
+             << player.getPositionCode() << " "
+             << statusToString(player.getStatus()) << "\n";
 
-	const std::vector<PlayerState>& players = gameState.getPlayerStates();
-	file << "PLAYERS|" << players.size() << "\n";
-	for (const PlayerState& ps : players) {
-		file << serializePlayer(ps) << "\n";
-	}
+        const std::vector<std::string>& hand = player.getCardHand();
+        file << hand.size() << "\n";
+        for (const std::string& card : hand) {
+            file << serializeCard(card) << "\n";
+        }
+    }
 
-	const std::vector<PropertyState>& properties = gameState.getPropertyStates();
-	file << "PROPERTIES|" << properties.size() << "\n";
-	for (const PropertyState& ps : properties) {
-		file << serializeProperty(ps) << "\n";
-	}
+    const std::vector<std::string>& turnOrder = gameState.getTurnOrder();
+    for (size_t i = 0; i < turnOrder.size(); ++i) {
+        if (i > 0) {
+            file << " ";
+        }
+        file << turnOrder[i];
+    }
+    file << "\n";
+    file << gameState.getActivePlayerUsername() << "\n";
 
-	file << "DECK|" << serializeDeck(gameState.getDeckState()) << "\n";
+    const std::vector<PropertyState>& properties = gameState.getPropertyStates();
+    file << properties.size() << "\n";
+    for (const PropertyState& property : properties) {
+        file << property.getCode() << " "
+             << propertyTypeToString(property.getPropertyType()) << " "
+             << property.getOwnerUsername() << " "
+             << propertyStatusToString(property.getStatus()) << " "
+             << property.getFestivalMultiplier() << " "
+             << property.getFestivalDuration() << " "
+             << property.getBuildingLevel() << "\n";
+    }
 
-	const std::vector<LogEntry>& logs = gameState.getLogEntries();
-	file << "LOGS|" << logs.size() << "\n";
+    const std::vector<std::string>& deckState = gameState.getDeckState();
+    file << deckState.size() << "\n";
+    for (const std::string& card : deckState) {
+        file << card << "\n";
+    }
 
-	const std::string logBlock = serializeLog(logs);
-	if (!logBlock.empty()) {
-		file << logBlock << "\n";
-	}
+    const std::vector<LogEntry>& logs = gameState.getLogEntries();
+    file << logs.size() << "\n";
+    for (const LogEntry& log : logs) {
+        file << log.getTurn() << " "
+             << log.getUsername() << " "
+             << log.getActionType() << " "
+             << log.getDetail() << "\n";
+    }
 }
 
 GameState SaveManager::loadGame(const std::string& filename) const {
-	std::ifstream file(filename);
-	if (!file.is_open()) {
-		throw std::runtime_error("SaveManager: cannot open '" + filename + "' for reading");
-	}
+    std::string path = resolveDataPath(filename);
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        throw std::runtime_error("SaveManager: cannot open '" + path + "' for reading");
+    }
 
-	auto readLineOrThrow = [&](const std::string& section) {
-		std::string line;
-		if (!std::getline(file, line)) {
-			throw std::runtime_error("SaveManager: unexpected end while reading " + section);
-		}
-		return line;
-	};
+    std::vector<std::string> turnParts = splitWhitespace(readLineOrThrow(file, "turn header"));
+    if (turnParts.size() != 2) {
+        throw std::runtime_error("SaveManager: invalid turn header");
+    }
+    int currentTurn = parseIntStrict(turnParts[0], "currentTurn");
+    int maxTurn = parseIntStrict(turnParts[1], "maxTurn");
 
-	auto parseSection = [&](const std::string& expectedSection) {
-		std::string line = readLineOrThrow(expectedSection);
-		size_t pos = line.find('|');
-		if (pos == std::string::npos) {
-			throw std::runtime_error("SaveManager: malformed line -> '" + line + "'");
-		}
+    int playerCount = parseIntStrict(readLineOrThrow(file, "player count"), "playerCount");
+    if (playerCount < 0) {
+        throw std::runtime_error("SaveManager: negative playerCount");
+    }
 
-		std::string section = line.substr(0, pos);
-		if (section != expectedSection) {
-			throw std::runtime_error("SaveManager: expected " + expectedSection + ", got " + section);
-		}
+    std::vector<PlayerState> players;
+    players.reserve(static_cast<size_t>(playerCount));
+    for (int i = 0; i < playerCount; ++i) {
+        players.push_back(parsePlayer(file));
+    }
 
-		return line.substr(pos + 1);
-	};
+    std::vector<std::string> turnOrder = splitWhitespace(readLineOrThrow(file, "turn order"));
+    std::string activePlayerUsername = readLineOrThrow(file, "active player");
 
-	auto parseIntStrict = [&](const std::string& value, const std::string& fieldName) {
-		try {
-			size_t parsed = 0;
-			int number = std::stoi(value, &parsed);
-			if (parsed != value.size()) {
-				throw std::runtime_error("invalid suffix");
-			}
-			return number;
-		} catch (const std::exception&) {
-			throw std::runtime_error("SaveManager: invalid integer for " + fieldName + " -> '" + value + "'");
-		}
-	};
+    int propertyCount = parseIntStrict(readLineOrThrow(file, "property count"), "propertyCount");
+    if (propertyCount < 0) {
+        throw std::runtime_error("SaveManager: negative propertyCount");
+    }
 
-	int currentTurn = parseIntStrict(parseSection("CURRENT_TURN"), "currentTurn");
-	int maxTurn = parseIntStrict(parseSection("MAX_TURN"), "maxTurn");
-	std::string activePlayerUsername = parseSection("ACTIVE_PLAYER");
+    std::vector<PropertyState> properties;
+    properties.reserve(static_cast<size_t>(propertyCount));
+    for (int i = 0; i < propertyCount; ++i) {
+        properties.push_back(parseProperty(readLineOrThrow(file, "property line")));
+    }
 
-	std::vector<std::string> turnOrder;
-	std::string turnOrderLine = parseSection("TURN_ORDER");
-	if (!turnOrderLine.empty()) {
-		std::istringstream turnOrderStream(turnOrderLine);
-		std::string username;
-		while (std::getline(turnOrderStream, username, ',')) {
-			turnOrder.push_back(username);
-		}
-	}
+    int deckCount = parseIntStrict(readLineOrThrow(file, "deck count"), "deckCount");
+    if (deckCount < 0) {
+        throw std::runtime_error("SaveManager: negative deckCount");
+    }
 
-	int playerCount = parseIntStrict(parseSection("PLAYERS"), "playerCount");
-	if (playerCount < 0) {
-		throw std::runtime_error("SaveManager: negative playerCount");
-	}
+    std::vector<std::string> deckState;
+    deckState.reserve(static_cast<size_t>(deckCount));
+    for (int i = 0; i < deckCount; ++i) {
+        std::vector<std::string> parts = splitWhitespace(readLineOrThrow(file, "deck card"));
+        if (!parts.empty()) {
+            deckState.push_back(parts[0]);
+        }
+    }
 
-	std::vector<PlayerState> players;
-	players.reserve(static_cast<size_t>(playerCount));
-	for (int i = 0; i < playerCount; ++i) {
-		players.push_back(parsePlayer(readLineOrThrow("player line")));
-	}
+    int logCount = parseIntStrict(readLineOrThrow(file, "log count"), "logCount");
+    if (logCount < 0) {
+        throw std::runtime_error("SaveManager: negative logCount");
+    }
 
-	int propertyCount = parseIntStrict(parseSection("PROPERTIES"), "propertyCount");
-	if (propertyCount < 0) {
-		throw std::runtime_error("SaveManager: negative propertyCount");
-	}
+    std::vector<LogEntry> logs;
+    logs.reserve(static_cast<size_t>(logCount));
+    for (int i = 0; i < logCount; ++i) {
+        logs.push_back(parseLog(readLineOrThrow(file, "log line")));
+    }
 
-	std::vector<PropertyState> properties;
-	properties.reserve(static_cast<size_t>(propertyCount));
-	for (int i = 0; i < propertyCount; ++i) {
-		properties.push_back(parseProperty(readLineOrThrow("property line")));
-	}
-
-	std::vector<std::string> deckState;
-	std::string deckLine = parseSection("DECK");
-	if (!deckLine.empty()) {
-		std::istringstream deckStream(deckLine);
-		std::string card;
-		while (std::getline(deckStream, card, ',')) {
-			deckState.push_back(card);
-		}
-	}
-
-	int logCount = parseIntStrict(parseSection("LOGS"), "logCount");
-	if (logCount < 0) {
-		throw std::runtime_error("SaveManager: negative logCount");
-	}
-
-	std::vector<LogEntry> logs;
-	logs.reserve(static_cast<size_t>(logCount));
-	for (int i = 0; i < logCount; ++i) {
-		std::vector<std::string> parts;
-		std::istringstream logLineStream(readLineOrThrow("log line"));
-		std::string part;
-		while (std::getline(logLineStream, part, '|')) {
-			parts.push_back(part);
-		}
-
-		if (parts.size() < 4) {
-			throw std::runtime_error("SaveManager: invalid log line");
-		}
-
-		int turn = parseIntStrict(parts[0], "log.turn");
-		std::string detail = parts[3];
-		for (size_t j = 4; j < parts.size(); ++j) {
-			detail += "|" + parts[j];
-		}
-
-		logs.emplace_back(turn, parts[1], parts[2], detail);
-	}
-
-	return GameState(
-		currentTurn,
-		maxTurn,
-		players,
-		turnOrder,
-		activePlayerUsername,
-		properties,
-		deckState,
-		logs
-	);
+    return GameState(
+        currentTurn,
+        maxTurn,
+        players,
+        turnOrder,
+        activePlayerUsername,
+        properties,
+        deckState,
+        logs
+    );
 }
 
 bool SaveManager::fileExists(const std::string& filename) const {
-	std::ifstream file(filename);
-	return file.good();
+    std::ifstream file(resolveDataPath(filename));
+    return file.good();
 }

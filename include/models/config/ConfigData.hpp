@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 
+#include "models/config/ActionTileConfig.hpp"
 #include "models/config/MiscConfig.hpp"
 #include "models/config/PropertyConfig.hpp"
 #include "models/config/SpecialConfig.hpp"
@@ -11,6 +12,7 @@
 class ConfigData {
 private:
     std::vector<PropertyConfig> propertyConfigs;
+    std::vector<ActionTileConfig> actionTileConfigs;
     std::map<int, int> railroadRents;
     std::map<int, int> utilityMultipliers;
     TaxConfig taxConfig;
@@ -21,6 +23,7 @@ public:
     ConfigData();
     ConfigData(
         const std::vector<PropertyConfig>& propertyConfigs,
+        const std::vector<ActionTileConfig>& actionTileConfigs,
         const std::map<int, int>& railroadRents,
         const std::map<int, int>& utilityMultipliers,
         const TaxConfig& taxConfig,
@@ -29,6 +32,7 @@ public:
     );
 
     const std::vector<PropertyConfig>& getPropertyConfigs() const;
+    const std::vector<ActionTileConfig>& getActionTileConfigs() const;
     const std::map<int, int>& getRailroadRents() const;
     const std::map<int, int>& getUtilityMultipliers() const;
     const TaxConfig& getTaxConfig() const;

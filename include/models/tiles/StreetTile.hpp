@@ -35,13 +35,17 @@ public:
     void tickFestival();
 
     int getBuildingLevel() const;
-    ColorGroup getColorGroup() const;
-    int getFestivalMultiplier() const;
-    int getFestivalDuration() const;
+    ColorGroup getColorGroup() const override;
+    int getFestivalMultiplier() const override;
+    int getFestivalDuration() const override;
     bool canBuildNext() const;
     int getSellValueToBank() const override;
+    PropertyType getPropertyType() const override;
     std::string getDisplayLabel() const override;
 
-    int getHouseCost() const;
-    int getHotelCost() const;
+    int getHouseCost() const override;
+    int getHotelCost() const override;
+    int getRentAtLevel(int level) const override;
+    void setBuildingLevel(int level);
+    void setFestivalState(int multiplier, int duration);
 };

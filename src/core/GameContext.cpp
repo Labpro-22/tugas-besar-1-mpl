@@ -9,6 +9,7 @@ GameContext::GameContext(
         AuctionManager* auctionManager,
         BankruptcyHandler* bankruptcyHandler,
         TransactionLogger* logger,
+        GameIO* io,
         Dice* dice,
         CardDeck<ActionCard>* chanceDeck,
         CardDeck<ActionCard>* communityDeck,
@@ -19,6 +20,7 @@ GameContext::GameContext(
     auctionManager(auctionManager),
     bankruptcyHandler(bankruptcyHandler),
     logger(logger),
+    io(io),
     dice(dice),
     chanceDeck(chanceDeck),
     communityDeck(communityDeck),
@@ -42,6 +44,10 @@ BankruptcyHandler* GameContext::getBankruptcyHandler() const {
 
 TransactionLogger* GameContext::getLogger() const {
     return logger;
+}
+
+GameIO* GameContext::getIO() const {
+    return io;
 }
 
 Dice* GameContext::getDice() const {
@@ -100,8 +106,15 @@ int GameContext::getUtilityCount(const Player& player) const {
 
 void GameContext::logEvent(const std::string& actionType, const std::string& detail) {
     if (logger) {
-        // Mendelegasikan pencatatan ke TransactionLogger
-        // Asumsi TransactionLogger memiliki fungsi addLog
-        // logger->addLog(actionType, detail);
+        int turn = 0;
+        std::string username = "SYSTEM";
+        if (turnManager != nullptr) {
+            turn = turnManager->getCurrentTurn();
+            Player* currentPlayer = turnManager->getCurrentPlayer();
+            if (currentPlayer != nullptr) {
+                username = currentPlayer->getUsername();
+            }
+        }
+        logger->log(turn, username, actionType, detail);
     }
 }

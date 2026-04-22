@@ -1,7 +1,10 @@
 #pragma once
 
+#include <istream>
 #include <string>
 #include <vector>
+
+#include "models/Enums.hpp"
 
 class GameState;
 class PlayerState;
@@ -12,12 +15,18 @@ class SaveManager {
 private:
     std::string filePath;
 
-    std::string serializePlayer(const PlayerState& ps) const;
-    std::string serializeProperty(const PropertyState& ps) const;
-    std::string serializeDeck(const std::vector<std::string>& deck) const;
-    std::string serializeLog(const std::vector<LogEntry>& entries) const;
+    std::string resolveDataPath(const std::string& filename) const;
+    std::string statusToString(PlayerStatus status) const;
+    std::string propertyTypeToString(PropertyType type) const;
+    std::string propertyStatusToString(PropertyStatus status) const;
+    std::string serializeCard(const std::string& encodedCard) const;
 
-    PlayerState parsePlayer(const std::string& line) const;
+    std::string readLineOrThrow(std::istream& input, const std::string& section) const;
+    int parseIntStrict(const std::string& value, const std::string& fieldName) const;
+    std::vector<std::string> splitWhitespace(const std::string& value) const;
+    std::string parseCard(const std::string& line) const;
+    LogEntry parseLog(const std::string& line) const;
+    PlayerState parsePlayer(std::istream& input) const;
     PropertyState parseProperty(const std::string& line) const;
 
 public:

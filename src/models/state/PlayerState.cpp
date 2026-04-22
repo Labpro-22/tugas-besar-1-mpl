@@ -4,6 +4,7 @@ PlayerState::PlayerState()
     : username(""),
       balance(0),
       position(0),
+      positionCode("GO"),
       status(PlayerStatus::ACTIVE),
       jailTurns(0),
       cardHand() {}
@@ -13,6 +14,7 @@ PlayerState::PlayerState(
     const std::string& username,
     int balance,
     int position,
+    const std::string& positionCode,
     PlayerStatus status,
     int jailTurns,
     const std::vector<std::string>& cardHand
@@ -20,6 +22,7 @@ PlayerState::PlayerState(
     : username(username),
       balance(balance),
       position(position),
+      positionCode(positionCode),
       status(status),
       jailTurns(jailTurns),
       cardHand(cardHand) {}
@@ -35,6 +38,10 @@ int PlayerState::getBalance() const {
 
 int PlayerState::getPosition() const {
     return position;
+}
+
+const std::string& PlayerState::getPositionCode() const {
+    return positionCode;
 }
 
 PlayerStatus PlayerState::getStatus() const {

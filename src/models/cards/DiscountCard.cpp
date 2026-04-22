@@ -1,6 +1,7 @@
 #include "models/cards/DiscountCard.hpp"
 
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 
 DiscountCard::DiscountCard()
@@ -14,9 +15,16 @@ std::string DiscountCard::getTypeName() const {
 }
 
 void DiscountCard::use(Player& player, GameContext& gameContext) {
-    (void)gameContext;
-
     player.setDiscountPercent(getValue());
     player.setUsedSkillThisTurn(true);
     setRemainingDuration(1);
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            "DiscountCard diaktifkan! Pembayaran berikutnya mendapat diskon " +
+                std::to_string(getValue()) + "%.");
+    }
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " mengaktifkan DiscountCard diskon " + std::to_string(getValue()) + "%."
+    );
 }
