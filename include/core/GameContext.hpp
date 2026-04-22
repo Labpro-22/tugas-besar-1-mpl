@@ -8,6 +8,7 @@ class TurnManager;
 class AuctionManager;
 class TransactionLogger;
 class Dice;
+class GameIO;
 class ActionCard;
 class SkillCard;
 class BankruptcyHandler;
@@ -20,6 +21,7 @@ private:
     AuctionManager* auctionManager;
     BankruptcyHandler* bankruptcyHandler;
     TransactionLogger* logger;
+    GameIO* io;
     Dice* dice;
     CardDeck<ActionCard>* chanceDeck;
     CardDeck<ActionCard>* communityDeck;
@@ -32,6 +34,7 @@ public:
         AuctionManager* auctionManager,
         BankruptcyHandler* bankruptcyHandler,
         TransactionLogger* logger,
+        GameIO* io,
         Dice* dice,
         CardDeck<ActionCard>* chanceDeck,
         CardDeck<ActionCard>* communityDeck,
@@ -43,6 +46,7 @@ public:
     AuctionManager* getAuctionManager() const;
     BankruptcyHandler* getBankruptcyHandler() const;
     TransactionLogger* getLogger() const;
+    GameIO* getIO() const;
     Dice* getDice() const;
     CardDeck<ActionCard>* getChanceDeck() const;
     CardDeck<ActionCard>* getCommunityDeck() const;

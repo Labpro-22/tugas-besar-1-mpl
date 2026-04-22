@@ -9,6 +9,7 @@ GameContext::GameContext(
         AuctionManager* auctionManager,
         BankruptcyHandler* bankruptcyHandler,
         TransactionLogger* logger,
+        GameIO* io,
         Dice* dice,
         CardDeck<ActionCard>* chanceDeck,
         CardDeck<ActionCard>* communityDeck,
@@ -19,6 +20,7 @@ GameContext::GameContext(
     auctionManager(auctionManager),
     bankruptcyHandler(bankruptcyHandler),
     logger(logger),
+    io(io),
     dice(dice),
     chanceDeck(chanceDeck),
     communityDeck(communityDeck),
@@ -42,6 +44,10 @@ BankruptcyHandler* GameContext::getBankruptcyHandler() const {
 
 TransactionLogger* GameContext::getLogger() const {
     return logger;
+}
+
+GameIO* GameContext::getIO() const {
+    return io;
 }
 
 Dice* GameContext::getDice() const {

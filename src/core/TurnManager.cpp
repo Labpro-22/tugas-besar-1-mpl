@@ -1,14 +1,13 @@
 #include "core/TurnManager.hpp"
 
 #include <algorithm>
-#include <iostream>
-#include <limits>
 #include <stdexcept>
 
 #include "core/AuctionManager.hpp"
 #include "core/BankruptcyHandler.hpp"
 #include "core/Dice.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "utils/TransactionLogger.hpp"
@@ -176,9 +175,11 @@ void TurnManager::handlePropertyLanded(Player& player,
 
         std::vector<Player*> auctionOrder = auction->getAuctionOrder();
         int totalPlayers = static_cast<int>(auctionOrder.size());
+        GameIO* io = context.getIO();
 
-        std::cout << "=== Lelang " << tile.getName()
-                  << " (" << tile.getCode() << ") ===" << std::endl;
+        if (io != nullptr) {
+            io->showMessage("=== Lelang " + tile.getName() + " (" + tile.getCode() + ") ===");
+        }
 
         while (!auction->isFinished(totalPlayers)) {
             for (Player* bidder : auctionOrder) {
@@ -190,19 +191,14 @@ void TurnManager::handlePropertyLanded(Player& player,
                     break;
                 }
 
-                std::cout << bidder->getUsername()
-                          << " saldo M" << bidder->getBalance()
-                          << ", bid tertinggi M" << auction->getHighestBid()
-                          << ". Masukkan bid (0 untuk pass): ";
-
                 int amount = 0;
-                while (!(std::cin >> amount)) {
-                    std::cout << "Input bid tidak valid. Masukkan angka, atau 0 untuk pass: ";
-                    std::cin.clear();
-                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                if (io != nullptr) {
+                    amount = io->promptInt(
+                        bidder->getUsername() +
+                            " saldo M" + std::to_string(bidder->getBalance()) +
+                            ", bid tertinggi M" + std::to_string(auction->getHighestBid()) +
+                            ". Masukkan bid (0 untuk pass): ");
                 }
-
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
                 if (amount <= 0) {
                     auction->processPass(bidder);
@@ -211,10 +207,14 @@ void TurnManager::handlePropertyLanded(Player& player,
 
                 try {
                     if (!auction->processBid(bidder, amount)) {
-                        std::cout << "Bid harus lebih besar dari bid tertinggi." << std::endl;
+                        if (io != nullptr) {
+                            io->showMessage("Bid harus lebih besar dari bid tertinggi.");
+                        }
                     }
                 } catch (const std::exception& e) {
-                    std::cout << "Bid gagal: " << e.what() << std::endl;
+                    if (io != nullptr) {
+                        io->showError(e, context.getLogger(), getCurrentTurn(), bidder->getUsername());
+                    }
                 }
             }
         }

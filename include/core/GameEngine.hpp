@@ -10,6 +10,7 @@
 #include "AuctionManager.hpp"
 #include "BankruptcyHandler.hpp"
 #include "utils/CardDeck.hpp"
+#include "views/GameUI.hpp"
 
 class ActionCard;
 class SkillCard;
@@ -27,6 +28,7 @@ private:
     TurnManager turnManager;
     AuctionManager auctionManager;
     BankruptcyHandler bankruptcyHandler;
+    GameUI ui;
     TransactionLogger* logger;
 
     CardDeck<ActionCard> chanceDeck;

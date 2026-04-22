@@ -2,6 +2,8 @@
 #include <limits>
 
 #include "core/TurnManager.hpp"
+#include "models/tiles/Tile.hpp"
+#include "utils/exceptions/ExceptionHandler.hpp"
 #include "views/GameUI.hpp"
 
 int GameUI::showMainMenu() {
@@ -87,8 +89,109 @@ bool GameUI::confirmYN(const std::string& message) {
     }
 }
 
+int GameUI::promptInt(const std::string& prompt) {
+    int value = 0;
+
+    while (true) {
+        std::cout << prompt;
+        if (std::cin >> value) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return value;
+        }
+
+        std::cout << "Input tidak valid. Masukkan angka." << std::endl;
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+}
+
+int GameUI::promptIntInRange(const std::string& prompt, int minValue, int maxValue) {
+    int value = 0;
+
+    while (true) {
+        std::cout << prompt;
+        if (std::cin >> value && value >= minValue && value <= maxValue) {
+            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            return value;
+        }
+
+        std::cout << "Input tidak valid. Masukkan angka "
+                  << minValue << " sampai " << maxValue << "." << std::endl;
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
+}
+
+Command GameUI::promptPlayerCommand(const std::string& username) {
+    std::cout << "\n";
+    std::cout << "> [" << username << "]: ";
+    return cmdParser.readCommand();
+}
+
 void GameUI::showMessage(const std::string& message) {
     std::cout << message << std::endl;
+}
+
+void GameUI::showError(
+    const std::exception& exception,
+    TransactionLogger* logger,
+    int turn,
+    const std::string& username
+) {
+    ExceptionHandler::handle(exception, std::cout, logger, turn, username);
+}
+
+void GameUI::showUnknownError(
+    TransactionLogger* logger,
+    int turn,
+    const std::string& username
+) {
+    ExceptionHandler::handleUnknown(std::cout, logger, turn, username);
+}
+
+void GameUI::showHelp() {
+    std::cout << "\n";
+    std::cout << "+-------------------------------------------------------------+\n";
+    std::cout << "| COMMAND                                                     |\n";
+    std::cout << "+-------------------------------------------------------------+\n";
+    std::cout << "| CETAK_PAPAN             | tampilkan papan                   |\n";
+    std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
+    std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
+    std::cout << "| CETAK_AKTA KODE         | tampilkan akta properti           |\n";
+    std::cout << "| CETAK_PROPERTI          | tampilkan properti pemain         |\n";
+    std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
+    std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
+    std::cout << "| SIMPAN file / MUAT file | save/load game                    |\n";
+    std::cout << "| CETAK_LOG [n]           | tampilkan log transaksi           |\n";
+    std::cout << "| HELP / KELUAR           | bantuan / keluar                  |\n";
+    std::cout << "+-------------------------------------------------------------+\n";
+}
+
+void GameUI::showSection(const std::string& title) {
+    std::cout << "\n";
+    std::cout << "============================================================\n";
+    std::cout << " " << title << "\n";
+    std::cout << "============================================================\n";
+}
+
+void GameUI::showTurnSummary(const Player& player, int turn) {
+    showSection("TURN " + std::to_string(turn) + " - " + player.getUsername());
+    std::cout << "Saldo     : M" << player.getBalance() << "\n";
+    std::cout << "Posisi    : " << (player.getPosition() + 1) << "\n";
+    std::cout << "Properti  : " << player.getProperties().size() << "\n";
+    std::cout << "Kartu     : " << player.getHand().size() << "\n";
+}
+
+void GameUI::showDiceLanding(
+    int die1,
+    int die2,
+    int total,
+    const std::string& tileName,
+    const std::string& tileCode
+) {
+    std::cout << "\n";
+    std::cout << "Hasil dadu : " << die1 << " + " << die2 << " = " << total << "\n";
+    std::cout << "Mendarat   : " << tileName << " (" << tileCode << ")\n";
 }
 
 void GameUI::showWinner(const std::vector<Player*>& winners, GameContext& context) {

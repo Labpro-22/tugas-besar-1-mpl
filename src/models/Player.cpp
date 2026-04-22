@@ -3,8 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-#include "utils/exceptions/InsufficientFundsException.hpp"
-#include "utils/exceptions/CardHandFullException.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
 #include "models/cards/SkillCard.hpp"

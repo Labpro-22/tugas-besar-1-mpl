@@ -10,6 +10,7 @@
 #include "utils/ConfigLoader.hpp"
 #include "utils/SaveManager.hpp"
 #include "utils/TransactionLogger.hpp"
+#include "utils/exceptions/ExceptionHandler.hpp"
 #include "views/GameUI.hpp"
 
 int main() {
@@ -52,8 +53,11 @@ int main() {
             ui.showMessage("Pilihan tidak valid.");
         }
     } catch (const std::exception& e) {
-        std::cerr << "Terjadi error: " << e.what() << std::endl;
-        return 1; 
+        ExceptionHandler::handle(e);
+        return 1;
+    } catch (...) {
+        ExceptionHandler::handleUnknown();
+        return 1;
     }
 
     return 0;

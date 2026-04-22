@@ -5,7 +5,7 @@
 #include "models/tiles/StreetTile.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "core/TurnManager.hpp"
-#include "utils/exceptions/InsufficientFundsException.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 #include "core/BankruptcyHandler.hpp"
 
 TaxTile::TaxTile() : ActionTile(), taxType(TaxType::PPH), flatAmount(0), percentage(0) {}

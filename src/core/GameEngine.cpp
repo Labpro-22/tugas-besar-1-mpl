@@ -1,8 +1,6 @@
 #include "core/GameEngine.hpp"
 
 #include <algorithm>
-#include <iostream>
-#include <limits>
 #include <map>
 #include <random>
 #include <stdexcept>
@@ -47,11 +45,7 @@
 #include "models/tiles/UtilityTile.hpp"
 #include "utils/SaveManager.hpp"
 #include "utils/TransactionLogger.hpp"
-#include "utils/exceptions/CardHandFullException.hpp"
-#include "utils/exceptions/InsufficientFundsException.hpp"
-#include "utils/exceptions/InvalidCommandException.hpp"
-#include "views/BoardRenderer.hpp"
-#include "views/CommandParser.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 #include "views/PropertyCardRenderer.hpp"
 
 namespace {
@@ -174,48 +168,6 @@ namespace {
         return PropertyType::UTILITY;
     }
 
-    void printHelp() {
-        std::cout << "\n";
-        std::cout << "+-------------------------------------------------------------+\n";
-        std::cout << "| COMMAND                                                     |\n";
-        std::cout << "+-------------------------------------------------------------+\n";
-        std::cout << "| CETAK_PAPAN             | tampilkan papan                   |\n";
-        std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
-        std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
-        std::cout << "| CETAK_AKTA KODE         | tampilkan akta properti           |\n";
-        std::cout << "| CETAK_PROPERTI          | tampilkan properti pemain         |\n";
-        std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
-        std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
-        std::cout << "| SIMPAN file / MUAT file | save/load game                    |\n";
-        std::cout << "| CETAK_LOG [n]           | tampilkan log transaksi           |\n";
-        std::cout << "| HELP / KELUAR           | bantuan / keluar                  |\n";
-        std::cout << "+-------------------------------------------------------------+\n";
-    }
-
-    void printSection(const std::string& title) {
-        std::cout << "\n";
-        std::cout << "============================================================\n";
-        std::cout << " " << title << "\n";
-        std::cout << "============================================================\n";
-    }
-
-    int readIntInRange(const std::string& prompt, int minValue, int maxValue) {
-        int value = 0;
-
-        while (true) {
-            std::cout << prompt;
-            if (std::cin >> value && value >= minValue && value <= maxValue) {
-                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-                return value;
-            }
-
-            std::cout << "Input tidak valid. Masukkan angka "
-                      << minValue << " sampai " << maxValue << "." << std::endl;
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        }
-    }
-
     bool parseIntStrict(const std::string& text, int& value) {
         try {
             std::size_t parsed = 0;
@@ -279,6 +231,7 @@ void GameEngine::startNewGame() {
         &auctionManager,
         &bankruptcyHandler,
         logger,
+        &ui,
         &dice,
         &chanceDeck,
         &communityDeck,
@@ -329,6 +282,7 @@ void GameEngine::loadGame(const GameState& gameState) {
         &auctionManager,
         &bankruptcyHandler,
         logger,
+        &ui,
         &dice,
         &chanceDeck,
         &communityDeck,
@@ -377,10 +331,7 @@ void GameEngine::loadGame(const GameState& gameState) {
 }
 
 void GameEngine::runGameLoop() {
-    CommandParser parser;
-    BoardRenderer boardRenderer;
-
-    printHelp();
+    ui.showHelp();
     while (!checkGameEnd()) {
         Player* currentPlayer = turnManager.getCurrentPlayer();
         if (currentPlayer == nullptr) {
@@ -396,9 +347,7 @@ void GameEngine::runGameLoop() {
 
         bool turnFinished = false;
         while (!turnFinished && !checkGameEnd()) {
-            std::cout << "\n";
-            std::cout << "> [" << currentPlayer->getUsername() << "]: ";
-            Command command = parser.readCommand();
+            Command command = ui.promptPlayerCommand(currentPlayer->getUsername());
             std::string keyword = command.getKeyword();
 
             if (keyword.empty()) {
@@ -406,7 +355,7 @@ void GameEngine::runGameLoop() {
             }
 
             if (keyword == "HELP") {
-                printHelp();
+                ui.showHelp();
                 continue;
             }
 
@@ -417,11 +366,13 @@ void GameEngine::runGameLoop() {
             try {
                 processCommand(command, *currentPlayer);
                 if (keyword == "LEMPAR_DADU" || keyword == "ATUR_DADU") {
-                    boardRenderer.render(board, players, turnManager);
+                    ui.getBoardRenderer().render(board, players, turnManager);
                     turnFinished = true;
                 }
             } catch (const std::exception& e) {
-                std::cout << "Error: " << e.what() << std::endl;
+                ui.showError(e, logger, turnManager.getCurrentTurn(), currentPlayer->getUsername());
+            } catch (...) {
+                ui.showUnknownError(logger, turnManager.getCurrentTurn(), currentPlayer->getUsername());
             }
         }
 
@@ -429,28 +380,24 @@ void GameEngine::runGameLoop() {
     }
 
     std::vector<Player*> winners = determineWinner();
-    printSection("PERMAINAN SELESAI");
-    for (Player* winner : winners) {
-        if (winner != nullptr) {
-            std::cout << "Pemenang: " << winner->getUsername() << std::endl;
-        }
+    ui.showSection("PERMAINAN SELESAI");
+    if (context != nullptr) {
+        ui.showWinner(winners, *context);
     }
 }
 
 void GameEngine::processTurn(Player& player) {
-    printSection("TURN " + std::to_string(turnManager.getCurrentTurn()) + " - " + player.getUsername());
-    std::cout << "Saldo     : M" << player.getBalance() << "\n";
-    std::cout << "Posisi    : " << (player.getPosition() + 1) << "\n";
-    std::cout << "Properti  : " << player.getProperties().size() << "\n";
-    std::cout << "Kartu     : " << player.getHand().size() << "\n";
+    ui.showTurnSummary(player, turnManager.getCurrentTurn());
 
     board.tickFestivals(player);
     player.resetTurnState();
 
     if (player.isJailed()) {
         player.setJailTurns(player.getJailTurns() + 1);
-        std::cout << player.getUsername() << " sedang di penjara. Bayar denda M"
-                  << configData->getSpecialConfig().getJailFine() << " untuk keluar." << std::endl;
+        ui.showMessage(
+            player.getUsername() + " sedang di penjara. Bayar denda M"
+                + std::to_string(configData->getSpecialConfig().getJailFine())
+                + " untuk keluar.");
         int fine = configData->getSpecialConfig().getJailFine();
         if (player.canAfford(fine)) {
             player -= fine;
@@ -465,12 +412,12 @@ void GameEngine::processTurn(Player& player) {
     try {
         SkillCard* card = skillDeck.draw();
         player.addCard(card);
-        std::cout << "Kartu baru: " << card->getTypeName() << "\n";
+        ui.showMessage("Kartu baru: " + card->getTypeName());
         if (logger != nullptr) {
             logger->log(turnManager.getCurrentTurn(), player.getUsername(), "KARTU_SKILL", "Mendapatkan " + card->getTypeName());
         }
     } catch (const CardHandFullException&) {
-        std::cout << "Tangan kartu penuh. Kartu baru dibuang otomatis." << std::endl;
+        ui.showMessage("Tangan kartu penuh. Kartu baru dibuang otomatis.");
     } catch (const std::exception&) {
     }
 }
@@ -505,17 +452,18 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
 
         Tile* landedTile = board.getTile(newPosition);
         if (landedTile != nullptr && context != nullptr) {
-            std::cout << "\n";
-            std::cout << "Hasil dadu : " << dice.getDie1() << " + " << dice.getDie2()
-                      << " = " << dice.getTotal() << "\n";
-            std::cout << "Mendarat   : " << landedTile->getName()
-                      << " (" << landedTile->getCode() << ")\n";
+            ui.showDiceLanding(
+                dice.getDie1(),
+                dice.getDie2(),
+                dice.getTotal(),
+                landedTile->getName(),
+                landedTile->getCode());
             landedTile->onLanded(player, *context);
         }
     };
 
     if (keyword == "CETAK_PAPAN") {
-        BoardRenderer().render(board, players, turnManager);
+        ui.getBoardRenderer().render(board, players, turnManager);
         return;
     }
 
@@ -574,16 +522,18 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
         }
 
         if (available.empty()) {
-            std::cout << "Tidak ada properti yang dapat digadaikan." << std::endl;
+            ui.showMessage("Tidak ada properti yang dapat digadaikan.");
             return;
         }
 
         for (int i = 0; i < static_cast<int>(available.size()); ++i) {
-            std::cout << i + 1 << ". " << available[i]->getName() << " (" << available[i]->getCode()
-                      << ") - M" << available[i]->getMortgageValue() << std::endl;
+            ui.showMessage(
+                std::to_string(i + 1) + ". " + available[i]->getName()
+                    + " (" + available[i]->getCode() + ") - M"
+                    + std::to_string(available[i]->getMortgageValue()));
         }
 
-        int choice = readIntInRange("Pilih properti: ", 1, static_cast<int>(available.size()));
+        int choice = ui.promptIntInRange("Pilih properti: ", 1, static_cast<int>(available.size()));
 
         PropertyTile* selected = available[choice - 1];
         selected->mortgage();
@@ -604,16 +554,18 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
         }
 
         if (mortgaged.empty()) {
-            std::cout << "Tidak ada properti tergadai." << std::endl;
+            ui.showMessage("Tidak ada properti tergadai.");
             return;
         }
 
         for (int i = 0; i < static_cast<int>(mortgaged.size()); ++i) {
-            std::cout << i + 1 << ". " << mortgaged[i]->getName() << " (" << mortgaged[i]->getCode()
-                      << ") - M" << mortgaged[i]->getMortgageValue() << std::endl;
+            ui.showMessage(
+                std::to_string(i + 1) + ". " + mortgaged[i]->getName()
+                    + " (" + mortgaged[i]->getCode() + ") - M"
+                    + std::to_string(mortgaged[i]->getMortgageValue()));
         }
 
-        int choice = readIntInRange("Pilih properti: ", 1, static_cast<int>(mortgaged.size()));
+        int choice = ui.promptIntInRange("Pilih properti: ", 1, static_cast<int>(mortgaged.size()));
 
         PropertyTile* selected = mortgaged[choice - 1];
         player -= selected->getMortgageValue();
@@ -637,17 +589,19 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
         }
 
         if (buildable.empty()) {
-            std::cout << "Tidak ada properti yang bisa dibangun." << std::endl;
+            ui.showMessage("Tidak ada properti yang bisa dibangun.");
             return;
         }
 
         for (int i = 0; i < static_cast<int>(buildable.size()); ++i) {
             int cost = buildable[i]->getBuildingLevel() == 4 ? buildable[i]->getHotelCost() : buildable[i]->getHouseCost();
-            std::cout << i + 1 << ". " << buildable[i]->getName() << " (" << buildable[i]->getCode()
-                      << ") - Biaya M" << cost << std::endl;
+            ui.showMessage(
+                std::to_string(i + 1) + ". " + buildable[i]->getName()
+                    + " (" + buildable[i]->getCode() + ") - Biaya M"
+                    + std::to_string(cost));
         }
 
-        int choice = readIntInRange("Pilih properti: ", 1, static_cast<int>(buildable.size()));
+        int choice = ui.promptIntInRange("Pilih properti: ", 1, static_cast<int>(buildable.size()));
 
         StreetTile* selected = buildable[choice - 1];
         int cost = selected->getBuildingLevel() == 4 ? selected->getHotelCost() : selected->getHouseCost();
@@ -667,15 +621,15 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
 
         const std::vector<SkillCard*>& hand = player.getHand();
         if (hand.empty()) {
-            std::cout << "Tidak ada kartu kemampuan." << std::endl;
+            ui.showMessage("Tidak ada kartu kemampuan.");
             return;
         }
 
         for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
-            std::cout << i + 1 << ". " << hand[i]->getTypeName() << std::endl;
+            ui.showMessage(std::to_string(i + 1) + ". " + hand[i]->getTypeName());
         }
 
-        int choice = readIntInRange("Pilih kartu: ", 1, static_cast<int>(hand.size()));
+        int choice = ui.promptIntInRange("Pilih kartu: ", 1, static_cast<int>(hand.size()));
 
         SkillCard* card = hand[choice - 1];
         card->use(player, *context);
@@ -694,7 +648,7 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
         }
 
         SaveManager().saveGame(cmd.getArg(0), createGameState());
-        std::cout << "Permainan berhasil disimpan ke " << cmd.getArg(0) << std::endl;
+        ui.showMessage("Permainan berhasil disimpan ke " + cmd.getArg(0));
         return;
     }
 
@@ -705,7 +659,7 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
 
         GameState state = SaveManager().loadGame(cmd.getArg(0));
         loadGame(state);
-        std::cout << "Permainan berhasil dimuat dari " << cmd.getArg(0) << std::endl;
+        ui.showMessage("Permainan berhasil dimuat dari " + cmd.getArg(0));
         return;
     }
 
@@ -726,9 +680,7 @@ void GameEngine::processCommand(const Command& cmd, Player& player) {
             entries.assign(all.begin(), all.end());
         }
 
-        for (const LogEntry& entry : entries) {
-            std::cout << entry.toString() << std::endl;
-        }
+        ui.showLog(entries);
 
         return;
     }

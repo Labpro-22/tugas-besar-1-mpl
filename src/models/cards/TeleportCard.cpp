@@ -1,10 +1,8 @@
 #include "models/cards/TeleportCard.hpp"
 
-#include <iostream>
-#include <limits>
-
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
 
@@ -22,19 +20,15 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     }
 
     int tileCount = board->getTileCount();
-    int targetPosition = -1;
-
-    while (true) {
-        std::cout << "Pilih nomor petak tujuan teleport (1-" << tileCount << "): ";
-        if (std::cin >> targetPosition && targetPosition >= 1 && targetPosition <= tileCount) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            break;
-        }
-
-        std::cout << "Nomor petak tidak valid. Masukkan angka 1 sampai " << tileCount << ".\n";
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    GameIO* io = gameContext.getIO();
+    if (io == nullptr) {
+        return;
     }
+
+    int targetPosition = io->promptIntInRange(
+        "Pilih nomor petak tujuan teleport (1-" + std::to_string(tileCount) + "): ",
+        1,
+        tileCount);
 
     int targetIndex = targetPosition - 1;
     Tile* targetTile = board->getTile(targetIndex);
@@ -45,9 +39,10 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     player.moveTo(targetIndex);
     player.setUsedSkillThisTurn(true);
 
-    std::cout << "Teleport berhasil! " << player.getUsername()
-              << " berpindah ke " << targetTile->getName()
-              << " (" << targetTile->getCode() << ").\n";
+    io->showMessage(
+        "Teleport berhasil! " + player.getUsername()
+            + " berpindah ke " + targetTile->getName()
+            + " (" + targetTile->getCode() + ").");
 
     targetTile->onLanded(player, gameContext);
 }
