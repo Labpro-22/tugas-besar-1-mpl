@@ -2,8 +2,6 @@
 
 #include <QWidget>
 
-#include <vector>
-
 #include "models/config/ConfigData.hpp"
 
 class QPaintEvent;
@@ -28,9 +26,10 @@ private:
     const PropertyConfig* selectedProperty() const;
     void drawCardBase(QPainter& painter, const QRectF& cardRect) const;
     void drawPropertyCard(QPainter& painter, const QRectF& cardRect, const PropertyConfig& property) const;
-    void drawComingSoonCard(QPainter& painter, const QRectF& cardRect, const PropertyConfig& property) const;
+    void drawRailroadCard(QPainter& painter, const QRectF& cardRect, const PropertyConfig& property) const;
+    void drawUtilityCard(QPainter& painter, const QRectF& cardRect, const PropertyConfig& property) const;
     void drawEmptyState(QPainter& painter, const QRectF& cardRect) const;
 
-    std::vector<PropertyConfig> properties;
+    ConfigData configData;
     int currentPropertyId = 0;
 };

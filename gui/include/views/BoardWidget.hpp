@@ -18,19 +18,19 @@ class BoardWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit BoardWidget(QWidget *parent = nullptr);
-    ~BoardWidget() override;
-    void setSelectedPropertyId(int propertyId);
-
     struct PawnData {
         QString name;
         QString iconName;
         int tileIndex = 0;
         QColor accentColor;
-        bool useReserveIcon = false;
     };
 
+    explicit BoardWidget(QWidget *parent = nullptr);
+    ~BoardWidget() override;
+
+    void setActivePawnName(const QString& pawnName);
     void setPawns(const QVector<PawnData>& pawnData);
+    void setSelectedPropertyId(int propertyId);
 
 signals:
     void propertySelected(int propertyId);
@@ -70,6 +70,7 @@ private:
     QVector<CellData>           cells;
     QVector<PawnData>           pawns;
     mutable QMap<QString,QPixmap> pixCache;
+    QString                     activePawnName;
     int                         selectedPropertyId = 0;
 
     QVector<CellData> createCells() const;

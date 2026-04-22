@@ -8,7 +8,7 @@
       "cStandard": "c17",
       "cppStandard": "c++17",
       "includePath": [
-        "${workspaceFolder}/untitled/include",
+        "${workspaceFolder}/gui/include",
         "${workspaceFolder}/include",
         "C:/Qt/6.11.0/mingw_64/include",
         "C:/Qt/6.11.0/mingw_64/include/QtCore",
@@ -16,13 +16,13 @@
         "C:/Qt/6.11.0/mingw_64/include/QtWidgets",
         "C:/Qt/6.11.0/mingw_64/include/QtSvg",
         "C:/Qt/6.11.0/mingw_64/include/QtSvgWidgets",
-        "${workspaceFolder}/untitled/build/untitled_autogen/include"
+        "${workspaceFolder}/gui/build/nimonspoli_qt_ui_autogen/include"
       ],
       "browse": {
         "path": [
-          "${workspaceFolder}/untitled/include",
+          "${workspaceFolder}/gui/include",
           "${workspaceFolder}/include",
-          "${workspaceFolder}/untitled/build/untitled_autogen/include",
+          "${workspaceFolder}/gui/build/nimonspoli_qt_ui_autogen/include",
           "C:/Qt/6.11.0/mingw_64/include",
           "C:/Qt/6.11.0/mingw_64/include/QtCore",
           "C:/Qt/6.11.0/mingw_64/include/QtGui",

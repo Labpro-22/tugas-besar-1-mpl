@@ -1,4 +1,4 @@
-#include "MonopolyUiShared.hpp"
+#include "utils/UiCommon.hpp"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -65,6 +65,13 @@ QString formatTileName(const std::string& rawName)
     return name;
 }
 
+QString singleLineTileName(const std::string& rawName)
+{
+    QString name = formatTileName(rawName);
+    name.replace('\n', ' ');
+    return name.simplified();
+}
+
 QString findConfigDirectory()
 {
     const QString appDir = QCoreApplication::applicationDirPath();
@@ -89,7 +96,7 @@ QString findConfigDirectory()
     return {};
 }
 
-QString findImagesDirectory()
+QString findImageDirectory()
 {
     const QString appDir = QCoreApplication::applicationDirPath();
     const QStringList startPaths = {QDir::currentPath(), appDir};
@@ -98,7 +105,7 @@ QString findImagesDirectory()
         const QString found = findUpwardDirectory(
             startPath,
             QStringLiteral("images"),
-            {QStringLiteral("Chance.png")}
+            {QStringLiteral("chance_icon.png")}
         );
 
         if (!found.isEmpty()) {
@@ -109,7 +116,7 @@ QString findImagesDirectory()
     return {};
 }
 
-QString findPionDirectory()
+QString findPawnDirectory()
 {
     const QString appDir = QCoreApplication::applicationDirPath();
     const QStringList startPaths = {QDir::currentPath(), appDir};
@@ -145,6 +152,23 @@ QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
     }
 
     return fallback;
+}
+
+int displayBuyPrice(const PropertyConfig& property)
+{
+    if (property.getBuyPrice() > 0) {
+        return property.getBuyPrice();
+    }
+
+    switch (property.getPropertyType()) {
+    case PropertyType::RAILROAD:
+        return 200;
+    case PropertyType::UTILITY:
+        return property.getCode() == "PLN" ? 150 : 150;
+    case PropertyType::STREET:
+    default:
+        return 0;
+    }
 }
 
 }  // namespace MonopolyUi

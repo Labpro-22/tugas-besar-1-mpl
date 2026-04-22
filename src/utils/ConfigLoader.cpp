@@ -27,7 +27,6 @@ ColorGroup stringToColor(const std::string& s) {
     if (s == "HIJAU") return ColorGroup::HIJAU;
     if (s == "BIRU_TUA") return ColorGroup::BIRU_TUA;
     if (s == "ABU_ABU") return ColorGroup::ABU_ABU;
-
     return ColorGroup::DEFAULT;
 }
 

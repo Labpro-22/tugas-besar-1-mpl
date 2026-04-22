@@ -1,4 +1,4 @@
-#include "BoardWidget.hpp"
+#include "views/BoardWidget.hpp"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -15,7 +15,7 @@
 
 #include <exception>
 
-#include "MonopolyUiShared.hpp"
+#include "utils/UiCommon.hpp"
 #include "models/Enums.hpp"
 #include "models/config/ConfigData.hpp"
 #include "models/config/PropertyConfig.hpp"
@@ -127,7 +127,7 @@ QString findImagesDirectory()
         const QString found = findUpwardDirectory(
             startPath,
             QStringLiteral("images"),
-            {QStringLiteral("Chance.png")}
+            {QStringLiteral("chance_icon.png")}
         );
 
         if (!found.isEmpty()) {
@@ -180,10 +180,20 @@ QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
 BoardWidget::BoardWidget(QWidget *parent)
     : QWidget(parent), cells(createCells())
 {
-    setMinimumSize(800, 800);
+    setMinimumSize(620, 620);
     setAutoFillBackground(false);
 }
 BoardWidget::~BoardWidget() = default;
+
+void BoardWidget::setActivePawnName(const QString& pawnName)
+{
+    if (activePawnName == pawnName) {
+        return;
+    }
+
+    activePawnName = pawnName;
+    update();
+}
 
 void BoardWidget::setSelectedPropertyId(int propertyId)
 {
@@ -232,13 +242,20 @@ void BoardWidget::drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) c
     p.save();
     p.setRenderHint(QPainter::Antialiasing);
 
+    const bool isActivePawn = pawn.name == activePawnName;
+
     QRectF shadowRect = r.translated(2, 3);
     p.setPen(Qt::NoPen);
     p.setBrush(QColor(0, 0, 0, 70));
     p.drawEllipse(shadowRect);
 
+    if (isActivePawn) {
+        p.setBrush(QColor(pawn.accentColor.red(), pawn.accentColor.green(), pawn.accentColor.blue(), 80));
+        p.drawEllipse(r.adjusted(-6, -6, 6, 6));
+    }
+
     p.setBrush(pawn.accentColor.isValid() ? pawn.accentColor : QColor(230, 230, 230));
-    p.setPen(QPen(Qt::black, 1.2));
+    p.setPen(QPen(isActivePawn ? QColor(255, 245, 175) : Qt::black, isActivePawn ? 2.6 : 1.2));
     p.drawEllipse(r);
 
     const QRectF iconRect = r.adjusted(r.width() * 0.16, r.height() * 0.16, -r.width() * 0.16, -r.height() * 0.16);
@@ -267,7 +284,7 @@ void BoardWidget::drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) c
         p.drawText(iconRect, Qt::AlignCenter, pawn.name.left(2).toUpper());
     }
 
-    p.setPen(QPen(Qt::black, 1.0));
+    p.setPen(QPen(isActivePawn ? Qt::white : Qt::black, isActivePawn ? 1.8 : 1.0));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(r);
     p.restore();
@@ -322,11 +339,12 @@ void BoardWidget::drawPawns(QPainter &p, const QRect &board, int cs, int es) con
         }
 
         for (int i = 0; i < items.size(); ++i) {
+            const qreal currentTokenSize = items[i]->name == activePawnName ? tokenSize * 1.15 : tokenSize;
             const QRectF tokenRect(
-                centers[qMin(i, centers.size() - 1)].x() - tokenSize / 2.0,
-                centers[qMin(i, centers.size() - 1)].y() - tokenSize / 2.0,
-                tokenSize,
-                tokenSize
+                centers[qMin(i, centers.size() - 1)].x() - currentTokenSize / 2.0,
+                centers[qMin(i, centers.size() - 1)].y() - currentTokenSize / 2.0,
+                currentTokenSize,
+                currentTokenSize
             );
             drawPawn(p, tokenRect, *items[i]);
         }
@@ -477,9 +495,9 @@ QVector<BoardWidget::CellData> BoardWidget::createCells() const
 // ─────────────────────────────────────────────────────────────────────────────
 QRect BoardWidget::boardBounds() const
 {
-    int m = 6, s = qMin(width(), height()) - 2*m;
-    s = qMax(s, 600);
-    return { (width()-s)/2, (height()-s)/2, s, s };
+    const int margin = 10;
+    const int s = qMax(0, qMin(width(), height()) - 2 * margin);
+    return { (width() - s) / 2, (height() - s) / 2, s, s };
 }
 BoardWidget::EdgeSide BoardWidget::sideForIndex(int i) const
 {
@@ -652,7 +670,7 @@ void BoardWidget::drawCornerJail(QPainter &p, const QRect &r) const
     }
 
     // In Jail image inside orange box
-    const QPixmap &inJailPm = pix("In_Jail.png");
+    const QPixmap &inJailPm = pix("in_jail_corner.png");
     if (!inJailPm.isNull()) {
         QRect imgR = jailBox.adjusted(4,4,-4,-4);
         drawPix(p, inJailPm, imgR);
@@ -683,7 +701,7 @@ void BoardWidget::drawCornerFreeParking(QPainter &p, const QRect &r) const
     p.restore();
 
     // Free Parking image (car)
-    const QPixmap &pm = pix("Free_Parking.png");
+    const QPixmap &pm = pix("free_parking_corner.png");
     QRect imgR(r.left()+W/6, r.top()+H/6, W*2/3, H*2/3);
     drawPix(p, pm, imgR);
 
@@ -712,7 +730,7 @@ void BoardWidget::drawCornerGoToJail(QPainter &p, const QRect &r) const
     p.restore();
 
     // Go To Jail image (cop)
-    const QPixmap &pm = pix("Go_To_Jail.png");
+    const QPixmap &pm = pix("go_to_jail_corner.png");
     QRect imgR(r.left()+W/6, r.top()+H/6, W*2/3, H*2/3);
     drawPix(p, pm, imgR);
 
@@ -806,13 +824,13 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
         QString imgName;
         bool usePng = true;
         switch (c.kind) {
-        case TileKind::Railroad:       imgName = "Icon=Train.png";             break;
-        case TileKind::CommunityChest: imgName = "Community_Chest.png";        break;
-        case TileKind::Chance:         imgName = "Chance.png";                 break;
-        case TileKind::UtilityElec:    imgName = "Icon=Electric_Company.png";  break;
-        case TileKind::UtilityWater:   imgName = "Icon=Waterworks.png";        break;
-        case TileKind::LuxuryTax:      imgName = "Luxury_Tax.png";             break;
-        case TileKind::Festival:       imgName = "Icon=Festival.png";          break;
+        case TileKind::Railroad:       imgName = "railroad_icon.png";          break;
+        case TileKind::CommunityChest: imgName = "community_chest_icon.png";   break;
+        case TileKind::Chance:         imgName = "chance_icon.png";            break;
+        case TileKind::UtilityElec:    imgName = "electric_company_icon.png";  break;
+        case TileKind::UtilityWater:   imgName = "waterworks_icon.png";        break;
+        case TileKind::LuxuryTax:      imgName = "luxury_tax_icon.png";        break;
+        case TileKind::Festival:       imgName = "festival_icon.png";          break;
         case TileKind::IncomeTax:      usePng  = false;                        break;
         default:                       usePng  = false;                        break;
         }
@@ -857,7 +875,7 @@ void BoardWidget::drawCenter(QPainter &p, const QRect &cr) const
         p.setPen(QPen(QColor(28,82,132), 2, Qt::DashLine));
         p.setBrush(Pal::chestBlue);
         p.drawRect(card);
-        drawPix(p, pix("Big_Community_Chest.png"), card.adjusted(4,4,-4,-4));
+        drawPix(p, pix("community_chest_center_card.png"), card.adjusted(4,4,-4,-4));
         p.restore();
     }
 
@@ -873,7 +891,7 @@ void BoardWidget::drawCenter(QPainter &p, const QRect &cr) const
         p.setPen(QPen(QColor(120,70,10), 2, Qt::DashLine));
         p.setBrush(Pal::chanceBg);
         p.drawRect(card);
-        drawPix(p, pix("Big_Chance.png"), card.adjusted(4,4,-4,-4));
+        drawPix(p, pix("chance_center_card.png"), card.adjusted(4,4,-4,-4));
         p.restore();
     }
 

@@ -1,17 +1,18 @@
 {
-  "cmake.sourceDirectory": "${workspaceFolder}/untitled",
-  "cmake.buildDirectory": "${workspaceFolder}/untitled/build",
+  "cmake.sourceDirectory": "${workspaceFolder}/gui",
+  "cmake.buildDirectory": "${workspaceFolder}/gui/build",
   "cmake.generator": "MinGW Makefiles",
   "cmake.configureOnOpen": true,
   "cmake.configureSettings": {
     "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
   },
+  "python.terminal.activateEnvironment": false,
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "C_Cpp.default.compilerPath": "C:/Qt/Tools/mingw1310_64/bin/g++.exe",
   "C_Cpp.default.includePath": [
-    "${workspaceFolder}/untitled/include",
+    "${workspaceFolder}/gui/include",
     "${workspaceFolder}/include",
-    "${workspaceFolder}/untitled/build/untitled_autogen/include",
+    "${workspaceFolder}/gui/build/nimonspoli_qt_ui_autogen/include",
     "C:/Qt/6.11.0/mingw_64/include",
     "C:/Qt/6.11.0/mingw_64/include/QtCore",
     "C:/Qt/6.11.0/mingw_64/include/QtGui",
