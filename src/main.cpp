@@ -47,6 +47,7 @@ int main() {
                 }
                 engine.initialize(config, playerNames);
                 engine.loadGame(gameState);
+                ui.showMessage("Game berhasil dimuat.");
                 engine.runGameLoop();
             }
         } else {

@@ -10,6 +10,8 @@ class PropertyConfig;
 class TaxConfig;
 class SpecialConfig;
 class MiscConfig;
+enum class PropertyType;
+enum class ColorGroup;
 
 class ConfigLoader {
 private:
@@ -22,6 +24,8 @@ private:
     TaxConfig parseTaxFile(const std::string& path) const;
     SpecialConfig parseSpecialFile(const std::string& path) const;
     MiscConfig parseMiscFile(const std::string& path) const;
+    static PropertyType stringToType(const std::string& value);
+    static ColorGroup stringToColor(const std::string& value);
 
 public:
     explicit ConfigLoader(const std::string& configPath);

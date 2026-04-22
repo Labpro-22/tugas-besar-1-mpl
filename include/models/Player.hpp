@@ -39,6 +39,7 @@ public:
 
     void addCard(SkillCard* card);
     void removeCard(SkillCard* card);
+    void clearHand();
 
     int getTotalWealth() const;
     int getLiquidationMax() const;

@@ -1,10 +1,19 @@
 #include <iostream>
 #include <limits>
+#include <stdexcept>
 
 #include "core/TurnManager.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/exceptions/ExceptionHandler.hpp"
 #include "views/GameUI.hpp"
+
+namespace {
+    void throwIfInputClosed() {
+        if (std::cin.eof()) {
+            throw std::runtime_error("Input dihentikan sebelum perintah selesai diproses.");
+        }
+    }
+}
 
 int GameUI::showMainMenu() {
     std::cout << "+------------------------------+" << std::endl;
@@ -24,6 +33,7 @@ int GameUI::showMainMenu() {
         }
 
         std::cout << "Input tidak valid. Masukkan 1 untuk Game Baru atau 2 untuk Muat Game." << std::endl;
+        throwIfInputClosed();
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -46,6 +56,7 @@ int GameUI::promptPlayerCount() {
         }
 
         std::cout << "Jumlah pemain tidak valid. Masukkan angka 2 sampai 4." << std::endl;
+        throwIfInputClosed();
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -58,7 +69,9 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
         std::string name;
         do {
             std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
-            std::getline(std::cin, name);
+            if (!std::getline(std::cin, name)) {
+                throwIfInputClosed();
+            }
             if (name.empty()) {
                 std::cout << "Nama pemain tidak boleh kosong." << std::endl;
             }
@@ -84,6 +97,7 @@ bool GameUI::confirmYN(const std::string& message) {
         }
 
         std::cout << "Input tidak valid. Masukkan y atau n." << std::endl;
+        throwIfInputClosed();
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -100,6 +114,7 @@ int GameUI::promptInt(const std::string& prompt) {
         }
 
         std::cout << "Input tidak valid. Masukkan angka." << std::endl;
+        throwIfInputClosed();
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -117,6 +132,7 @@ int GameUI::promptIntInRange(const std::string& prompt, int minValue, int maxVal
 
         std::cout << "Input tidak valid. Masukkan angka "
                   << minValue << " sampai " << maxValue << "." << std::endl;
+        throwIfInputClosed();
         std::cin.clear();
         std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
@@ -161,7 +177,8 @@ void GameUI::showHelp() {
     std::cout << "| CETAK_PROPERTI          | tampilkan properti pemain         |\n";
     std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
     std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
-    std::cout << "| SIMPAN file / MUAT file | save/load game                    |\n";
+    std::cout << "| SIMPAN file             | simpan game                       |\n";
+    std::cout << "| MUAT file               | load hanya dari menu awal         |\n";
     std::cout << "| CETAK_LOG [n]           | tampilkan log transaksi           |\n";
     std::cout << "| HELP / KELUAR           | bantuan / keluar                  |\n";
     std::cout << "+-------------------------------------------------------------+\n";
@@ -186,12 +203,14 @@ void GameUI::showDiceLanding(
     int die1,
     int die2,
     int total,
+    const std::string& playerName,
     const std::string& tileName,
     const std::string& tileCode
 ) {
     std::cout << "\n";
-    std::cout << "Hasil dadu : " << die1 << " + " << die2 << " = " << total << "\n";
-    std::cout << "Mendarat   : " << tileName << " (" << tileCode << ")\n";
+    std::cout << "Hasil: " << die1 << " + " << die2 << " = " << total << "\n";
+    std::cout << "Memajukan Bidak " << playerName << " sebanyak " << total << " petak...\n";
+    std::cout << "Bidak mendarat di: " << tileName << " (" << tileCode << ")\n";
 }
 
 void GameUI::showWinner(const std::vector<Player*>& winners, GameContext& context) {

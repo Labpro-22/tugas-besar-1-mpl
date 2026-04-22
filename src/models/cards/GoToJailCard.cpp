@@ -2,6 +2,7 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/JailTile.hpp"
 #include "models/tiles/Tile.hpp"
@@ -10,6 +11,10 @@ GoToJailCard::GoToJailCard()
     : ActionCard("Awkoakwoak Anda masuk Penjara.") {}
 
 void GoToJailCard::execute(Player& player, GameContext& gameContext) {
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage("Bidak dipindahkan ke Penjara.");
+    }
+
     Board* board = gameContext.getBoard();
     if (board == nullptr) {
         player.setStatus(PlayerStatus::JAILED);
@@ -18,16 +23,12 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     }
 
     Tile* jailTileBase = board->getTile("PEN");
-    JailTile* jailTile = dynamic_cast<JailTile*>(jailTileBase);
 
-    if (jailTile != nullptr) {
+    if (jailTileBase != nullptr) {
+        JailTile* jailTile = static_cast<JailTile*>(jailTileBase);
         player.moveTo(jailTile->getIndex());
         jailTile->applyJailStatus(player);
         return;
-    }
-
-    if (jailTileBase != nullptr) {
-        player.moveTo(jailTileBase->getIndex());
     }
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);

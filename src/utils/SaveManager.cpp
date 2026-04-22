@@ -1,6 +1,7 @@
 #include "utils/SaveManager.hpp"
 
 #include <fstream>
+#include <istream>
 #include <sstream>
 #include <stdexcept>
 
@@ -90,6 +91,77 @@ std::string SaveManager::serializeLog(const std::vector<LogEntry>& entries) cons
 	}
 
 	return oss.str();
+}
+
+std::string SaveManager::readLineOrThrow(std::istream& input, const std::string& section) const {
+	std::string line;
+	if (!std::getline(input, line)) {
+		throw std::runtime_error("SaveManager: unexpected end while reading " + section);
+	}
+	return line;
+}
+
+std::string SaveManager::parseSection(std::istream& input, const std::string& expectedSection) const {
+	std::string line = readLineOrThrow(input, expectedSection);
+	size_t pos = line.find('|');
+	if (pos == std::string::npos) {
+		throw std::runtime_error("SaveManager: malformed line -> '" + line + "'");
+	}
+
+	std::string section = line.substr(0, pos);
+	if (section != expectedSection) {
+		throw std::runtime_error("SaveManager: expected " + expectedSection + ", got " + section);
+	}
+
+	return line.substr(pos + 1);
+}
+
+int SaveManager::parseIntStrict(const std::string& value, const std::string& fieldName) const {
+	try {
+		size_t parsed = 0;
+		int number = std::stoi(value, &parsed);
+		if (parsed != value.size()) {
+			throw std::runtime_error("invalid suffix");
+		}
+		return number;
+	} catch (const std::exception&) {
+		throw std::runtime_error("SaveManager: invalid integer for " + fieldName + " -> '" + value + "'");
+	}
+}
+
+std::vector<std::string> SaveManager::parseCsv(const std::string& value) const {
+	std::vector<std::string> result;
+	if (value.empty()) {
+		return result;
+	}
+
+	std::istringstream stream(value);
+	std::string token;
+	while (std::getline(stream, token, ',')) {
+		result.push_back(token);
+	}
+	return result;
+}
+
+LogEntry SaveManager::parseLog(const std::string& line) const {
+	std::vector<std::string> parts;
+	std::istringstream logLineStream(line);
+	std::string part;
+	while (std::getline(logLineStream, part, '|')) {
+		parts.push_back(part);
+	}
+
+	if (parts.size() < 4) {
+		throw std::runtime_error("SaveManager: invalid log line");
+	}
+
+	int turn = parseIntStrict(parts[0], "log.turn");
+	std::string detail = parts[3];
+	for (size_t j = 4; j < parts.size(); ++j) {
+		detail += "|" + parts[j];
+	}
+
+	return LogEntry(turn, parts[1], parts[2], detail);
 }
 
 PlayerState SaveManager::parsePlayer(const std::string& line) const {
@@ -239,57 +311,12 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 		throw std::runtime_error("SaveManager: cannot open '" + filename + "' for reading");
 	}
 
-	auto readLineOrThrow = [&](const std::string& section) {
-		std::string line;
-		if (!std::getline(file, line)) {
-			throw std::runtime_error("SaveManager: unexpected end while reading " + section);
-		}
-		return line;
-	};
+	int currentTurn = parseIntStrict(parseSection(file, "CURRENT_TURN"), "currentTurn");
+	int maxTurn = parseIntStrict(parseSection(file, "MAX_TURN"), "maxTurn");
+	std::string activePlayerUsername = parseSection(file, "ACTIVE_PLAYER");
+	std::vector<std::string> turnOrder = parseCsv(parseSection(file, "TURN_ORDER"));
 
-	auto parseSection = [&](const std::string& expectedSection) {
-		std::string line = readLineOrThrow(expectedSection);
-		size_t pos = line.find('|');
-		if (pos == std::string::npos) {
-			throw std::runtime_error("SaveManager: malformed line -> '" + line + "'");
-		}
-
-		std::string section = line.substr(0, pos);
-		if (section != expectedSection) {
-			throw std::runtime_error("SaveManager: expected " + expectedSection + ", got " + section);
-		}
-
-		return line.substr(pos + 1);
-	};
-
-	auto parseIntStrict = [&](const std::string& value, const std::string& fieldName) {
-		try {
-			size_t parsed = 0;
-			int number = std::stoi(value, &parsed);
-			if (parsed != value.size()) {
-				throw std::runtime_error("invalid suffix");
-			}
-			return number;
-		} catch (const std::exception&) {
-			throw std::runtime_error("SaveManager: invalid integer for " + fieldName + " -> '" + value + "'");
-		}
-	};
-
-	int currentTurn = parseIntStrict(parseSection("CURRENT_TURN"), "currentTurn");
-	int maxTurn = parseIntStrict(parseSection("MAX_TURN"), "maxTurn");
-	std::string activePlayerUsername = parseSection("ACTIVE_PLAYER");
-
-	std::vector<std::string> turnOrder;
-	std::string turnOrderLine = parseSection("TURN_ORDER");
-	if (!turnOrderLine.empty()) {
-		std::istringstream turnOrderStream(turnOrderLine);
-		std::string username;
-		while (std::getline(turnOrderStream, username, ',')) {
-			turnOrder.push_back(username);
-		}
-	}
-
-	int playerCount = parseIntStrict(parseSection("PLAYERS"), "playerCount");
+	int playerCount = parseIntStrict(parseSection(file, "PLAYERS"), "playerCount");
 	if (playerCount < 0) {
 		throw std::runtime_error("SaveManager: negative playerCount");
 	}
@@ -297,10 +324,10 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 	std::vector<PlayerState> players;
 	players.reserve(static_cast<size_t>(playerCount));
 	for (int i = 0; i < playerCount; ++i) {
-		players.push_back(parsePlayer(readLineOrThrow("player line")));
+		players.push_back(parsePlayer(readLineOrThrow(file, "player line")));
 	}
 
-	int propertyCount = parseIntStrict(parseSection("PROPERTIES"), "propertyCount");
+	int propertyCount = parseIntStrict(parseSection(file, "PROPERTIES"), "propertyCount");
 	if (propertyCount < 0) {
 		throw std::runtime_error("SaveManager: negative propertyCount");
 	}
@@ -308,20 +335,12 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 	std::vector<PropertyState> properties;
 	properties.reserve(static_cast<size_t>(propertyCount));
 	for (int i = 0; i < propertyCount; ++i) {
-		properties.push_back(parseProperty(readLineOrThrow("property line")));
+		properties.push_back(parseProperty(readLineOrThrow(file, "property line")));
 	}
 
-	std::vector<std::string> deckState;
-	std::string deckLine = parseSection("DECK");
-	if (!deckLine.empty()) {
-		std::istringstream deckStream(deckLine);
-		std::string card;
-		while (std::getline(deckStream, card, ',')) {
-			deckState.push_back(card);
-		}
-	}
+	std::vector<std::string> deckState = parseCsv(parseSection(file, "DECK"));
 
-	int logCount = parseIntStrict(parseSection("LOGS"), "logCount");
+	int logCount = parseIntStrict(parseSection(file, "LOGS"), "logCount");
 	if (logCount < 0) {
 		throw std::runtime_error("SaveManager: negative logCount");
 	}
@@ -329,24 +348,7 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 	std::vector<LogEntry> logs;
 	logs.reserve(static_cast<size_t>(logCount));
 	for (int i = 0; i < logCount; ++i) {
-		std::vector<std::string> parts;
-		std::istringstream logLineStream(readLineOrThrow("log line"));
-		std::string part;
-		while (std::getline(logLineStream, part, '|')) {
-			parts.push_back(part);
-		}
-
-		if (parts.size() < 4) {
-			throw std::runtime_error("SaveManager: invalid log line");
-		}
-
-		int turn = parseIntStrict(parts[0], "log.turn");
-		std::string detail = parts[3];
-		for (size_t j = 4; j < parts.size(); ++j) {
-			detail += "|" + parts[j];
-		}
-
-		logs.emplace_back(turn, parts[1], parts[2], detail);
+		logs.push_back(parseLog(readLineOrThrow(file, "log line")));
 	}
 
 	return GameState(

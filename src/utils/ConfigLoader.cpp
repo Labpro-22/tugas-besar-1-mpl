@@ -12,13 +12,13 @@
 #include <sstream>
 #include <stdexcept>
 
-PropertyType stringToType(const std::string& s) {
+PropertyType ConfigLoader::stringToType(const std::string& s) {
     if (s == "STREET") return PropertyType::STREET;
     if (s == "RAILROAD") return PropertyType::RAILROAD;
     return PropertyType::UTILITY;
 }
 
-ColorGroup stringToColor(const std::string& s) {
+ColorGroup ConfigLoader::stringToColor(const std::string& s) {
     if (s == "COKLAT") return ColorGroup::COKLAT;
     if (s == "BIRU_MUDA") return ColorGroup::BIRU_MUDA;
     if (s == "MERAH_MUDA") return ColorGroup::MERAH_MUDA;

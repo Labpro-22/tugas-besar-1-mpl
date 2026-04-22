@@ -1,6 +1,7 @@
 #include "models/tiles/GoToJailTile.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "core/TurnManager.hpp"
 
@@ -10,7 +11,12 @@ GoToJailTile::GoToJailTile(int index, const std::string& code, const std::string
     : ActionTile(index, code, name, TileCategory::DEFAULT) {}
 
 void GoToJailTile::onLanded(Player& player, GameContext& gameContext) {
-    player.setPosition(10); 
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage("Kamu mendarat di Petak Pergi ke Penjara!");
+        gameContext.getIO()->showMessage("Bidak dipindahkan ke Penjara.");
+    }
+
+    player.setPosition(10);
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);
     

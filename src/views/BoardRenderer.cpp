@@ -54,13 +54,16 @@ namespace {
     }
 
     ColorGroup getTileColorGroup(const Tile* tile) {
-        const StreetTile* street = dynamic_cast<const StreetTile*>(tile);
-        if (street != nullptr) {
-            return street->getColorGroup();
+        if (tile == nullptr || tile->getCategory() != TileCategory::PROPERTY) {
+            return ColorGroup::DEFAULT;
         }
 
-        const UtilityTile* utility = dynamic_cast<const UtilityTile*>(tile);
-        if (utility != nullptr) {
+        const PropertyTile* property = static_cast<const PropertyTile*>(tile);
+        if (property->getPropertyType() == PropertyType::STREET) {
+            return property->getColorGroup();
+        }
+
+        if (property->getPropertyType() == PropertyType::UTILITY) {
             return ColorGroup::ABU_ABU;
         }
 
@@ -109,8 +112,12 @@ namespace {
     }
 
     std::string buildPropertyStatus(const Tile* tile, const std::vector<Player>& players) {
-        const PropertyTile* property = dynamic_cast<const PropertyTile*>(tile);
-        if (property == nullptr || property->getStatus() == PropertyStatus::BANK) {
+        if (tile == nullptr || tile->getCategory() != TileCategory::PROPERTY) {
+            return "";
+        }
+
+        const PropertyTile* property = static_cast<const PropertyTile*>(tile);
+        if (property->getStatus() == PropertyStatus::BANK) {
             return "";
         }
 
@@ -127,12 +134,11 @@ namespace {
             return ownerLabel + "[M]";
         }
 
-        const StreetTile* street = dynamic_cast<const StreetTile*>(property);
-        if (street == nullptr) {
+        if (property->getPropertyType() != PropertyType::STREET) {
             return ownerLabel;
         }
 
-        int level = street->getBuildingLevel();
+        int level = property->getBuildingLevel();
         if (level == 5) {
             return ownerLabel + " *";
         }

@@ -17,6 +17,11 @@ private:
     std::string serializeDeck(const std::vector<std::string>& deck) const;
     std::string serializeLog(const std::vector<LogEntry>& entries) const;
 
+    std::string readLineOrThrow(std::istream& input, const std::string& section) const;
+    std::string parseSection(std::istream& input, const std::string& expectedSection) const;
+    int parseIntStrict(const std::string& value, const std::string& fieldName) const;
+    std::vector<std::string> parseCsv(const std::string& value) const;
+    LogEntry parseLog(const std::string& line) const;
     PlayerState parsePlayer(const std::string& line) const;
     PropertyState parseProperty(const std::string& line) const;
 

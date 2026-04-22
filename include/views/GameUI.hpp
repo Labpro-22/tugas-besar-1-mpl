@@ -26,7 +26,7 @@ public:
     int promptPlayerCount();
     std::vector<std::string> promptPlayerNames(int n);
 
-    bool confirmYN(const std::string& message);
+    bool confirmYN(const std::string& message) override;
     int promptInt(const std::string& prompt) override;
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
     Command promptPlayerCommand(const std::string& username);
@@ -45,7 +45,14 @@ public:
     void showHelp();
     void showSection(const std::string& title);
     void showTurnSummary(const Player& player, int turn);
-    void showDiceLanding(int die1, int die2, int total, const std::string& tileName, const std::string& tileCode);
+    void showDiceLanding(
+        int die1,
+        int die2,
+        int total,
+        const std::string& playerName,
+        const std::string& tileName,
+        const std::string& tileCode
+    );
     void showWinner(const std::vector<Player*>& winners, GameContext& context);
 
     void showLog(const std::vector<LogEntry>& entries);

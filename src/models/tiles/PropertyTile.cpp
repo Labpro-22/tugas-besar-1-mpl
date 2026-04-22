@@ -7,8 +7,16 @@
 
 PropertyTile::PropertyTile() : Tile(), owner(nullptr), status(PropertyStatus::BANK), mortgageValue(0) {}
 
-PropertyTile::PropertyTile(int index, const std::string& code, const std::string& name, int mortgageValue, int buyPrice)
-    : Tile(index, code, name, TileCategory::PROPERTY), owner(nullptr), status(PropertyStatus::BANK), mortgageValue(mortgageValue), buyPrice(buyPrice) {}
+PropertyTile::PropertyTile(int index,
+                           const std::string& code,
+                           const std::string& name,
+                           int buyPrice,
+                           int mortgageValue)
+    : Tile(index, code, name, TileCategory::PROPERTY),
+      owner(nullptr),
+      status(PropertyStatus::BANK),
+      mortgageValue(mortgageValue),
+      buyPrice(buyPrice) {}
 
 void PropertyTile::mortgage() {
     // Properti diubah statusnya menjadi tergadai. Penambahan uang pemain 
@@ -68,4 +76,32 @@ int PropertyTile::getMortgageValue() const {
 
 int PropertyTile::getBuyPrice() const{
     return buyPrice;
+}
+
+ColorGroup PropertyTile::getColorGroup() const {
+    return ColorGroup::DEFAULT;
+}
+
+int PropertyTile::getBuildingLevel() const {
+    return 0;
+}
+
+int PropertyTile::getFestivalMultiplier() const {
+    return 1;
+}
+
+int PropertyTile::getFestivalDuration() const {
+    return 0;
+}
+
+int PropertyTile::getHouseCost() const {
+    return 0;
+}
+
+int PropertyTile::getHotelCost() const {
+    return 0;
+}
+
+int PropertyTile::getRentAtLevel(int) const {
+    return 0;
 }

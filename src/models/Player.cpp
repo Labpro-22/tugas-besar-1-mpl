@@ -108,6 +108,10 @@ void Player::removeCard(SkillCard* card) {
     }
 }
 
+void Player::clearHand() {
+    hand.clear();
+}
+
 // Query/Calculation
 int Player::getTotalWealth() const {
     int total = balance;

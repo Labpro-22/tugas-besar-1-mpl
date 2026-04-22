@@ -43,7 +43,11 @@ void BankruptcyHandler::showLiquidationPanel(Player& player, int needed, GameCon
             break;
         }
 
-        StreetTile* street = dynamic_cast<StreetTile*>(property);
+        StreetTile* street = nullptr;
+        if (property->getPropertyType() == PropertyType::STREET) {
+            street = static_cast<StreetTile*>(property);
+        }
+
         while (street != nullptr && street->getBuildingLevel() > 0 && player.getBalance() < needed) {
             int received = street->sellBuilding();
             player += received;

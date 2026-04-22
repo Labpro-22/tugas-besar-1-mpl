@@ -2,6 +2,7 @@
 
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 
@@ -42,5 +43,10 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
 
         player -= amount;
         *otherPlayer += amount;
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage(
+                player.getUsername() + " membayar M" + std::to_string(amount) +
+                    " kepada " + otherPlayer->getUsername() + ".");
+        }
     }
 }

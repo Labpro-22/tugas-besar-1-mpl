@@ -76,12 +76,10 @@ namespace {
             return lhs < rhs;
         }
 
-        const StreetTile* leftStreet = dynamic_cast<const StreetTile*>(lhs);
-        const StreetTile* rightStreet = dynamic_cast<const StreetTile*>(rhs);
-
-        if (leftStreet != nullptr && rightStreet != nullptr &&
-            leftStreet->getColorGroup() != rightStreet->getColorGroup()) {
-            return static_cast<int>(leftStreet->getColorGroup()) < static_cast<int>(rightStreet->getColorGroup());
+        if (lhs->getPropertyType() == PropertyType::STREET &&
+            rhs->getPropertyType() == PropertyType::STREET &&
+            lhs->getColorGroup() != rhs->getColorGroup()) {
+            return static_cast<int>(lhs->getColorGroup()) < static_cast<int>(rhs->getColorGroup());
         }
 
         return lhs->getIndex() < rhs->getIndex();
@@ -104,41 +102,38 @@ void PropertyCardRenderer::renderDeed(const PropertyTile* property) const {
     printKeyValue("Harga Beli", property->getBuyPrice());
     printKeyValue("Nilai Gadai", property->getMortgageValue());
 
-    const StreetTile* street = dynamic_cast<const StreetTile*>(property);
-    if (street != nullptr) {
+    if (property->getPropertyType() == PropertyType::STREET) {
         printKeyValue("Jenis", "STREET");
-        printKeyValue("Warna", colorGroupToString(street->getColorGroup()));
-        printKeyValue("Level Bangunan", street->getBuildingLevel() == 5
+        printKeyValue("Warna", colorGroupToString(property->getColorGroup()));
+        printKeyValue("Level Bangunan", property->getBuildingLevel() == 5
             ? "HOTEL"
-            : std::to_string(street->getBuildingLevel()));
+            : std::to_string(property->getBuildingLevel()));
 
         std::cout << "Tabel Sewa:" << std::endl;
         for (int level = 0; level <= 5; ++level) {
-            std::cout << "  Level " << level << " : M" << street->getRentAtLevel(level) << std::endl;
+            std::cout << "  Level " << level << " : M" << property->getRentAtLevel(level) << std::endl;
         }
         
-        printKeyValue("Biaya Rumah", street->getHouseCost());
-        printKeyValue("Biaya Hotel", street->getHotelCost());
+        printKeyValue("Biaya Rumah", property->getHouseCost());
+        printKeyValue("Biaya Hotel", property->getHotelCost());
 
-        if (street->getFestivalDuration() > 0) {
-            std::cout << "Festival Aktif     : x" << street->getFestivalMultiplier()
-                      << " (" << street->getFestivalDuration() << " giliran)" << std::endl;
+        if (property->getFestivalDuration() > 0) {
+            std::cout << "Festival Aktif     : x" << property->getFestivalMultiplier()
+                      << " (" << property->getFestivalDuration() << " giliran)" << std::endl;
         }
 
         printDivider('-');
         return;
     }
 
-    const RailroadTile* railroad = dynamic_cast<const RailroadTile*>(property);
-    if (railroad != nullptr) {
+    if (property->getPropertyType() == PropertyType::RAILROAD) {
         printKeyValue("Jenis", "RAILROAD");
         std::cout << "Sewa railroad mengikuti jumlah stasiun milik pemilik." << std::endl;
         printDivider('-');
         return;
     }
 
-    const UtilityTile* utility = dynamic_cast<const UtilityTile*>(property);
-    if (utility != nullptr) {
+    if (property->getPropertyType() == PropertyType::UTILITY) {
         printKeyValue("Jenis", "UTILITY");
         std::cout << "Sewa utility dihitung dari total dadu x multiplier utilitas." << std::endl;
         printDivider('-');
@@ -170,59 +165,55 @@ void PropertyCardRenderer::renderPlayerProperties(const Player& player) const {
             continue;
         }
 
-        StreetTile* street = dynamic_cast<StreetTile*>(property);
-        RailroadTile* railroad = dynamic_cast<RailroadTile*>(property);
-        UtilityTile* utility = dynamic_cast<UtilityTile*>(property);
-
-        if (street != nullptr) {
-            if (!hasStreetGroup || currentColorGroup != street->getColorGroup()) {
-                currentColorGroup = street->getColorGroup();
+        if (property->getPropertyType() == PropertyType::STREET) {
+            if (!hasStreetGroup || currentColorGroup != property->getColorGroup()) {
+                currentColorGroup = property->getColorGroup();
                 hasStreetGroup = true;
                 std::cout << "[" << colorGroupToString(currentColorGroup) << "]" << std::endl;
             }
 
-            std::cout << "- " << street->getName()
-                      << " (" << street->getCode() << ")"
-                      << " | Status: " << propertyStatusToString(street->getStatus())
+            std::cout << "- " << property->getName()
+                      << " (" << property->getCode() << ")"
+                      << " | Status: " << propertyStatusToString(property->getStatus())
                       << " | Level: ";
 
-            if (street->getBuildingLevel() == 5) {
+            if (property->getBuildingLevel() == 5) {
                 std::cout << "HOTEL";
             } else {
-                std::cout << street->getBuildingLevel();
+                std::cout << property->getBuildingLevel();
             }
 
-            if (street->getFestivalDuration() > 0) {
-                std::cout << " | Festival x" << street->getFestivalMultiplier()
-                          << " (" << street->getFestivalDuration() << " giliran)";
+            if (property->getFestivalDuration() > 0) {
+                std::cout << " | Festival x" << property->getFestivalMultiplier()
+                          << " (" << property->getFestivalDuration() << " giliran)";
             }
 
             std::cout << std::endl;
             continue;
         }
 
-        if (railroad != nullptr) {
+        if (property->getPropertyType() == PropertyType::RAILROAD) {
             if (!railroadHeaderShown) {
                 std::cout << "[RAILROAD]" << std::endl;
                 railroadHeaderShown = true;
             }
 
-            std::cout << "- " << railroad->getName()
-                      << " (" << railroad->getCode() << ")"
-                      << " | Status: " << propertyStatusToString(railroad->getStatus())
+            std::cout << "- " << property->getName()
+                      << " (" << property->getCode() << ")"
+                      << " | Status: " << propertyStatusToString(property->getStatus())
                       << std::endl;
             continue;
         }
 
-        if (utility != nullptr) {
+        if (property->getPropertyType() == PropertyType::UTILITY) {
             if (!utilityHeaderShown) {
                 std::cout << "[UTILITY]" << std::endl;
                 utilityHeaderShown = true;
             }
 
-            std::cout << "- " << utility->getName()
-                      << " (" << utility->getCode() << ")"
-                      << " | Status: " << propertyStatusToString(utility->getStatus())
+            std::cout << "- " << property->getName()
+                      << " (" << property->getCode() << ")"
+                      << " | Status: " << propertyStatusToString(property->getStatus())
                       << std::endl;
         }
     }
@@ -247,13 +238,12 @@ void PropertyCardRenderer::renderAuctionUI(const PropertyTile* property,
     printKeyValue("Penawar Tertinggi", bidder != nullptr ? bidder->getUsername() : "-");
     printKeyValue("Nilai Gadai", property->getMortgageValue());
 
-    const StreetTile* street = dynamic_cast<const StreetTile*>(property);
-    if (street != nullptr) {
+    if (property->getPropertyType() == PropertyType::STREET) {
         printKeyValue("Jenis", "STREET");
-        printKeyValue("Warna", colorGroupToString(street->getColorGroup()));
-    } else if (dynamic_cast<const RailroadTile*>(property) != nullptr) {
+        printKeyValue("Warna", colorGroupToString(property->getColorGroup()));
+    } else if (property->getPropertyType() == PropertyType::RAILROAD) {
         printKeyValue("Jenis", "RAILROAD");
-    } else if (dynamic_cast<const UtilityTile*>(property) != nullptr) {
+    } else if (property->getPropertyType() == PropertyType::UTILITY) {
         printKeyValue("Jenis", "UTILITY");
     }
 

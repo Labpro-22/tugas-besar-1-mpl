@@ -1,5 +1,7 @@
 #include "models/tiles/CardTile.hpp"
+
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "utils/CardDeck.hpp"
 #include "models/cards/ActionCard.hpp"
 #include "core/TurnManager.hpp"
@@ -11,20 +13,31 @@ CardTile::CardTile(int index, const std::string& code, const std::string& name, 
     : ActionTile(index, code, name, TileCategory::DEFAULT), cardType(cardType) {}
 
 void CardTile::onLanded(Player& player, GameContext& gameContext) {
+    GameIO* io = gameContext.getIO();
+    if (io != nullptr) {
+        std::string tileName = cardType == CardType::CHANCE ? "Petak Kesempatan" : "Petak Dana Umum";
+        io->showMessage("Kamu mendarat di " + tileName + "!");
+        io->showMessage("Mengambil kartu...");
+    }
+
     CardDeck<ActionCard>* deck = (cardType == CardType::CHANCE) 
                                  ? gameContext.getChanceDeck() 
                                  : gameContext.getCommunityDeck();
     if (deck) {
         try {
-            // Ambil top card
             ActionCard* card = deck->draw();
             
             if (card) {
+                if (io != nullptr) {
+                    io->showMessage("Kartu: \"" + card->getText() + "\"");
+                }
                 card->execute(player, gameContext);
                 deck->discardCard(card); 
             }
         } catch (const std::runtime_error& e) {
-            // pake logger via getTurnManager
+            if (io != nullptr) {
+                io->showError(e, gameContext.getLogger(), gameContext.getTurnManager()->getCurrentTurn(), player.getUsername());
+            }
             if (gameContext.getLogger()) {
                 gameContext.getLogger()->log(
                     gameContext.getTurnManager()->getCurrentTurn(),

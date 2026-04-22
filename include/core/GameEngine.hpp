@@ -5,15 +5,16 @@
 
 #include "models/Player.hpp"
 #include "Board.hpp"
+#include "CommandProcessor.hpp"
 #include "Dice.hpp"
 #include "TurnManager.hpp"
 #include "AuctionManager.hpp"
 #include "BankruptcyHandler.hpp"
+#include "models/cards/ActionCard.hpp"
+#include "models/cards/SkillCard.hpp"
 #include "utils/CardDeck.hpp"
 #include "views/GameUI.hpp"
 
-class ActionCard;
-class SkillCard;
 class ConfigData;
 class GameState;
 class Command;
@@ -37,11 +38,9 @@ private:
 
     GameContext* context;
     const ConfigData* configData;
+    CommandProcessor commandProcessor;
 
-    void buildBoard();
-    void buildDecks();
     void randomizeTurnOrder();
-    GameState createGameState() const;
 
 public:
     GameEngine(TransactionLogger* logger);
@@ -56,8 +55,6 @@ public:
     void runGameLoop();
 
     void processTurn(Player& player);
-    void processCommand(const Command& cmd, Player& player);
-
     bool checkGameEnd() const;
 
     std::vector<Player*> determineWinner() const;

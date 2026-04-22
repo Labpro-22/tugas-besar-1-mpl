@@ -21,6 +21,7 @@ public:
 
     virtual int calculateRent(int diceTotal, const GameContext& gameContext) = 0;
     virtual int getSellValueToBank() const = 0;
+    virtual PropertyType getPropertyType() const = 0;
 
     void mortgage();
     void redeem();
@@ -33,4 +34,11 @@ public:
     PropertyStatus getStatus() const;
     int getMortgageValue() const;
     int getBuyPrice() const;
+    virtual ColorGroup getColorGroup() const;
+    virtual int getBuildingLevel() const;
+    virtual int getFestivalMultiplier() const;
+    virtual int getFestivalDuration() const;
+    virtual int getHouseCost() const;
+    virtual int getHotelCost() const;
+    virtual int getRentAtLevel(int level) const;
 };

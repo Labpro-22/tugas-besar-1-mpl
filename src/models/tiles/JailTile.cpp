@@ -1,6 +1,7 @@
 #include "models/tiles/JailTile.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 
 JailTile::JailTile() : ActionTile(), jailFine(0) {}
 
@@ -9,6 +10,9 @@ JailTile::JailTile(int index, const std::string& code, const std::string& name, 
 
 void JailTile::onLanded(Player& player, GameContext& gameContext) {
     if (player.getStatus() == PlayerStatus::ACTIVE) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage("Kamu hanya mampir di Penjara.");
+        }
         gameContext.logEvent("PENJARA", player.getUsername() + " hanya mampir di Penjara.");
         return;
     }
@@ -24,6 +28,11 @@ void JailTile::applyJailStatus(Player& player) const {
 }
 
 void JailTile::processJailTurn(Player& player, GameContext& gameContext) const {
+    if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            player.getUsername() + " sedang berada di Penjara. Denda keluar: M" +
+                std::to_string(jailFine));
+    }
     gameContext.logEvent(
         "PENJARA",
         player.getUsername() + " sedang berada di Penjara. Denda keluar: M" + std::to_string(jailFine)
