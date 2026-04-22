@@ -29,7 +29,10 @@ private:
 
     bool parseIntStrict(const std::string& text, int& value) const;
     bool isRecognizedCommand(const std::string& keyword) const;
+    int getJailFine() const;
     void resolveMovement(Player& player, int totalMove);
+    CommandResult payJailFine(Player& player);
+    CommandResult processJailDiceAttempt(const Command& command, Player& player);
     CommandResult processDiceCommand(const Command& command, Player& player);
     void processSkillCommand(Player& player);
     void showLog(const Command& command);

@@ -132,13 +132,14 @@ void GameEngine::loadGame(const GameState& gameState) {
 
     BoardFactory::build(board, *configData);
     DeckFactory::buildActionDecks(chanceDeck, communityDeck);
-    DeckFactory::buildSkillDeck(skillDeck);
+    DeckFactory::buildSkillDeckFromState(skillDeck, gameState.getDeckState());
 
     players.clear();
     for (const PlayerState& state : gameState.getPlayerStates()) {
         players.emplace_back(state.getUsername(), state.getBalance());
         Player& player = players.back();
-        player.setPosition(state.getPosition());
+        Tile* playerTile = board.getTile(state.getPositionCode());
+        player.setPosition(playerTile == nullptr ? state.getPosition() : playerTile->getIndex());
         player.setStatus(state.getStatus());
         player.setJailTurns(state.getJailTurns());
 
@@ -212,7 +213,6 @@ void GameEngine::loadGame(const GameState& gameState) {
 }
 
 void GameEngine::runGameLoop() {
-    ui.showHelp();
     while (!checkGameEnd()) {
         Player* currentPlayer = turnManager.getCurrentPlayer();
         if (currentPlayer == nullptr) {

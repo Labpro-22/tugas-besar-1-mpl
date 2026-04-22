@@ -1,5 +1,8 @@
 #include "core/DeckFactory.hpp"
 
+#include <random>
+#include <sstream>
+#include <string>
 #include <vector>
 
 #include "models/cards/ActionCard.hpp"
@@ -16,6 +19,37 @@
 #include "models/cards/ShieldCard.hpp"
 #include "models/cards/SkillCard.hpp"
 #include "models/cards/TeleportCard.hpp"
+
+namespace {
+    int randomInt(int minValue, int maxValue) {
+        static std::mt19937 generator(std::random_device{}());
+        std::uniform_int_distribution<int> distribution(minValue, maxValue);
+        return distribution(generator);
+    }
+
+    std::string getCardType(const std::string& encodedName) {
+        std::size_t separator = encodedName.find(':');
+        if (separator == std::string::npos) {
+            return encodedName;
+        }
+        return encodedName.substr(0, separator);
+    }
+
+    int getEncodedValue(const std::string& encodedName, int fallback) {
+        std::size_t separator = encodedName.find(':');
+        if (separator == std::string::npos || separator + 1 >= encodedName.size()) {
+            return fallback;
+        }
+
+        try {
+            std::size_t parsed = 0;
+            int value = std::stoi(encodedName.substr(separator + 1), &parsed);
+            return parsed == encodedName.size() - separator - 1 ? value : fallback;
+        } catch (const std::exception&) {
+            return fallback;
+        }
+    }
+}
 
 void DeckFactory::buildActionDecks(
     CardDeck<ActionCard>& chanceDeck,
@@ -40,10 +74,10 @@ void DeckFactory::buildActionDecks(
 void DeckFactory::buildSkillDeck(CardDeck<SkillCard>& skillDeck) {
     std::vector<SkillCard*> skillCards;
     for (int i = 0; i < 4; ++i) {
-        skillCards.push_back(new MoveCard(4, 0));
+        skillCards.push_back(new MoveCard(randomInt(1, 12), 0));
     }
     for (int i = 0; i < 3; ++i) {
-        skillCards.push_back(new DiscountCard(50, 1));
+        skillCards.push_back(new DiscountCard(randomInt(1, 100), 1));
     }
     for (int i = 0; i < 2; ++i) {
         skillCards.push_back(new ShieldCard());
@@ -56,22 +90,58 @@ void DeckFactory::buildSkillDeck(CardDeck<SkillCard>& skillDeck) {
     skillDeck.reshuffle();
 }
 
+void DeckFactory::buildSkillDeckFromState(
+    CardDeck<SkillCard>& skillDeck,
+    const std::vector<std::string>& deckState
+) {
+    if (deckState.empty()) {
+        buildSkillDeck(skillDeck);
+        return;
+    }
+
+    std::vector<SkillCard*> skillCards;
+    for (const std::string& cardName : deckState) {
+        SkillCard* card = createSkillCardByName(cardName);
+        if (card != nullptr) {
+            skillCards.push_back(card);
+        }
+    }
+    skillDeck.initializeDeck(skillCards);
+}
+
 SkillCard* DeckFactory::createSkillCardByName(const std::string& typeName) {
-    if (typeName == "MoveCard") return new MoveCard();
-    if (typeName == "DiscountCard") return new DiscountCard(50, 1);
-    if (typeName == "ShieldCard") return new ShieldCard();
-    if (typeName == "TeleportCard") return new TeleportCard();
-    if (typeName == "LassoCard") return new LassoCard();
-    if (typeName == "DemolitionCard") return new DemolitionCard();
+    std::string type = getCardType(typeName);
+    if (type == "MoveCard") {
+        return new MoveCard(getEncodedValue(typeName, randomInt(1, 12)), 0);
+    }
+    if (type == "DiscountCard") {
+        return new DiscountCard(getEncodedValue(typeName, randomInt(10, 50)), 1);
+    }
+    if (type == "ShieldCard") return new ShieldCard();
+    if (type == "TeleportCard") return new TeleportCard();
+    if (type == "LassoCard") return new LassoCard();
+    if (type == "DemolitionCard") return new DemolitionCard();
     return nullptr;
+}
+
+std::string DeckFactory::encodeSkillCard(const SkillCard* card) {
+    if (card == nullptr) {
+        return "";
+    }
+
+    const std::string typeName = card->getTypeName();
+    if (typeName == "MoveCard" || typeName == "DiscountCard") {
+        return typeName + ":" + std::to_string(card->getValue());
+    }
+    return typeName;
 }
 
 std::string DeckFactory::describeSkillCard(const SkillCard* card) {
     if (card == nullptr) return "";
 
     const std::string typeName = card->getTypeName();
-    if (typeName == "MoveCard") return "Maju 4 petak";
-    if (typeName == "DiscountCard") return "Diskon pembayaran 50%";
+    if (typeName == "MoveCard") return "Maju " + std::to_string(card->getValue()) + " petak";
+    if (typeName == "DiscountCard") return "Diskon pembayaran " + std::to_string(card->getValue()) + "%";
     if (typeName == "ShieldCard") return "Kebal tagihan atau sanksi selama 1 turn";
     if (typeName == "TeleportCard") return "Pindah ke petak manapun";
     if (typeName == "LassoCard") return "Menarik lawan terdekat di depan";

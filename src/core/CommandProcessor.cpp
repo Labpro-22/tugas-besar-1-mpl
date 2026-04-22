@@ -4,6 +4,7 @@
 #include <string>
 
 #include "core/AssetManager.hpp"
+#include "core/BankruptcyHandler.hpp"
 #include "core/Board.hpp"
 #include "core/DeckFactory.hpp"
 #include "core/Dice.hpp"
@@ -15,6 +16,7 @@
 #include "models/state/GameState.hpp"
 #include "models/state/LogEntry.hpp"
 #include "models/tiles/GoTile.hpp"
+#include "models/tiles/JailTile.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/SaveManager.hpp"
@@ -63,9 +65,18 @@ bool CommandProcessor::isRecognizedCommand(const std::string& keyword) const {
            keyword == "SIMPAN" ||
            keyword == "MUAT" ||
            keyword == "CETAK_LOG" ||
+           keyword == "BAYAR_DENDA" ||
            keyword == "GUNAKAN_KEMAMPUAN" ||
            keyword == "HELP" ||
            keyword == "KELUAR";
+}
+
+int CommandProcessor::getJailFine() const {
+    Tile* jailTile = board.getTile("PEN");
+    if (jailTile == nullptr) {
+        return 0;
+    }
+    return static_cast<JailTile*>(jailTile)->getJailFine();
 }
 
 void CommandProcessor::resolveMovement(Player& player, int totalMove) {
@@ -99,8 +110,121 @@ void CommandProcessor::resolveMovement(Player& player, int totalMove) {
     }
 }
 
+CommandResult CommandProcessor::payJailFine(Player& player) {
+    if (!player.isJailed()) {
+        ui.showMessage("Kamu tidak sedang berada di penjara.");
+        return CommandResult();
+    }
+
+    int fine = getJailFine();
+    bool finePaid = false;
+    if (fine > 0 && !player.canAfford(fine)) {
+        ui.showMessage("Uang tidak cukup untuk membayar denda. Aset akan dilikuidasi bila memungkinkan.");
+        if (context != nullptr && context->getBankruptcyHandler() != nullptr) {
+            context->getBankruptcyHandler()->handleBankruptcy(player, nullptr, fine, *context);
+            finePaid = !player.isBankrupt();
+        }
+    } else {
+        player -= fine;
+        finePaid = true;
+    }
+
+    if (player.isBankrupt()) {
+        return CommandResult(false, true);
+    }
+
+    if (!finePaid) {
+        ui.showMessage("Denda belum bisa dibayar. Kamu masih berada di penjara.");
+        return CommandResult();
+    }
+
+    player.setStatus(PlayerStatus::ACTIVE);
+    player.setJailTurns(0);
+    player.setConsecutiveDoubles(0);
+    ui.showMessage("Denda M" + std::to_string(fine) + " dibayar. Kamu bebas dari penjara.");
+
+    if (logger != nullptr) {
+        logger->log(
+            turnManager.getCurrentTurn(),
+            player.getUsername(),
+            "PENJARA",
+            "Membayar denda M" + std::to_string(fine) + " untuk keluar dari penjara.");
+    }
+
+    return CommandResult();
+}
+
+CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, Player& player) {
+    const std::string keyword = command.getKeyword();
+    if (!player.isJailed()) {
+        return processDiceCommand(command, player);
+    }
+
+    if (player.hasRolledThisTurn()) {
+        throw InvalidCommandException(keyword, "percobaan keluar penjara sudah dilakukan pada giliran ini");
+    }
+
+    if (player.getJailTurns() > 3) {
+        throw InvalidCommandException(keyword, "giliran ke-4 di penjara wajib keluar dengan BAYAR_DENDA");
+    }
+
+    if (keyword == "ATUR_DADU") {
+        if (command.getArgCount() != 2) {
+            throw InvalidCommandException(keyword, "format ATUR_DADU X Y");
+        }
+
+        int die1 = 0;
+        int die2 = 0;
+        if (!parseIntStrict(command.getArg(0), die1) || !parseIntStrict(command.getArg(1), die2)) {
+            throw InvalidCommandException(keyword, "nilai dadu harus berupa angka 1 sampai 6");
+        }
+        dice.setManual(die1, die2);
+        ui.showMessage("Dadu diatur secara manual untuk percobaan keluar penjara.");
+    } else {
+        ui.showMessage("Mencoba keluar penjara dengan lempar dadu...");
+        dice.roll();
+    }
+
+    player.setActionTakenThisTurn(true);
+    player.setHasRolledThisTurn(true);
+    ui.showMessage(
+        "Hasil: " + std::to_string(dice.getDie1()) + " + " +
+            std::to_string(dice.getDie2()) + " = " + std::to_string(dice.getTotal()));
+
+    if (logger != nullptr) {
+        logger->log(
+            turnManager.getCurrentTurn(),
+            player.getUsername(),
+            "PENJARA",
+            "Percobaan keluar penjara: " + std::to_string(dice.getDie1()) + "+" +
+                std::to_string(dice.getDie2()) + "=" + std::to_string(dice.getTotal()));
+    }
+
+    if (!dice.isDouble()) {
+        ui.showMessage("Belum double. Kamu tetap di penjara dan giliran berakhir.");
+        if (player.getJailTurns() >= 3) {
+            ui.showMessage("Percobaan sudah 3 kali. Giliran berikutnya wajib BAYAR_DENDA.");
+        }
+        ui.getBoardRenderer().render(board, players, turnManager);
+        return CommandResult(false, true);
+    }
+
+    player.setStatus(PlayerStatus::ACTIVE);
+    player.setJailTurns(0);
+    player.setConsecutiveDoubles(0);
+    player.setHasRolledThisTurn(false);
+    ui.showMessage("Double! Kamu bebas dari penjara.");
+    ui.showMessage("Silakan lempar dadu lagi untuk melanjutkan giliran.");
+    ui.getBoardRenderer().render(board, players, turnManager);
+    return CommandResult(false, false);
+}
+
 CommandResult CommandProcessor::processDiceCommand(const Command& command, Player& player) {
     const std::string keyword = command.getKeyword();
+    if (player.isJailed()) {
+        return processJailDiceAttempt(command, player);
+    }
+
     if (player.hasRolledThisTurn()) {
         throw InvalidCommandException(keyword, "dadu sudah dilempar pada giliran ini");
     }
@@ -123,6 +247,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
     }
 
     player.setHasRolledThisTurn(true);
+    player.setActionTakenThisTurn(true);
 
     if (dice.getDie1() == dice.getDie2()) {
         player.setConsecutiveDoubles(player.getConsecutiveDoubles() + 1);
@@ -149,8 +274,6 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
         player.setConsecutiveDoubles(0);
     }
 
-    resolveMovement(player, dice.getTotal());
-
     if (logger != nullptr) {
         logger->log(
             turnManager.getCurrentTurn(),
@@ -159,6 +282,8 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
             "Lempar: " + std::to_string(dice.getDie1()) + "+" +
                 std::to_string(dice.getDie2()) + "=" + std::to_string(dice.getTotal()));
     }
+
+    resolveMovement(player, dice.getTotal());
 
     ui.getBoardRenderer().render(board, players, turnManager);
     if (dice.getDie1() == dice.getDie2() &&
@@ -187,30 +312,42 @@ void CommandProcessor::processSkillCommand(Player& player) {
     }
 
     const std::vector<SkillCard*>& hand = player.getHand();
-    if (hand.empty()) {
-        ui.showMessage("Tidak ada kartu kemampuan.");
+    std::vector<SkillCard*> usableCards;
+    for (SkillCard* card : hand) {
+        if (card != nullptr && (!player.isJailed() || card->canUseWhileJailed())) {
+            usableCards.push_back(card);
+        }
+    }
+
+    if (usableCards.empty()) {
+        if (player.isJailed()) {
+            ui.showMessage("Tidak ada kartu kemampuan yang dapat digunakan saat berada di penjara.");
+        } else {
+            ui.showMessage("Tidak ada kartu kemampuan.");
+        }
         return;
     }
 
     ui.showMessage("Daftar Kartu Kemampuan Spesial Anda:");
-    for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
+    for (int i = 0; i < static_cast<int>(usableCards.size()); ++i) {
         ui.showMessage(
-            std::to_string(i + 1) + ". " + hand[i]->getTypeName() +
-                " - " + DeckFactory::describeSkillCard(hand[i]));
+            std::to_string(i + 1) + ". " + usableCards[i]->getTypeName() +
+                " - " + DeckFactory::describeSkillCard(usableCards[i]));
     }
     ui.showMessage("0. Batal");
 
     int choice = ui.promptIntInRange(
-        "Pilih kartu yang ingin digunakan (0-" + std::to_string(hand.size()) + "): ",
+        "Pilih kartu yang ingin digunakan (0-" + std::to_string(usableCards.size()) + "): ",
         0,
-        static_cast<int>(hand.size()));
+        static_cast<int>(usableCards.size()));
     if (choice == 0) {
         ui.showMessage("Penggunaan kartu dibatalkan.");
         return;
     }
 
-    SkillCard* card = hand[choice - 1];
+    SkillCard* card = usableCards[choice - 1];
     card->use(player, *context);
+    player.setActionTakenThisTurn(true);
     player.removeCard(card);
     context->getSkillDeck()->discardCard(card);
     if (logger != nullptr) {
@@ -256,7 +393,7 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
     }
 
     if (keyword == "HELP") {
-        ui.showHelp();
+        ui.showHelp(player);
         return CommandResult();
     }
 
@@ -293,16 +430,19 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
 
     if (keyword == "GADAI") {
         AssetManager::mortgageProperty(player, *context);
+        player.setActionTakenThisTurn(true);
         return CommandResult();
     }
 
     if (keyword == "TEBUS") {
         AssetManager::redeemProperty(player, *context);
+        player.setActionTakenThisTurn(true);
         return CommandResult();
     }
 
     if (keyword == "BANGUN") {
         AssetManager::buildProperty(player, *context);
+        player.setActionTakenThisTurn(true);
         return CommandResult();
     }
 
@@ -315,9 +455,23 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         if (command.getArgCount() != 1) {
             throw InvalidCommandException(keyword, "format SIMPAN filename");
         }
+        if (player.hasTakenActionThisTurn()) {
+            throw InvalidCommandException(
+                keyword,
+                "SIMPAN hanya dapat dilakukan di awal giliran sebelum pemain menjalankan aksi apapun.");
+        }
 
-        SaveManager().saveGame(command.getArg(0), createGameState());
-        ui.showMessage("Permainan berhasil disimpan ke " + command.getArg(0));
+        std::string filename = command.getArg(0);
+        SaveManager().saveGame(filename, createGameState());
+        for (char& c : filename) {
+            if (c == '\\') {
+                c = '/';
+            }
+        }
+        if (filename.rfind("data/", 0) != 0) {
+            filename = "data/" + filename;
+        }
+        ui.showMessage("Permainan berhasil disimpan ke " + filename);
         return CommandResult();
     }
 
@@ -330,6 +484,15 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
     if (keyword == "CETAK_LOG") {
         showLog(command);
         return CommandResult();
+    }
+
+    if (keyword == "BAYAR_DENDA") {
+        bool wasJailed = player.isJailed();
+        CommandResult result = payJailFine(player);
+        if (wasJailed) {
+            player.setActionTakenThisTurn(true);
+        }
+        return result;
     }
 
     throw InvalidCommandException(keyword, "command tidak dikenali");

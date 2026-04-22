@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 #include "utils/CardDeck.hpp"
 
@@ -15,6 +16,11 @@ public:
     );
 
     static void buildSkillDeck(CardDeck<SkillCard>& skillDeck);
+    static void buildSkillDeckFromState(
+        CardDeck<SkillCard>& skillDeck,
+        const std::vector<std::string>& deckState
+    );
     static SkillCard* createSkillCardByName(const std::string& typeName);
+    static std::string encodeSkillCard(const SkillCard* card);
     static std::string describeSkillCard(const SkillCard* card);
 };

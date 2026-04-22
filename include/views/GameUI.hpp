@@ -42,7 +42,7 @@ public:
         int turn = 0,
         const std::string& username = "SYSTEM"
     );
-    void showHelp();
+    void showHelp(const Player& player);
     void showSection(const std::string& title);
     void showTurnSummary(const Player& player, int turn);
     void showDiceLanding(

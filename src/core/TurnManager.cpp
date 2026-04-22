@@ -297,11 +297,15 @@ void TurnManager::handleRentPayment(Player& player,
                                     PropertyTile& tile,
                                     GameContext& context) {
     GameIO* io = context.getIO();
+    Player* currentPlayer = getCurrentPlayer();
+    bool payerIsCurrentPlayer = currentPlayer == nullptr || currentPlayer == &player;
+    const std::string payerLabel = payerIsCurrentPlayer ? "Kamu" : player.getUsername();
+    const std::string payerBalanceLabel = payerIsCurrentPlayer ? "Uang kamu" : "Uang " + player.getUsername();
 
     if (tile.isMortgaged() || tile.isOwnedBy(player)) {
         if (tile.isMortgaged() && io != nullptr) {
             io->showMessage(
-                "Kamu mendarat di " + tile.getName() + " (" + tile.getCode() + ").");
+                payerLabel + " mendarat di " + tile.getName() + " (" + tile.getCode() + ").");
             io->showMessage("Properti ini sedang digadaikan [M]. Tidak ada sewa yang dikenakan.");
         }
         return;
@@ -340,7 +344,7 @@ void TurnManager::handleRentPayment(Player& player,
 
     if (io != nullptr) {
         io->showMessage(
-            "Kamu mendarat di " + tile.getName() + " (" + tile.getCode() +
+            payerLabel + " mendarat di " + tile.getName() + " (" + tile.getCode() +
                 "), milik " + owner->getUsername() + "!");
         io->showMessage("Sewa: M" + std::to_string(rentAmount));
     }
@@ -348,9 +352,9 @@ void TurnManager::handleRentPayment(Player& player,
     if (!player.canAfford(rentAmount)) {
         if (io != nullptr) {
             io->showMessage(
-                "Kamu tidak mampu membayar sewa penuh! (M" +
+                payerLabel + " tidak mampu membayar sewa penuh! (M" +
                     std::to_string(rentAmount) + ")");
-            io->showMessage("Uang kamu saat ini: M" + std::to_string(player.getBalance()));
+            io->showMessage(payerBalanceLabel + " saat ini: M" + std::to_string(player.getBalance()));
         }
         BankruptcyHandler* bankruptcyHandler = context.getBankruptcyHandler();
         if (bankruptcyHandler != nullptr) {
@@ -366,15 +370,20 @@ void TurnManager::handleRentPayment(Player& player,
 
     if (io != nullptr) {
         io->showMessage(
-            "Uang kamu: M" + std::to_string(playerBefore) +
+            payerBalanceLabel + ": M" + std::to_string(playerBefore) +
                 " -> M" + std::to_string(player.getBalance()));
         io->showMessage(
             "Uang " + owner->getUsername() + ": M" + std::to_string(ownerBefore) +
                 " -> M" + std::to_string(owner->getBalance()));
     }
 
-    context.logEvent(
-        "SEWA",
-        player.getUsername() + " membayar sewa ke " + owner->getUsername() +
-            " sebesar M" + std::to_string(rentAmount));
+    TransactionLogger* logger = context.getLogger();
+    if (logger != nullptr) {
+        logger->log(
+            getCurrentTurn(),
+            player.getUsername(),
+            "SEWA",
+            player.getUsername() + " membayar sewa ke " + owner->getUsername() +
+                " sebesar M" + std::to_string(rentAmount));
+    }
 }

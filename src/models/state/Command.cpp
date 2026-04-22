@@ -28,6 +28,7 @@ namespace {
                keyword == "SIMPAN" ||
                keyword == "MUAT" ||
                keyword == "CETAK_LOG" ||
+               keyword == "BAYAR_DENDA" ||
                keyword == "GUNAKAN_KEMAMPUAN" ||
                keyword == "HELP" ||
                keyword == "KELUAR";
@@ -76,6 +77,10 @@ namespace {
 
         if (keyword == "CETAK_LOG") {
             return argCount == 0 || argCount == 1;
+        }
+
+        if (keyword == "BAYAR_DENDA") {
+            return argCount == 0;
         }
 
         if (keyword == "GUNAKAN_KEMAMPUAN") {

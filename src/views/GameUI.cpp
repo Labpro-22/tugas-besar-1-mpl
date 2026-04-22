@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "core/TurnManager.hpp"
+#include "models/cards/SkillCard.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/exceptions/ExceptionHandler.hpp"
 #include "views/GameUI.hpp"
@@ -13,6 +14,15 @@ namespace {
             throw std::runtime_error("Input dihentikan sebelum perintah selesai diproses.");
         }
     }
+
+    bool hasUsableSkillCard(const Player& player) {
+        for (SkillCard* card : player.getHand()) {
+            if (card != nullptr && (!player.isJailed() || card->canUseWhileJailed())) {
+                return true;
+            }
+        }
+        return false;
+    }
 }
 
 int GameUI::showMainMenu() {
@@ -22,7 +32,7 @@ int GameUI::showMainMenu() {
     std::cout << "| 1. Game Baru                 |" << std::endl;
     std::cout << "| 2. Muat Game                 |" << std::endl;
     std::cout << "+------------------------------+" << std::endl;
-    std::cout << "Catatan load: MUAT <filename>" << std::endl;
+    std::cout << "Catatan load: MUAT <filename> dari folder data/" << std::endl;
 
     int choice = 0;
     while (true) {
@@ -42,6 +52,7 @@ int GameUI::showMainMenu() {
 Command GameUI::promptLoadCommand() {
     std::cout << "\nMasukkan command load sesuai spesifikasi." << std::endl;
     std::cout << "Contoh: MUAT game_sesi1.txt" << std::endl;
+    std::cout << "File akan dicari dari folder data/." << std::endl;
     std::cout << "> ";
     return cmdParser.readCommand();
 }
@@ -140,6 +151,7 @@ int GameUI::promptIntInRange(const std::string& prompt, int minValue, int maxVal
 
 Command GameUI::promptPlayerCommand(const std::string& username) {
     std::cout << "\n";
+    std::cout << "Bingung? ketik HELP ea...";
     std::cout << "> [" << username << "]: ";
     return cmdParser.readCommand();
 }
@@ -165,21 +177,37 @@ void GameUI::showUnknownError(
     ExceptionHandler::handleUnknown(std::cout, logger, turn, username);
 }
 
-void GameUI::showHelp() {
+void GameUI::showHelp(const Player& player) {
     std::cout << "\n";
     std::cout << "+-------------------------------------------------------------+\n";
-    std::cout << "| COMMAND                                                     |\n";
+    std::cout << "| COMMAND TERSEDIA                                            |\n";
     std::cout << "+-------------------------------------------------------------+\n";
     std::cout << "| CETAK_PAPAN             | tampilkan papan                   |\n";
-    std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
-    std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
     std::cout << "| CETAK_AKTA KODE         | tampilkan akta properti           |\n";
     std::cout << "| CETAK_PROPERTI          | tampilkan properti pemain         |\n";
-    std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
-    std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
-    std::cout << "| SIMPAN file             | simpan game                       |\n";
-    std::cout << "| MUAT file               | load hanya dari menu awal         |\n";
     std::cout << "| CETAK_LOG [n]           | tampilkan log transaksi           |\n";
+    std::cout << "| SIMPAN file             | simpan game ke folder data/       |\n";
+
+    if (player.isJailed()) {
+        std::cout << "| BAYAR_DENDA             | keluar dari penjara dengan denda  |\n";
+        if (!player.hasUsedSkillThisTurn() && hasUsableSkillCard(player)) {
+            std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu non-pergerakan        |\n";
+        }
+        if (!player.hasRolledThisTurn() && player.getJailTurns() <= 3) {
+            std::cout << "| LEMPAR_DADU             | coba keluar penjara dengan double |\n";
+            std::cout << "| ATUR_DADU X Y           | set dadu untuk percobaan double   |\n";
+        }
+    } else {
+        if (!player.hasRolledThisTurn()) {
+            std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
+            std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
+            if (!player.hasUsedSkillThisTurn() && hasUsableSkillCard(player)) {
+                std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
+            }
+        }
+        std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
+    }
+
     std::cout << "| HELP / KELUAR           | bantuan / keluar                  |\n";
     std::cout << "+-------------------------------------------------------------+\n";
 }

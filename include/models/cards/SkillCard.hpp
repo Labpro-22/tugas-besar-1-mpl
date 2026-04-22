@@ -19,6 +19,7 @@ public:
     int getRemainingDuration() const;
     void setRemainingDuration(int remainingDuration);
 
+    virtual bool canUseWhileJailed() const;
     virtual std::string getTypeName() const = 0;
     virtual void use(Player& player, GameContext& gameContext) = 0;
 };

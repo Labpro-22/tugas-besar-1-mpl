@@ -17,6 +17,10 @@ std::string MoveCard::getTypeName() const {
     return "MoveCard";
 }
 
+bool MoveCard::canUseWhileJailed() const {
+    return false;
+}
+
 void MoveCard::use(Player& player, GameContext& gameContext) {
     Board* board = gameContext.getBoard();
     if (board == nullptr || board->getTileCount() <= 0) {

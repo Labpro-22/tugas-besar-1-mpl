@@ -13,6 +13,10 @@ std::string TeleportCard::getTypeName() const {
     return "TeleportCard";
 }
 
+bool TeleportCard::canUseWhileJailed() const {
+    return false;
+}
+
 void TeleportCard::use(Player& player, GameContext& gameContext) {
     Board* board = gameContext.getBoard();
     if (board == nullptr || board->getTileCount() <= 0) {

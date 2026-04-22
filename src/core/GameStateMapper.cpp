@@ -13,8 +13,10 @@
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/RailroadTile.hpp"
 #include "models/tiles/StreetTile.hpp"
+#include "models/tiles/Tile.hpp"
 #include "utils/CardDeck.hpp"
 #include "utils/TransactionLogger.hpp"
+#include "core/DeckFactory.hpp"
 
 GameState GameStateMapper::create(
     const Board& board,
@@ -28,13 +30,14 @@ GameState GameStateMapper::create(
         std::vector<std::string> cards;
         for (SkillCard* card : player.getHand()) {
             if (card != nullptr) {
-                cards.push_back(card->getTypeName());
+                cards.push_back(DeckFactory::encodeSkillCard(card));
             }
         }
         playerStates.emplace_back(
             player.getUsername(),
             player.getBalance(),
             player.getPosition(),
+            board.getTile(player.getPosition()) == nullptr ? "GO" : board.getTile(player.getPosition())->getCode(),
             player.getStatus(),
             player.getJailTurns(),
             cards

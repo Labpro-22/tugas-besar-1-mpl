@@ -43,20 +43,18 @@ void TurnService::processTurn(
     if (player.isJailed()) {
         player.setJailTurns(player.getJailTurns() + 1);
         int fine = configData.getSpecialConfig().getJailFine();
+        io.showMessage(player.getUsername() + " sedang di penjara.");
         io.showMessage(
-            player.getUsername() + " sedang di penjara. Bayar denda M"
-                + std::to_string(fine) + " untuk keluar.");
+            "Percobaan double: " + std::to_string(player.getJailTurns()) + "/3.");
 
-        if (player.canAfford(fine)) {
-            player -= fine;
-            player.setStatus(PlayerStatus::ACTIVE);
-            player.setJailTurns(0);
-            logTurnAction(
-                logger,
-                turnManager,
-                player,
-                "PENJARA",
-                "Membayar denda M" + std::to_string(fine));
+        if (player.getJailTurns() > 3) {
+            io.showMessage(
+                "Ini giliran ke-4 di penjara. Kamu wajib BAYAR_DENDA sebesar M" +
+                    std::to_string(fine) + " sebelum bisa bergerak.");
+        } else {
+            io.showMessage(
+                "Pilihan: BAYAR_DENDA sebesar M" + std::to_string(fine) +
+                    " atau LEMPAR_DADU/ATUR_DADU untuk mencoba double.");
         }
     }
 

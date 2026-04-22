@@ -105,6 +105,12 @@ public:
     }
 
     std::vector<std::string> getDeckState() const {
-        return {};
+        std::vector<std::string> state;
+        for (T* card : deck) {
+            if (card != nullptr) {
+                state.push_back(card->getTypeName());
+            }
+        }
+        return state;
     }
 };
