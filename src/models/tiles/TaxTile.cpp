@@ -50,16 +50,25 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
                 "Uang kamu: M" + std::to_string(beforeBalance) +
                     " -> M" + std::to_string(player.getBalance()));
         }
-        int currentTurn = gameContext.getTurnManager()->getCurrentTurn();
-        gameContext.getLogger()->log(currentTurn, player.getUsername(), "PAJAK", 
-            "Membayar pajak sebesar M" + std::to_string(amountToPay));
+        if (gameContext.getLogger() != nullptr) {
+            int currentTurn = 0;
+            if (gameContext.getTurnManager() != nullptr) {
+                currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+            }
+            gameContext.getLogger()->log(currentTurn, player.getUsername(), "PAJAK",
+                "Membayar pajak sebesar M" + std::to_string(amountToPay));
+        }
     } catch (const InsufficientFundsException& e) {
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showMessage(
                 "Kamu tidak mampu membayar pajak M" + std::to_string(amountToPay) + "!");
             gameContext.getIO()->showMessage("Uang kamu saat ini: M" + std::to_string(player.getBalance()));
         }
-        gameContext.getBankruptcyHandler()->handleBankruptcy(player, nullptr, amountToPay, gameContext);
+        if (gameContext.getBankruptcyHandler() != nullptr) {
+            gameContext.getBankruptcyHandler()->handleBankruptcy(player, nullptr, amountToPay, gameContext);
+        } else {
+            throw;
+        }
     }
 }
 

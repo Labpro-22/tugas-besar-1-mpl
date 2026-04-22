@@ -50,9 +50,9 @@ void FestivalTile::onLanded(Player& player, GameContext& gameContext) {
 void FestivalTile::getPlayerStreets(const Player& player, std::vector<StreetTile*>& outStreets) const {
     for (PropertyTile* property : player.getProperties()) {
         if (property != nullptr &&
-            property->getPropertyType() == PropertyType::STREET &&
-            property->getStatus() == PropertyStatus::OWNED) {
-            outStreets.push_back(static_cast<StreetTile*>(property));
+            property->getStatus() == PropertyStatus::OWNED &&
+            property->asStreetTile() != nullptr) {
+            outStreets.push_back(property->asStreetTile());
         }
     }
 }

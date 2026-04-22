@@ -40,6 +40,23 @@ namespace {
         return result;
     }
 
+    int parseSavedBuildingLevel(const std::string& value) {
+        if (value == "H") {
+            return 5;
+        }
+
+        try {
+            std::size_t parsed = 0;
+            int level = std::stoi(value, &parsed);
+            if (parsed != value.size() || level < 0 || level > 5) {
+                throw std::runtime_error("invalid building level");
+            }
+            return level;
+        } catch (const std::exception&) {
+            throw std::runtime_error("SaveManager: invalid building level '" + value + "'");
+        }
+    }
+
 }  // namespace
 
 GameEngine::GameEngine(TransactionLogger* logger)
@@ -172,11 +189,11 @@ void GameEngine::loadGame(const GameState& gameState) {
 
     for (const PropertyState& propertyState : gameState.getPropertyStates()) {
         Tile* tile = board.getTile(propertyState.getCode());
-        if (tile == nullptr || tile->getCategory() != TileCategory::PROPERTY) {
+        if (tile == nullptr || tile->asPropertyTile() == nullptr) {
             continue;
         }
 
-        PropertyTile* property = static_cast<PropertyTile*>(tile);
+        PropertyTile* property = tile->asPropertyTile();
         property->returnToBank();
         Player* owner = findPlayerByUsername(players, propertyState.getOwnerUsername());
         if (owner != nullptr) {
@@ -186,15 +203,16 @@ void GameEngine::loadGame(const GameState& gameState) {
             }
         }
 
-        if (property->getPropertyType() == PropertyType::STREET) {
-            StreetTile* street = static_cast<StreetTile*>(property);
-            int level = propertyState.getBuildingLevel() == "H" ? 5 : std::stoi(propertyState.getBuildingLevel());
+        StreetTile* street = property->asStreetTile();
+        if (street != nullptr) {
+            int level = parseSavedBuildingLevel(propertyState.getBuildingLevel());
             street->setBuildingLevel(level);
             street->setFestivalState(propertyState.getFestivalMultiplier(), propertyState.getFestivalDuration());
         }
     }
 
     turnManager.restoreTurnOrder(gameState.getTurnOrder(), buildPlayerPointers(players));
+    turnManager.setMaxTurn(gameState.getMaxTurn());
     turnManager.setCurrentTurn(gameState.getCurrentTurn());
 
     const std::vector<Player*> activePlayers = turnManager.getActivePlayers();
@@ -321,7 +339,14 @@ void GameEngine::distributeSkillCards() {
             } catch (const CardHandFullException&) {
                 skillDeck.discardCard(card);
             }
-        } catch (const std::exception&) {
+        } catch (const std::exception& e) {
+            if (logger != nullptr) {
+                logger->log(
+                    turnManager.getCurrentTurn(),
+                    "SYSTEM",
+                    "KARTU_SKILL",
+                    std::string("Gagal membagikan kartu skill: ") + e.what());
+            }
         }
     }
 }

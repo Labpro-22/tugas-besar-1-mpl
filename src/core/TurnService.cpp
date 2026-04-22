@@ -100,6 +100,12 @@ void TurnService::processTurn(
             player,
             "KARTU_SKILL",
             "Mendapatkan " + card->getTypeName());
-    } catch (const std::exception&) {
+    } catch (const std::exception& e) {
+        logTurnAction(
+            logger,
+            turnManager,
+            player,
+            "KARTU_SKILL",
+            std::string("Gagal mengambil kartu skill: ") + e.what());
     }
 }

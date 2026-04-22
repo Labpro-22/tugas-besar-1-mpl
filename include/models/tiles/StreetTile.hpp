@@ -28,17 +28,19 @@ public:
 
     void onLanded(Player& player, GameContext& gameContext) override;
     int calculateRent(int diceTotal, const GameContext& gameContext) override;
+    StreetTile* asStreetTile() override;
+    const StreetTile* asStreetTile() const override;
 
     void build();
-    int sellBuilding();
+    int sellBuilding() override;
     void applyFestival();
     void tickFestival();
 
-    int getBuildingLevel() const;
+    int getBuildingLevel() const override;
     ColorGroup getColorGroup() const override;
     int getFestivalMultiplier() const override;
     int getFestivalDuration() const override;
-    bool canBuildNext() const;
+    bool canBuildNext() const override;
     int getSellValueToBank() const override;
     PropertyType getPropertyType() const override;
     std::string getDisplayLabel() const override;
@@ -46,6 +48,6 @@ public:
     int getHouseCost() const override;
     int getHotelCost() const override;
     int getRentAtLevel(int level) const override;
-    void setBuildingLevel(int level);
-    void setFestivalState(int multiplier, int duration);
+    void setBuildingLevel(int level) override;
+    void setFestivalState(int multiplier, int duration) override;
 };

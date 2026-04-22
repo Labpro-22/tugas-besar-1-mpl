@@ -18,6 +18,30 @@ PropertyTile::PropertyTile(int index,
       mortgageValue(mortgageValue),
       buyPrice(buyPrice) {}
 
+PropertyTile* PropertyTile::asPropertyTile() {
+    return this;
+}
+
+const PropertyTile* PropertyTile::asPropertyTile() const {
+    return this;
+}
+
+StreetTile* PropertyTile::asStreetTile() {
+    return nullptr;
+}
+
+const StreetTile* PropertyTile::asStreetTile() const {
+    return nullptr;
+}
+
+RailroadTile* PropertyTile::asRailroadTile() {
+    return nullptr;
+}
+
+const RailroadTile* PropertyTile::asRailroadTile() const {
+    return nullptr;
+}
+
 void PropertyTile::mortgage() {
     // Properti diubah statusnya menjadi tergadai. Penambahan uang pemain 
     // idealnya ditangani oleh pemanggil fungsi (GameContext/Player).
@@ -105,3 +129,15 @@ int PropertyTile::getHotelCost() const {
 int PropertyTile::getRentAtLevel(int) const {
     return 0;
 }
+
+bool PropertyTile::canBuildNext() const {
+    return false;
+}
+
+int PropertyTile::sellBuilding() {
+    return 0;
+}
+
+void PropertyTile::setBuildingLevel(int) {}
+
+void PropertyTile::setFestivalState(int, int) {}

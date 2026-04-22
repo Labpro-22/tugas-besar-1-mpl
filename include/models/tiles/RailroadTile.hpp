@@ -20,6 +20,8 @@ public:
 
     void onLanded(Player& player, GameContext& gameContext) override;
     int calculateRent(int diceTotal, const GameContext& gameContext) override;
+    RailroadTile* asRailroadTile() override;
+    const RailroadTile* asRailroadTile() const override;
     int getSellValueToBank() const override;
     PropertyType getPropertyType() const override;
     std::string getDisplayLabel() const override;

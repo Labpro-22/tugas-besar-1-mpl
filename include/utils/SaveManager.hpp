@@ -32,6 +32,7 @@ private:
 public:
     SaveManager() = default;
 
+    std::string getResolvedDataPath(const std::string& filename) const;
     void saveGame(const std::string& filename, const GameState& gameState) const;
     GameState loadGame(const std::string& filename) const;
     bool fileExists(const std::string& filename) const;

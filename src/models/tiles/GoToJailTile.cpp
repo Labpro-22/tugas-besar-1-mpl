@@ -20,8 +20,17 @@ void GoToJailTile::onLanded(Player& player, GameContext& gameContext) {
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);
     
-    int currentTurn = gameContext.getTurnManager()->getCurrentTurn();
-    gameContext.getLogger()->log(currentTurn,player.getUsername(), "PENJARA", "Masuk penjara dari petak PPJ");
+    if (gameContext.getLogger() != nullptr) {
+        int currentTurn = 0;
+        if (gameContext.getTurnManager() != nullptr) {
+            currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+        }
+        gameContext.getLogger()->log(
+            currentTurn,
+            player.getUsername(),
+            "PENJARA",
+            "Masuk penjara dari petak PPJ");
+    }
 }
 
 std::string GoToJailTile::getDisplayLabel() const {

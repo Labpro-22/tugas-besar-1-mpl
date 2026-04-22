@@ -160,7 +160,7 @@ bool Player::isMonopolizing(ColorGroup colorGroup, const std::vector<StreetTile*
 
         bool owned = false;
         for (const PropertyTile* prop : properties) {
-            if (prop == static_cast<const PropertyTile*>(tile)) {
+            if (prop == tile) {
                 owned = true;
                 break;
             }

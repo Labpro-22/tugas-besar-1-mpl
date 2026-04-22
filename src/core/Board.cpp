@@ -22,8 +22,11 @@ void Board::buildBoard(const std::vector<Tile*>& boardTiles) {
     tiles = boardTiles;
     propertyIndex.clear();
     for (Tile* tile : tiles) {
-        if (tile->getCategory() == TileCategory::PROPERTY) {
-            PropertyTile* prop = static_cast<PropertyTile*>(tile);
+        if (tile != nullptr) {
+            PropertyTile* prop = tile->asPropertyTile();
+            if (prop == nullptr) {
+                continue;
+            }
             propertyIndex[prop->getCode()] = prop;
         }
     }
@@ -56,9 +59,8 @@ std::vector<PropertyTile*> Board::getProperties() const {
 std::vector<StreetTile*> Board::getProperties(ColorGroup colorGroup) const {
     std::vector<StreetTile*> streets;
     for (const auto& pair : propertyIndex) {
-        if (pair.second->getPropertyType() == PropertyType::STREET &&
-            pair.second->getColorGroup() == colorGroup) {
-            StreetTile* street = static_cast<StreetTile*>(pair.second);
+        StreetTile* street = pair.second->asStreetTile();
+        if (street != nullptr && street->getColorGroup() == colorGroup) {
             streets.push_back(street);
         }
     }
@@ -71,11 +73,13 @@ RailroadTile* Board::getNearestRailroad(int fromIndex) const {
     for (int i = 1; i <= n; ++i) {
         int idx = (fromIndex + i) % n;
         Tile* tile = tiles[idx];
-        if (tile && tile->getCategory() == TileCategory::PROPERTY) {
-            PropertyTile* property = static_cast<PropertyTile*>(tile);
-            if (property->getPropertyType() == PropertyType::RAILROAD) {
-                return static_cast<RailroadTile*>(property);
-            }
+        if (tile == nullptr) {
+            continue;
+        }
+
+        PropertyTile* property = tile->asPropertyTile();
+        if (property != nullptr && property->asRailroadTile() != nullptr) {
+            return property->asRailroadTile();
         }
     }
     return nullptr;
@@ -87,9 +91,8 @@ int Board::getTileCount() const {
 
 void Board::tickFestivals(Player& player) {
     for (auto const& pair : propertyIndex) {
-        if (pair.second->getPropertyType() == PropertyType::STREET &&
-            pair.second->isOwnedBy(player)) {
-            StreetTile* street = static_cast<StreetTile*>(pair.second);
+        StreetTile* street = pair.second->asStreetTile();
+        if (street != nullptr && street->isOwnedBy(player)) {
             street->tickFestival();
         }
     }

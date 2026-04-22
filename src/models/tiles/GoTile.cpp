@@ -20,8 +20,21 @@ void GoTile::onLanded(Player& player, GameContext& gameContext) {
             "Uang kamu: M" + std::to_string(beforeBalance) +
                 " -> M" + std::to_string(player.getBalance()));
     }
-    int currentTurn = gameContext.getTurnManager()->getCurrentTurn();
-    gameContext.getLogger()->log(currentTurn, player.getUsername(), "GO", "Mendarat di GO, mendapatkan gaji " + std::to_string(salary));
+    if (gameContext.getLogger() != nullptr) {
+        int currentTurn = 0;
+        if (gameContext.getTurnManager() != nullptr) {
+            currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+        }
+        gameContext.getLogger()->log(
+            currentTurn,
+            player.getUsername(),
+            "GO",
+            "Mendarat di GO, mendapatkan gaji " + std::to_string(salary));
+    }
+}
+
+void GoTile::onPassed(Player& player, GameContext&) {
+    awardSalary(player);
 }
 
 void GoTile::awardSalary(Player &player) {

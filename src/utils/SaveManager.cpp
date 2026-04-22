@@ -18,18 +18,26 @@ std::string SaveManager::resolveDataPath(const std::string& filename) const {
         }
     }
 
+    if (normalized.empty()) {
+        throw std::runtime_error("SaveManager: save filename cannot be empty");
+    }
+
     const std::string dataPrefix = "data/";
     if (normalized.rfind(dataPrefix, 0) == 0) {
         if (normalized.size() < 4 || normalized.substr(normalized.size() - 4) != ".txt") {
-            throw std::runtime_error("SaveManager: save file must use .txt extension");
+            normalized += ".txt";
         }
         return normalized;
     }
 
     if (normalized.size() < 4 || normalized.substr(normalized.size() - 4) != ".txt") {
-        throw std::runtime_error("SaveManager: save file must use .txt extension");
+        normalized += ".txt";
     }
     return dataPrefix + normalized;
+}
+
+std::string SaveManager::getResolvedDataPath(const std::string& filename) const {
+    return resolveDataPath(filename);
 }
 
 std::string SaveManager::statusToString(PlayerStatus status) const {
@@ -205,13 +213,28 @@ PropertyState SaveManager::parseProperty(const std::string& line) const {
         throw std::runtime_error("SaveManager: invalid PropertyStatus '" + parts[3] + "'");
     }
 
+    int festivalMultiplier = parseIntStrict(parts[4], "property.festivalMultiplier");
+    int festivalDuration = parseIntStrict(parts[5], "property.festivalDuration");
+    if (festivalMultiplier < 1 || festivalDuration < 0) {
+        throw std::runtime_error("SaveManager: invalid festival state");
+    }
+
+    if (propertyType == PropertyType::STREET) {
+        if (parts[6] != "H") {
+            int buildingLevel = parseIntStrict(parts[6], "property.buildingLevel");
+            if (buildingLevel < 0 || buildingLevel > 5) {
+                throw std::runtime_error("SaveManager: invalid building level");
+            }
+        }
+    }
+
     return PropertyState(
         parts[0],
         propertyType,
         parts[2],
         propertyStatus,
-        parseIntStrict(parts[4], "property.festivalMultiplier"),
-        parseIntStrict(parts[5], "property.festivalDuration"),
+        festivalMultiplier,
+        festivalDuration,
         parts[6]
     );
 }

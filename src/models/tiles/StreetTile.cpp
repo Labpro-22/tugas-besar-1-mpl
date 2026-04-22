@@ -37,6 +37,14 @@ int StreetTile::calculateRent(int, const GameContext& gameContext) {
     return rent * festivalMultiplier;
 }
 
+StreetTile* StreetTile::asStreetTile() {
+    return this;
+}
+
+const StreetTile* StreetTile::asStreetTile() const {
+    return this;
+}
+
 void StreetTile::build() {
     if (buildingLevel < 5) {
         buildingLevel++;

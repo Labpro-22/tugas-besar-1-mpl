@@ -1,6 +1,9 @@
 #include <iostream>
 #include <limits>
 #include <stdexcept>
+#include <algorithm>
+#include <cctype>
+#include <sstream>
 
 #include "core/TurnManager.hpp"
 #include "models/cards/SkillCard.hpp"
@@ -23,6 +26,71 @@ namespace {
         }
         return false;
     }
+
+    std::string trimWhitespace(const std::string& value) {
+        std::size_t begin = 0;
+        while (begin < value.size() &&
+               std::isspace(static_cast<unsigned char>(value[begin]))) {
+            ++begin;
+        }
+
+        std::size_t end = value.size();
+        while (end > begin &&
+               std::isspace(static_cast<unsigned char>(value[end - 1]))) {
+            --end;
+        }
+
+        return value.substr(begin, end - begin);
+    }
+
+    std::string toLowercase(const std::string& value) {
+        std::string result = value;
+        std::transform(
+            result.begin(),
+            result.end(),
+            result.begin(),
+            [](unsigned char c) { return static_cast<char>(std::tolower(c)); }
+        );
+        return result;
+    }
+
+    bool containsWhitespace(const std::string& value) {
+        return std::any_of(
+            value.begin(),
+            value.end(),
+            [](unsigned char c) { return std::isspace(c); }
+        );
+    }
+
+    bool isDuplicateName(const std::vector<std::string>& names, const std::string& name) {
+        const std::string normalizedName = toLowercase(name);
+        return std::any_of(
+            names.begin(),
+            names.end(),
+            [&normalizedName](const std::string& existingName) {
+                return toLowercase(existingName) == normalizedName;
+            }
+        );
+    }
+
+    bool parseSingleInt(const std::string& text, int& value) {
+        std::istringstream stream(text);
+        stream >> value;
+        if (!stream) {
+            return false;
+        }
+
+        std::string extra;
+        return !(stream >> extra);
+    }
+
+    bool readLineOrThrow(std::string& line) {
+        if (std::getline(std::cin, line)) {
+            return true;
+        }
+        throwIfInputClosed();
+        return false;
+    }
 }
 
 int GameUI::showMainMenu() {
@@ -37,15 +105,15 @@ int GameUI::showMainMenu() {
     int choice = 0;
     while (true) {
         std::cout << "Pilih menu (1-2): ";
-        if (std::cin >> choice && (choice == 1 || choice == 2)) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::string input;
+        readLineOrThrow(input);
+        input = trimWhitespace(input);
+
+        if (parseSingleInt(input, choice) && (choice == 1 || choice == 2)) {
             return choice;
         }
 
         std::cout << "Input tidak valid. Masukkan 1 untuk Game Baru atau 2 untuk Muat Game." << std::endl;
-        throwIfInputClosed();
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
 
@@ -53,23 +121,29 @@ Command GameUI::promptLoadCommand() {
     std::cout << "\nMasukkan command load sesuai spesifikasi." << std::endl;
     std::cout << "Contoh: MUAT game_sesi1.txt" << std::endl;
     std::cout << "File akan dicari dari folder data/." << std::endl;
-    std::cout << "> ";
-    return cmdParser.readCommand();
+    while (true) {
+        std::cout << "> ";
+        Command command = cmdParser.readCommand();
+        if (!command.getKeyword().empty()) {
+            return command;
+        }
+        std::cout << "Input tidak boleh kosong. Masukkan command yang valid." << std::endl;
+    }
 }
 
 int GameUI::promptPlayerCount() {
     int n = 0;
     while (true) {
         std::cout << "\nMasukkan jumlah pemain (2-4): ";
-        if (std::cin >> n && n >= 2 && n <= 4) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::string input;
+        readLineOrThrow(input);
+        input = trimWhitespace(input);
+
+        if (parseSingleInt(input, n) && n >= 2 && n <= 4) {
             return n;
         }
 
         std::cout << "Jumlah pemain tidak valid. Masukkan angka 2 sampai 4." << std::endl;
-        throwIfInputClosed();
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
 
@@ -78,15 +152,36 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
 
     for (int i = 0; i < n; i++) {
         std::string name;
-        do {
+        while (true) {
             std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
             if (!std::getline(std::cin, name)) {
                 throwIfInputClosed();
             }
+
+            name = trimWhitespace(name);
+
             if (name.empty()) {
                 std::cout << "Nama pemain tidak boleh kosong." << std::endl;
+                continue;
             }
-        } while (name.empty());
+
+            if (name.size() < 3) {
+                std::cout << "Username minimal 3 karakter." << std::endl;
+                continue;
+            }
+
+            if (containsWhitespace(name)) {
+                std::cout << "Username tidak boleh mengandung spasi. Gunakan underscore bila perlu." << std::endl;
+                continue;
+            }
+
+            if (isDuplicateName(names, name)) {
+                std::cout << "Username sudah digunakan. Masukkan username yang berbeda." << std::endl;
+                continue;
+            }
+
+            break;
+        }
         names.push_back(name);
     }
 
@@ -97,8 +192,12 @@ bool GameUI::confirmYN(const std::string& message) {
     char ans;
     while (true) {
         std::cout << message << " (y/n): ";
-        if (std::cin >> ans) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::string input;
+        readLineOrThrow(input);
+        input = trimWhitespace(input);
+
+        if (input.size() == 1) {
+            ans = input[0];
             if (ans == 'y' || ans == 'Y') {
                 return true;
             }
@@ -108,9 +207,6 @@ bool GameUI::confirmYN(const std::string& message) {
         }
 
         std::cout << "Input tidak valid. Masukkan y atau n." << std::endl;
-        throwIfInputClosed();
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
 
@@ -119,15 +215,15 @@ int GameUI::promptInt(const std::string& prompt) {
 
     while (true) {
         std::cout << prompt;
-        if (std::cin >> value) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::string input;
+        readLineOrThrow(input);
+        input = trimWhitespace(input);
+
+        if (parseSingleInt(input, value)) {
             return value;
         }
 
         std::cout << "Input tidak valid. Masukkan angka." << std::endl;
-        throwIfInputClosed();
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
 
@@ -136,24 +232,30 @@ int GameUI::promptIntInRange(const std::string& prompt, int minValue, int maxVal
 
     while (true) {
         std::cout << prompt;
-        if (std::cin >> value && value >= minValue && value <= maxValue) {
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        std::string input;
+        readLineOrThrow(input);
+        input = trimWhitespace(input);
+
+        if (parseSingleInt(input, value) && value >= minValue && value <= maxValue) {
             return value;
         }
 
         std::cout << "Input tidak valid. Masukkan angka "
                   << minValue << " sampai " << maxValue << "." << std::endl;
-        throwIfInputClosed();
-        std::cin.clear();
-        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
     }
 }
 
 Command GameUI::promptPlayerCommand(const std::string& username) {
     std::cout << "\n";
     std::cout << "Bingung? ketik HELP ea...";
-    std::cout << "> [" << username << "]: ";
-    return cmdParser.readCommand();
+    while (true) {
+        std::cout << "> [" << username << "]: ";
+        Command command = cmdParser.readCommand();
+        if (!command.getKeyword().empty()) {
+            return command;
+        }
+        std::cout << "Input tidak boleh kosong. Masukkan command yang valid." << std::endl;
+    }
 }
 
 void GameUI::showMessage(const std::string& message) {

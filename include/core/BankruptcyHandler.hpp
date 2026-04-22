@@ -13,6 +13,6 @@ public:
     int calculateLiquidationMax(Player& player) const;
     void showLiquidationPanel(Player& player, int needed, GameContext& context);
     void transferAssetsToPlayer(Player& from, Player& to);
-    void transferAssetsToBank(Player& player, Board& board, AuctionManager& auction);
+    void transferAssetsToBank(Player& player, AuctionManager* auction);
     void declareBankrupt(Player& player, GameContext& context);
 };

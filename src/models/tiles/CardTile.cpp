@@ -36,11 +36,19 @@ void CardTile::onLanded(Player& player, GameContext& gameContext) {
             }
         } catch (const std::runtime_error& e) {
             if (io != nullptr) {
-                io->showError(e, gameContext.getLogger(), gameContext.getTurnManager()->getCurrentTurn(), player.getUsername());
+                int currentTurn = 0;
+                if (gameContext.getTurnManager() != nullptr) {
+                    currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+                }
+                io->showError(e, gameContext.getLogger(), currentTurn, player.getUsername());
             }
-            if (gameContext.getLogger()) {
+            if (gameContext.getLogger() != nullptr) {
+                int currentTurn = 0;
+                if (gameContext.getTurnManager() != nullptr) {
+                    currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+                }
                 gameContext.getLogger()->log(
-                    gameContext.getTurnManager()->getCurrentTurn(),
+                    currentTurn,
                     player.getUsername(),
                     "ERROR",
                     "Tumpukan kartu kosong!"

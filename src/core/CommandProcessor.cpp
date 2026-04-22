@@ -15,8 +15,6 @@
 #include "models/state/Command.hpp"
 #include "models/state/GameState.hpp"
 #include "models/state/LogEntry.hpp"
-#include "models/tiles/GoTile.hpp"
-#include "models/tiles/JailTile.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/SaveManager.hpp"
@@ -76,7 +74,7 @@ int CommandProcessor::getJailFine() const {
     if (jailTile == nullptr) {
         return 0;
     }
-    return static_cast<JailTile*>(jailTile)->getJailFine();
+    return jailTile->getJailFine();
 }
 
 void CommandProcessor::resolveMovement(Player& player, int totalMove) {
@@ -90,10 +88,10 @@ void CommandProcessor::resolveMovement(Player& player, int totalMove) {
     bool passedGo = oldPosition + totalMove >= tileCount;
     player.moveTo(newPosition);
 
-    if (passedGo && newPosition != 0) {
+    if (passedGo && newPosition != 0 && context != nullptr) {
         Tile* goTile = board.getTile("GO");
         if (goTile != nullptr) {
-            static_cast<GoTile*>(goTile)->awardSalary(player);
+            goTile->onPassed(player, *context);
         }
     }
 
@@ -416,8 +414,8 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         }
         Tile* tile = board.getTile(command.getArg(0));
         PropertyTile* property = nullptr;
-        if (tile != nullptr && tile->getCategory() == TileCategory::PROPERTY) {
-            property = static_cast<PropertyTile*>(tile);
+        if (tile != nullptr) {
+            property = tile->asPropertyTile();
         }
         ui.getPropertyCardRenderer().renderDeed(property);
         return CommandResult();
@@ -461,17 +459,10 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
                 "SIMPAN hanya dapat dilakukan di awal giliran sebelum pemain menjalankan aksi apapun.");
         }
 
-        std::string filename = command.getArg(0);
-        SaveManager().saveGame(filename, createGameState());
-        for (char& c : filename) {
-            if (c == '\\') {
-                c = '/';
-            }
-        }
-        if (filename.rfind("data/", 0) != 0) {
-            filename = "data/" + filename;
-        }
-        ui.showMessage("Permainan berhasil disimpan ke " + filename);
+        const std::string filename = command.getArg(0);
+        SaveManager saveManager;
+        saveManager.saveGame(filename, createGameState());
+        ui.showMessage("Permainan berhasil disimpan ke " + saveManager.getResolvedDataPath(filename));
         return CommandResult();
     }
 

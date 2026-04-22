@@ -14,5 +14,5 @@ public:
     std::string getDisplayLabel() const override;
     void applyJailStatus(Player& player) const;
     void processJailTurn(Player& player, GameContext& gameContext) const;
-    int getJailFine() const;
+    int getJailFine() const override;
 };

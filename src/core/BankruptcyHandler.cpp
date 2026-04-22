@@ -16,7 +16,7 @@ void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
             creditor->setBalance(creditor->getBalance() + player.getBalance());
             transferAssetsToPlayer(player, *creditor);
         } else {
-            transferAssetsToBank(player, *context.getBoard(), *context.getAuctionManager());
+            transferAssetsToBank(player, context.getAuctionManager());
         }
         player.setBalance(0);
         declareBankrupt(player, context);
@@ -44,9 +44,7 @@ void BankruptcyHandler::showLiquidationPanel(Player& player, int needed, GameCon
         }
 
         StreetTile* street = nullptr;
-        if (property->getPropertyType() == PropertyType::STREET) {
-            street = static_cast<StreetTile*>(property);
-        }
+        street = property->asStreetTile();
 
         while (street != nullptr && street->getBuildingLevel() > 0 && player.getBalance() < needed) {
             int received = street->sellBuilding();
@@ -77,11 +75,15 @@ void BankruptcyHandler::transferAssetsToPlayer(Player& from, Player& to) {
     }
 }
 
-void BankruptcyHandler::transferAssetsToBank(Player& player, Board&, AuctionManager& auction) {
-    auction.reset();
+void BankruptcyHandler::transferAssetsToBank(Player& player, AuctionManager* auction) {
+    if (auction != nullptr) {
+        auction->reset();
+    }
     std::vector<PropertyTile*> properties = player.getProperties();
     for (PropertyTile* prop : properties) {
-        prop->returnToBank();
+        if (prop != nullptr) {
+            prop->returnToBank();
+        }
     }
 }
 
