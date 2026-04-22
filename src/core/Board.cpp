@@ -5,6 +5,7 @@
 #include "models/tiles/RailroadTile.hpp"
 #include "models/Player.hpp"
 #include "models/Enums.hpp"
+#include "models/tiles/UtilityTile.hpp"
 
 Board::Board() = default;
 
@@ -38,12 +39,8 @@ Tile* Board::getTile(int index) const {
 }
 
 Tile* Board::getTile(const std::string& code) const {
-    auto it = propertyIndex.find(code);
-    if (it != propertyIndex.end()) {
-        return it->second;
-    }
     for (Tile* tile : tiles) {
-        if (tile->getCode() == code) {
+        if (tile && tile->getCode() == code) {
             return tile;
         }
     }
@@ -52,7 +49,7 @@ Tile* Board::getTile(const std::string& code) const {
 
 std::vector<PropertyTile*> Board::getProperties() const {
     std::vector<PropertyTile*> props;
-    for (const auto& pair : propertyIndex) {
+    for (auto const& pair : propertyIndex) {
         props.push_back(pair.second);
     }
     return props;
@@ -90,13 +87,44 @@ int Board::getTileCount() const {
 }
 
 void Board::tickFestivals(Player& player) {
-    for (PropertyTile* prop : player.getProperties()) {
-        if (prop) {
-            StreetTile* street = dynamic_cast<StreetTile*>(prop);
-            if (street) {
-                street->tickFestival();
-            }
+    for (auto const& pair : propertyIndex) {
+        StreetTile* street = dynamic_cast<StreetTile*>(pair.second);
+        if (street && street->isOwnedBy(player)) {
+            street->tickFestival();
         }
     }
 }
 
+bool Board::hasMonopoly(const Player& player, ColorGroup colorGroup) const {
+    std::vector<StreetTile*> streets = getProperties(colorGroup);
+    if (streets.empty()) return false;
+    
+    for (StreetTile* street : streets) {
+        if (!street->isOwnedBy(player)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+int Board::getRailroadCount(const Player& player) const {
+    int count = 0;
+    for (auto const& pair : propertyIndex) {
+        RailroadTile* rr = dynamic_cast<RailroadTile*>(pair.second);
+        if (rr && rr->isOwnedBy(player)) {
+            count++;
+        }
+    }
+    return count;
+}
+
+int Board::getUtilityCount(const Player& player) const {
+    int count = 0;
+    for (auto const& pair : propertyIndex) {
+        UtilityTile* util = dynamic_cast<UtilityTile*>(pair.second);
+        if (util && util->isOwnedBy(player)) {
+            count++;
+        }
+    }
+    return count;
+}

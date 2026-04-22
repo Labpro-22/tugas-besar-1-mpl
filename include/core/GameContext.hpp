@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include "models/Player.hpp"
+
 class Board;
 class TurnManager;
 class AuctionManager;
@@ -44,4 +47,11 @@ public:
     CardDeck<ActionCard>* getChanceDeck() const;
     CardDeck<ActionCard>* getCommunityDeck() const;
     CardDeck<SkillCard>* getSkillDeck() const;
+
+    void triggerStreetEvent(Player& player, PropertyTile& tile);
+    void triggerRentEvent(Player& player, PropertyTile& tile);
+    bool hasMonopoly(const Player& player, ColorGroup colorGroup) const;
+    int getRailroadCount(const Player& player) const;
+    int getUtilityCount(const Player& player) const;
+    void logEvent(const std::string& actionType, const std::string& detail);
 };

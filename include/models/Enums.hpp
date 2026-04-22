@@ -3,7 +3,8 @@
 enum class TileCategory {
     PROPERTY,
     ACTION,
-    SPECIAL
+    SPECIAL,
+    DEFAULT
 };
 
 enum class PropertyType {
