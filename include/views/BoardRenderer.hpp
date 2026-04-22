@@ -12,7 +12,7 @@
 
 class BoardRenderer {
 private:
-    std::map<TileCategory, std::string> colorMap;
+    std::map<ColorGroup, std::string> colorMap;
 
 public:
     void render(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager);
