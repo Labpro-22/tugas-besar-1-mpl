@@ -27,8 +27,10 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     }
 
     int tileCount = board->getTileCount();
+    int oldPosition = player.getPosition();
     int targetIndex = (player.getPosition() + getValue()) % tileCount;
-    bool passedGo = player.moveTo(targetIndex);
+    bool passedGo = oldPosition + getValue() >= tileCount;
+    player.moveTo(targetIndex);
     player.setUsedSkillThisTurn(true);
 
     if (gameContext.getIO() != nullptr) {
@@ -37,7 +39,7 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
                 " maju " + std::to_string(getValue()) + " petak.");
     }
 
-    if (passedGo) {
+    if (passedGo && targetIndex != 0) {
         Tile* goTile = board->getTile("GO");
         if (goTile != nullptr) {
             goTile->onPassed(player, gameContext);

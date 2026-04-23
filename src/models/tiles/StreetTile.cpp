@@ -53,8 +53,9 @@ void StreetTile::build() {
 
 int StreetTile::sellBuilding() {
     if (buildingLevel > 0) {
+        int received = buildingLevel == 5 ? hotelCost / 2 : houseCost / 2;
         buildingLevel--;
-        return houseCost / 2;
+        return received;
     }
     return 0;
 }
@@ -83,7 +84,12 @@ int StreetTile::getFestivalDuration() const { return festivalDuration; }
 bool StreetTile::canBuildNext() const { return buildingLevel < 5; }
 
 int StreetTile::getSellValueToBank() const {
-    int totalBuildingValue = (buildingLevel * houseCost) / 2;
+    int totalBuildingValue = 0;
+    if (buildingLevel > 0 && buildingLevel <= 4) {
+        totalBuildingValue = (buildingLevel * houseCost) / 2;
+    } else if (buildingLevel == 5) {
+        totalBuildingValue = ((4 * houseCost) + hotelCost) / 2;
+    }
     return getBuyPrice() + totalBuildingValue;
 }
 
