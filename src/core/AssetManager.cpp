@@ -93,15 +93,29 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
         return;
     }
 
-    for (int i = 0; i < static_cast<int>(available.size()); ++i) {
-        io->showMessage(
-            std::to_string(i + 1) + ". " + available[i]->getName()
-                + " (" + available[i]->getCode() + ") - M"
-                + std::to_string(available[i]->getMortgageValue()));
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(available.size());
+    for (PropertyTile* property : available) {
+        if (property != nullptr) {
+            validTileIndices.push_back(property->getIndex());
+        }
     }
 
-    int choice = io->promptIntInRange("Pilih properti: ", 1, static_cast<int>(available.size()));
-    PropertyTile* selected = available[choice - 1];
+    int selectedTileIndex = io->promptTileSelection(
+        "Pilih properti milikmu yang ingin digadaikan langsung dari board.",
+        validTileIndices);
+
+    PropertyTile* selected = nullptr;
+    for (PropertyTile* property : available) {
+        if (property != nullptr && property->getIndex() == selectedTileIndex) {
+            selected = property;
+            break;
+        }
+    }
+
+    if (selected == nullptr) {
+        return;
+    }
 
     if (selected->getPropertyType() == PropertyType::STREET) {
         StreetTile* selectedStreet = selected->asStreetTile();
@@ -143,22 +157,40 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
         return;
     }
 
-    for (int i = 0; i < static_cast<int>(mortgaged.size()); ++i) {
-        io->showMessage(
-            std::to_string(i + 1) + ". " + mortgaged[i]->getName()
-                + " (" + mortgaged[i]->getCode() + ") - Tebus M"
-                + std::to_string(mortgaged[i]->getBuyPrice()));
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(mortgaged.size());
+    for (PropertyTile* property : mortgaged) {
+        if (property != nullptr) {
+            validTileIndices.push_back(property->getIndex());
+        }
     }
 
-    int choice = io->promptIntInRange("Pilih properti: ", 1, static_cast<int>(mortgaged.size()));
-    PropertyTile* selected = mortgaged[choice - 1];
+    int selectedTileIndex = io->promptTileSelection(
+        "Pilih properti yang ingin di-unmortgage langsung dari board.",
+        validTileIndices);
+
+    PropertyTile* selected = nullptr;
+    for (PropertyTile* property : mortgaged) {
+        if (property != nullptr && property->getIndex() == selectedTileIndex) {
+            selected = property;
+            break;
+        }
+    }
+
+    if (selected == nullptr) {
+        return;
+    }
 
     player -= selected->getBuyPrice();
     selected->redeem();
+    io->showPaymentNotification(
+        "PAYMENT",
+        player.getUsername() + " membayar M" + std::to_string(selected->getBuyPrice()) +
+            " untuk unmortgage " + selected->getName() + ".");
     io->showMessage(
-        selected->getName() + " berhasil ditebus dengan M" +
+        selected->getName() + " berhasil di-unmortgage dengan M" +
             std::to_string(selected->getBuyPrice()) + ".");
-    logAssetAction(context, player, "TEBUS", selected->getCode());
+    logAssetAction(context, player, "UNMORTGAGE", selected->getCode());
 }
 
 void AssetManager::buildProperty(Player& player, GameContext& context) {
@@ -207,6 +239,10 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
 
     player -= cost;
     selected->build();
+    io->showPaymentNotification(
+        "PAYMENT",
+        player.getUsername() + " membayar M" + std::to_string(cost) +
+            " untuk membangun di " + selected->getName() + ".");
     io->showMessage(
         "Pembangunan berhasil di " + selected->getName() +
             ". Level bangunan sekarang: " + std::to_string(selected->getBuildingLevel()) + ".");

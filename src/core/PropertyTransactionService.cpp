@@ -51,6 +51,10 @@ void PropertyTransactionService::handlePropertyLanded(
                 player -= price;
                 tile.transferTo(player);
 
+                io->showPaymentNotification(
+                    "PAYMENT",
+                    player.getUsername() + " membayar M" + std::to_string(price) +
+                        " ke Bank untuk membeli " + tile.getName() + ".");
                 io->showMessage(tile.getName() + " kini menjadi milikmu!");
                 io->showMessage(
                     "Uang kamu: M" + std::to_string(beforeBalance) +
@@ -69,6 +73,9 @@ void PropertyTransactionService::handlePropertyLanded(
                 io->showMessage("Properti ini akan masuk ke sistem lelang...");
             }
         } else if (price <= 0 || player.canAfford(price)) {
+            if (io != nullptr) {
+                io->showPropertyNotice(player, tile);
+            }
             tile.transferTo(player);
             if (io != nullptr) {
                 io->showMessage(
@@ -100,6 +107,9 @@ void PropertyTransactionService::handlePropertyLanded(
         int totalPlayers = static_cast<int>(auctionOrder.size());
 
         if (io != nullptr) {
+            io->showAuctionNotification(
+                "AUCTION",
+                "Lelang " + tile.getName() + " (" + tile.getCode() + ") dimulai.");
             io->showMessage("=== Lelang " + tile.getName() + " (" + tile.getCode() + ") ===");
         }
 
@@ -115,11 +125,7 @@ void PropertyTransactionService::handlePropertyLanded(
 
                 int amount = 0;
                 if (io != nullptr) {
-                    amount = io->promptInt(
-                        bidder->getUsername() +
-                            " saldo M" + std::to_string(bidder->getBalance()) +
-                            ", bid tertinggi M" + std::to_string(auction->getHighestBid()) +
-                            ". Masukkan bid (0 untuk pass): ");
+                    amount = io->promptAuctionBid(tile, *bidder, auction->getHighestBid());
                 }
 
                 if (amount <= 0) {
@@ -147,6 +153,14 @@ void PropertyTransactionService::handlePropertyLanded(
 
         if (winner != nullptr) {
             if (io != nullptr) {
+                io->showPaymentNotification(
+                    "PAYMENT",
+                    winner->getUsername() + " membayar M" + std::to_string(winningBid) +
+                        " ke Bank untuk memenangkan " + tile.getName() + ".");
+                io->showAuctionNotification(
+                    "AUCTION",
+                    winner->getUsername() + " memenangkan " + tile.getName() +
+                        " seharga M" + std::to_string(winningBid) + ".");
                 io->showMessage(
                     "Lelang selesai! " + winner->getUsername() +
                         " memenangkan " + tile.getName() +
@@ -158,6 +172,9 @@ void PropertyTransactionService::handlePropertyLanded(
                     " seharga M" + std::to_string(winningBid));
         } else {
             if (io != nullptr) {
+                io->showAuctionNotification(
+                    "AUCTION",
+                    "Lelang selesai. " + tile.getName() + " tidak terjual.");
                 io->showMessage("Lelang selesai! " + tile.getName() + " tidak terjual.");
             }
             context.logEvent("LELANG", tile.getName() + " tidak terjual.");
@@ -250,6 +267,10 @@ void PropertyTransactionService::handleRentPayment(
     *owner += rentAmount;
 
     if (io != nullptr) {
+        io->showPaymentNotification(
+            "PAYMENT",
+            player.getUsername() + " membayar sewa M" + std::to_string(rentAmount) +
+                " kepada " + owner->getUsername() + ".");
         io->showMessage(
             payerBalanceLabel + ": M" + std::to_string(playerBefore) +
                 " -> M" + std::to_string(player.getBalance()));

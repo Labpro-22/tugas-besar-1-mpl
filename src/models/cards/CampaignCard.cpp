@@ -44,6 +44,10 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         player -= amount;
         *otherPlayer += amount;
         if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar M" + std::to_string(amount) +
+                    " kepada " + otherPlayer->getUsername() + ".");
             gameContext.getIO()->showMessage(
                 player.getUsername() + " membayar M" + std::to_string(amount) +
                     " kepada " + otherPlayer->getUsername() + ".");

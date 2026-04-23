@@ -89,6 +89,8 @@ private:
     void setSelectedPlayer(const QString& username);
     void setSelectedProperty(int propertyId, bool showPreview = false);
     void showPropertyCard(int propertyId);
+    void showPropertyNotice(const Player& player, const PropertyTile& property);
+    int promptBoardTileSelection(const QString& title, const QVector<int>& validTileIndices);
     bool promptPropertyPurchase(const Player& player, const PropertyTile& property);
     void applyPendingMessages(const QString& fallback = QString());
 

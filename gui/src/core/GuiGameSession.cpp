@@ -117,6 +117,16 @@ void GuiGameSession::setPropertyPurchaseHandler(std::function<bool(const Player&
     io.setPropertyPurchaseHandler(std::move(handler));
 }
 
+void GuiGameSession::setPropertyNoticeHandler(std::function<void(const Player&, const PropertyTile&)> handler)
+{
+    io.setPropertyNoticeHandler(std::move(handler));
+}
+
+void GuiGameSession::setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&)> handler)
+{
+    io.setBoardTileSelectionHandler(std::move(handler));
+}
+
 void GuiGameSession::setTurnChangedHandler(std::function<void()> handler)
 {
     turnChangedHandler = std::move(handler);
@@ -284,7 +294,7 @@ bool GuiGameSession::mortgage(QString* errorMessage)
 
 bool GuiGameSession::redeem(QString* errorMessage)
 {
-    return executeCommand(Command("TEBUS", {}), errorMessage);
+    return executeCommand(Command("UNMORTGAGE", {}), errorMessage);
 }
 
 bool GuiGameSession::useSkill(QString* errorMessage)

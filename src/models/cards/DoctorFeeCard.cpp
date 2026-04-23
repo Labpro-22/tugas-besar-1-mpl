@@ -31,6 +31,10 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
         int beforeBalance = player.getBalance();
         player -= amount;
         if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar biaya dokter M" +
+                    std::to_string(amount) + " ke Bank.");
             gameContext.getIO()->showMessage(
                 "Kamu membayar M" + std::to_string(amount) +
                     " ke Bank. Sisa Uang = M" + std::to_string(player.getBalance()) + ".");

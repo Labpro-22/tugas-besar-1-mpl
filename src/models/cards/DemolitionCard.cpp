@@ -51,22 +51,32 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
         return;
     }
 
-    io->showMessage("Pilih properti lawan yang ingin dihancurkan:");
-    for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
-        io->showMessage(
-            std::to_string(i + 1) + ". "
-                + targetOwners[i]->getUsername()
-                + " - " + targetProperties[i]->getName()
-                + " (" + targetProperties[i]->getCode() + ")");
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(targetProperties.size());
+    for (PropertyTile* property : targetProperties) {
+        if (property != nullptr) {
+            validTileIndices.push_back(property->getIndex());
+        }
     }
 
-    int choice = io->promptIntInRange(
-        "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
-        1,
-        static_cast<int>(targetProperties.size()));
+    int selectedTileIndex = io->promptTileSelection(
+        "Pilih properti lawan yang ingin dihancurkan langsung dari board.",
+        validTileIndices);
 
-    PropertyTile* targetProperty = targetProperties[choice - 1];
-    Player* owner = targetOwners[choice - 1];
+    int choice = -1;
+    for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+        if (targetProperties[i] != nullptr && targetProperties[i]->getIndex() == selectedTileIndex) {
+            choice = i;
+            break;
+        }
+    }
+
+    if (choice < 0) {
+        return;
+    }
+
+    PropertyTile* targetProperty = targetProperties[choice];
+    Player* owner = targetOwners[choice];
 
     owner->removeProperty(targetProperty);
     targetProperty->returnToBank();

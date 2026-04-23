@@ -198,6 +198,28 @@ void BoardWidget::setSelectedPropertyId(int propertyId)
     update();
 }
 
+void BoardWidget::setTileSelectionMode(const QSet<int>& validTileIndices, const QString& promptText)
+{
+    tileSelectionMode = true;
+    selectableTileIndices = validTileIndices;
+    selectionPromptText = promptText;
+    setCursor(Qt::PointingHandCursor);
+    update();
+}
+
+void BoardWidget::clearTileSelectionMode()
+{
+    if (!tileSelectionMode && selectableTileIndices.isEmpty() && selectionPromptText.isEmpty()) {
+        return;
+    }
+
+    tileSelectionMode = false;
+    selectableTileIndices.clear();
+    selectionPromptText.clear();
+    unsetCursor();
+    update();
+}
+
 void BoardWidget::setPawns(const QVector<PawnData>& pawnData)
 {
     pawns = pawnData;
@@ -539,6 +561,14 @@ void BoardWidget::mousePressEvent(QMouseEvent *event)
     for (int index = 0; index < 40; ++index) {
         if (!tileRect(index, board, cs, es).contains(event->pos())) {
             continue;
+        }
+
+        if (tileSelectionMode) {
+            if (selectableTileIndices.contains(index)) {
+                setSelectedPropertyId(index + 1);
+                emit tileSelected(index);
+            }
+            break;
         }
 
         if (isInspectableTile(index)) {
@@ -968,6 +998,29 @@ void BoardWidget::drawCell(QPainter &p, int idx, const QRect &r) const
         p.drawRect(r.adjusted(8, 8, -8, -8));
         p.restore();
     }
+
+    drawSelectionOverlay(p, idx, r);
+}
+
+void BoardWidget::drawSelectionOverlay(QPainter& p, int idx, const QRect& r) const
+{
+    if (!tileSelectionMode) {
+        return;
+    }
+
+    const bool selectable = selectableTileIndices.contains(idx);
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing);
+
+    if (!selectable) {
+        p.fillRect(r, QColor(70, 74, 78, 138));
+    } else {
+        p.setBrush(QColor(255, 242, 0, 54));
+        p.setPen(QPen(QColor(18, 98, 197), 3));
+        p.drawRect(r.adjusted(4, 4, -4, -4));
+    }
+
+    p.restore();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1008,4 +1061,18 @@ void BoardWidget::paintEvent(QPaintEvent *event)
     p.drawRect(board);
     p.setPen(QPen(Pal::line, 2));
     p.drawRect(cr);
+
+    if (tileSelectionMode && !selectionPromptText.isEmpty()) {
+        p.save();
+        p.setRenderHint(QPainter::Antialiasing);
+        QRect promptRect = cr.adjusted(cr.width() / 8, cr.height() / 3, -cr.width() / 8, -cr.height() / 3);
+        p.setPen(QPen(QColor(17, 17, 17), 2));
+        p.setBrush(QColor(255, 254, 248, 236));
+        p.drawRect(promptRect);
+        QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(10, cr.width() / 36), QFont::Black);
+        p.setFont(titleFont);
+        p.setPen(QColor(17, 17, 17));
+        p.drawText(promptRect.adjusted(16, 12, -16, -12), Qt::AlignCenter | Qt::TextWordWrap, selectionPromptText.toUpper());
+        p.restore();
+    }
 }

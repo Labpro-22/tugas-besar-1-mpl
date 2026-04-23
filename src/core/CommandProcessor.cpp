@@ -66,6 +66,7 @@ bool CommandProcessor::isRecognizedCommand(const std::string& keyword) const {
            keyword == "CETAK_PROPERTI" ||
            keyword == "GADAI" ||
            keyword == "TEBUS" ||
+           keyword == "UNMORTGAGE" ||
            keyword == "BANGUN" ||
            keyword == "SIMPAN" ||
            keyword == "MUAT" ||
@@ -150,6 +151,10 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     player.setStatus(PlayerStatus::ACTIVE);
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
+    ui.showPaymentNotification(
+        "PAYMENT",
+        player.getUsername() + " membayar denda M" + std::to_string(fine) +
+            " untuk keluar dari penjara.");
     ui.showMessage("Denda M" + std::to_string(fine) + " dibayar. Kamu bebas dari penjara.");
 
     if (logger != nullptr) {
@@ -413,7 +418,7 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         if (GameUI* terminalUi = asTerminalUi(ui)) {
             terminalUi->showHelp(player);
         } else {
-            ui.showMessage("Aksi tersedia: roll/set dice, build, mortgage, redeem, use skill, pay fine, save, dan lihat log.");
+            ui.showMessage("Aksi tersedia: roll/set dice, build, mortgage, unmortgage, use skill, pay fine, save, dan lihat log.");
         }
         return CommandResult();
     }
@@ -461,7 +466,7 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         return CommandResult();
     }
 
-    if (keyword == "TEBUS") {
+    if (keyword == "TEBUS" || keyword == "UNMORTGAGE") {
         AssetManager::redeemProperty(player, *context);
         player.setActionTakenThisTurn(true);
         return CommandResult();

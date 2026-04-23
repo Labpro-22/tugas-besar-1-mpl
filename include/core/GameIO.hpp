@@ -29,7 +29,12 @@ public:
     virtual void showDiceRoll(int die1, int die2);
     virtual void showPawnStep(const Player& player, int tileIndex);
     virtual bool confirmPropertyPurchase(const Player& player, const PropertyTile& property);
+    virtual void showPropertyNotice(const Player& player, const PropertyTile& property);
     virtual void showActionCard(CardType cardType, const ActionCard& card);
+    virtual void showPaymentNotification(const std::string& title, const std::string& detail);
+    virtual void showAuctionNotification(const std::string& title, const std::string& detail);
+    virtual int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid);
+    virtual int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices);
     virtual int promptSkillCardSelection(
         const std::string& title,
         const std::vector<SkillCard*>& cards,

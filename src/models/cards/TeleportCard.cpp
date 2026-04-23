@@ -1,5 +1,7 @@
 #include "models/cards/TeleportCard.hpp"
 
+#include <vector>
+
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
@@ -29,12 +31,19 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
         return;
     }
 
-    int targetPosition = io->promptIntInRange(
-        "Pilih nomor petak tujuan teleport (1-" + std::to_string(tileCount) + "): ",
-        1,
-        tileCount);
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(tileCount);
+    for (int index = 0; index < tileCount; ++index) {
+        validTileIndices.push_back(index);
+    }
 
-    int targetIndex = targetPosition - 1;
+    int targetIndex = io->promptTileSelection(
+        "Pilih petak tujuan teleport langsung dari board.",
+        validTileIndices);
+    if (targetIndex < 0 || targetIndex >= tileCount) {
+        return;
+    }
+
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile == nullptr) {
         return;

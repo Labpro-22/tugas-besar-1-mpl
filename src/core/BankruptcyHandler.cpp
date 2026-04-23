@@ -1,11 +1,13 @@
 #include "core/BankruptcyHandler.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/Board.hpp"
 #include "core/AuctionManager.hpp"
 #include "core/TurnManager.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
+#include <string>
 #include <vector>
 
 void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context) {
@@ -13,8 +15,15 @@ void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
     
     if (totalAvailable < amount) {
         if (creditor) {
+            int transferred = player.getBalance();
             creditor->setBalance(creditor->getBalance() + player.getBalance());
             transferAssetsToPlayer(player, *creditor);
+            if (context.getIO() != nullptr && transferred > 0) {
+                context.getIO()->showPaymentNotification(
+                    "PAYMENT",
+                    player.getUsername() + " menyerahkan saldo terakhir M" +
+                        std::to_string(transferred) + " kepada " + creditor->getUsername() + ".");
+            }
         } else {
             transferAssetsToBank(player, context.getAuctionManager());
         }
@@ -28,6 +37,12 @@ void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
         player.setBalance(player.getBalance() - amount);
         if (creditor) {
             creditor->setBalance(creditor->getBalance() + amount);
+        }
+        if (context.getIO() != nullptr) {
+            context.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar M" + std::to_string(amount) +
+                    (creditor == nullptr ? " ke Bank." : " kepada " + creditor->getUsername() + "."));
         }
     }
 }

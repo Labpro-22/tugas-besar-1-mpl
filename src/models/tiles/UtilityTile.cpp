@@ -13,6 +13,9 @@ UtilityTile::UtilityTile(
 void UtilityTile::onLanded(Player& player, GameContext& gameContext) {
     GameIO* io = gameContext.getIO();
     if (getStatus() == PropertyStatus::BANK) {
+        if (io != nullptr) {
+            io->showPropertyNotice(player, *this);
+        }
         transferTo(player);
         if (io != nullptr) {
             io->showMessage("Kamu mendarat di " + getName() + "!");

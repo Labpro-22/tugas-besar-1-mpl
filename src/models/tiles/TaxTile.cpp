@@ -46,6 +46,10 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
         int beforeBalance = player.getBalance();
         player -= amountToPay;
         if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar pajak M" + std::to_string(amountToPay) +
+                    " ke Bank.");
             gameContext.getIO()->showMessage(
                 "Uang kamu: M" + std::to_string(beforeBalance) +
                     " -> M" + std::to_string(player.getBalance()));

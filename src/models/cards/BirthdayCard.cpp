@@ -37,6 +37,10 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         *otherPlayer -= amount;
         player += amount;
         if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                otherPlayer->getUsername() + " membayar M" + std::to_string(amount) +
+                    " kepada " + player.getUsername() + ".");
             gameContext.getIO()->showMessage(
                 otherPlayer->getUsername() + " memberi M" + std::to_string(amount) +
                     " kepada " + player.getUsername() + ".");

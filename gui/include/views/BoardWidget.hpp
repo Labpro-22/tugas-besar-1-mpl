@@ -9,6 +9,7 @@
 #include <QWidget>
 #include <QPixmap>
 #include <QMap>
+#include <QSet>
 
 class QPainter;
 class QMouseEvent;
@@ -31,9 +32,12 @@ public:
     void setActivePawnName(const QString& pawnName);
     void setPawns(const QVector<PawnData>& pawnData);
     void setSelectedPropertyId(int propertyId);
+    void setTileSelectionMode(const QSet<int>& validTileIndices, const QString& promptText);
+    void clearTileSelectionMode();
 
 signals:
     void propertySelected(int propertyId);
+    void tileSelected(int tileIndex);
 
 protected:
     void paintEvent(QPaintEvent *event) override;
@@ -72,6 +76,9 @@ private:
     mutable QMap<QString,QPixmap> pixCache;
     QString                     activePawnName;
     int                         selectedPropertyId = 0;
+    bool                        tileSelectionMode = false;
+    QSet<int>                   selectableTileIndices;
+    QString                     selectionPromptText;
 
     QVector<CellData> createCells() const;
     QRect    boardBounds() const;
@@ -84,6 +91,7 @@ private:
     void drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) const;
 
     void drawCell(QPainter &p, int idx, const QRect &r) const;
+    void drawSelectionOverlay(QPainter& p, int idx, const QRect& r) const;
     void drawCornerGo         (QPainter &p, const QRect &r) const;
     void drawCornerJail       (QPainter &p, const QRect &r) const;
     void drawCornerFreeParking(QPainter &p, const QRect &r) const;

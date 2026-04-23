@@ -27,9 +27,48 @@ bool GameIO::confirmPropertyPurchase(const Player& player, const PropertyTile& p
         std::to_string(property.getBuyPrice()) + "?");
 }
 
+void GameIO::showPropertyNotice(const Player&, const PropertyTile& property)
+{
+    showMessage(property.getName());
+}
+
 void GameIO::showActionCard(CardType, const ActionCard& card)
 {
     showMessage("Kartu: \"" + card.getText() + "\"");
+}
+
+void GameIO::showPaymentNotification(const std::string& title, const std::string& detail)
+{
+    showMessage(title + ": " + detail);
+}
+
+void GameIO::showAuctionNotification(const std::string& title, const std::string& detail)
+{
+    showMessage(title + ": " + detail);
+}
+
+int GameIO::promptAuctionBid(const PropertyTile&, const Player& bidder, int highestBid)
+{
+    return promptInt(
+        bidder.getUsername() +
+            " saldo M" + std::to_string(bidder.getBalance()) +
+            ", bid tertinggi M" + std::to_string(highestBid) +
+            ". Masukkan bid (0 untuk pass): ");
+}
+
+int GameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
+{
+    showMessage(title);
+    for (int index : validTileIndices) {
+        showMessage(std::to_string(index + 1) + ". Tile " + std::to_string(index + 1));
+    }
+
+    const int choice = promptIntInRange(
+        "Pilih tile (1-40): ",
+        1,
+        40);
+
+    return choice - 1;
 }
 
 int GameIO::promptSkillCardSelection(

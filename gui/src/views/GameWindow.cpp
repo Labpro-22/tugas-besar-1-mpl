@@ -8,22 +8,25 @@
 #include <QApplication>
 #include <QAction>
 #include <QDialog>
+#include <QDir>
 #include <QEventLoop>
-#include <QFileDialog>
 #include <QFileInfo>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
-#include <QInputDialog>
 #include <QLabel>
 #include <QLayoutItem>
+#include <QLineEdit>
 #include <QMenu>
-#include <QMessageBox>
+#include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QScrollArea>
+#include <QSet>
+#include <QSpinBox>
 #include <QStackedWidget>
 #include <QStyle>
+#include <QTimer>
 #include <QToolButton>
 #include <QVBoxLayout>
 
@@ -109,6 +112,347 @@ bool isUsernameDuplicate(const QStringList& names, const QString& candidate)
         }
     }
     return false;
+}
+
+void centerDialog(QDialog& dialog, QWidget* parent)
+{
+    dialog.adjustSize();
+    if (parent != nullptr) {
+        const QPoint center = parent->mapToGlobal(parent->rect().center());
+        dialog.move(center.x() - dialog.width() / 2, center.y() - dialog.height() / 2);
+    }
+}
+
+void animateDialog(QDialog& dialog)
+{
+    dialog.setWindowOpacity(0.0);
+    QTimer::singleShot(0, &dialog, [&dialog]() {
+        auto* fade = new QPropertyAnimation(&dialog, "windowOpacity", &dialog);
+        fade->setDuration(170);
+        fade->setStartValue(0.0);
+        fade->setEndValue(1.0);
+        fade->start(QAbstractAnimation::DeleteWhenStopped);
+    });
+}
+
+QString baseDialogStyle()
+{
+    return QStringLiteral(
+        "#customPopupShell { background:#fffef8; border:2px solid #111; border-radius:2px; }"
+        "#customPopupTitle { color:#090909; font:900 15pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#customPopupBody { color:#17232d; font:800 10.5pt 'Trebuchet MS'; line-height:120%; }"
+        "#customPopupInput { min-height:42px; padding:4px 10px; border:2px solid #111; border-radius:4px; background:white; color:#111; font:900 12pt 'Trebuchet MS'; }"
+        "QPushButton { border-radius:4px; font:900 9pt 'Trebuchet MS'; letter-spacing:1px; min-height:40px; }"
+        "#primaryPopupButton { background:#111; color:white; border:none; }"
+        "#primaryPopupButton:hover { background:#2a2a2a; }"
+        "#secondaryPopupButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#secondaryPopupButton:hover { background:#f4efe2; }"
+        "#filePopupButton { text-align:left; padding:10px 14px; background:white; color:#111; border:1px solid #111; }"
+        "#filePopupButton:hover { background:#eaf6ff; border:2px solid #1262c5; }"
+    );
+}
+
+void showCustomNotice(QWidget* parent, const QString& titleText, const QString& bodyText, const QString& buttonText = QStringLiteral("OK"))
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("customPopupShell"));
+    shell->setMinimumSize(430, 230);
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("customPopupTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(bodyText, shell);
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("customPopupBody"));
+    layout->addWidget(body, 1);
+
+    auto* button = new QPushButton(buttonText.toUpper(), shell);
+    button->setObjectName(QStringLiteral("primaryPopupButton"));
+    button->setCursor(Qt::PointingHandCursor);
+    layout->addWidget(button);
+
+    dialog.setStyleSheet(baseDialogStyle());
+    QObject::connect(button, &QPushButton::clicked, &dialog, &QDialog::accept);
+    centerDialog(dialog, parent);
+    animateDialog(dialog);
+    dialog.exec();
+}
+
+bool showCustomQuestion(QWidget* parent, const QString& titleText, const QString& bodyText, const QString& acceptText, const QString& rejectText)
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("customPopupShell"));
+    shell->setMinimumSize(430, 230);
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("customPopupTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(bodyText, shell);
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("customPopupBody"));
+    layout->addWidget(body, 1);
+
+    auto* row = new QHBoxLayout();
+    row->setSpacing(10);
+    layout->addLayout(row);
+
+    auto* rejectButton = new QPushButton(rejectText.toUpper(), shell);
+    rejectButton->setObjectName(QStringLiteral("secondaryPopupButton"));
+    rejectButton->setCursor(Qt::PointingHandCursor);
+    row->addWidget(rejectButton);
+
+    auto* acceptButton = new QPushButton(acceptText.toUpper(), shell);
+    acceptButton->setObjectName(QStringLiteral("primaryPopupButton"));
+    acceptButton->setCursor(Qt::PointingHandCursor);
+    row->addWidget(acceptButton);
+
+    bool accepted = false;
+    QObject::connect(rejectButton, &QPushButton::clicked, &dialog, [&]() {
+        accepted = false;
+        dialog.reject();
+    });
+    QObject::connect(acceptButton, &QPushButton::clicked, &dialog, [&]() {
+        accepted = true;
+        dialog.accept();
+    });
+
+    dialog.setStyleSheet(baseDialogStyle());
+    centerDialog(dialog, parent);
+    animateDialog(dialog);
+    dialog.exec();
+    return accepted;
+}
+
+QString promptCustomText(QWidget* parent, const QString& titleText, const QString& bodyText, const QString& defaultValue, bool* accepted)
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("customPopupShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("customPopupTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(bodyText, shell);
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("customPopupBody"));
+    layout->addWidget(body);
+
+    auto* input = new QLineEdit(defaultValue, shell);
+    input->setObjectName(QStringLiteral("customPopupInput"));
+    input->selectAll();
+    layout->addWidget(input);
+
+    auto* row = new QHBoxLayout();
+    row->setSpacing(10);
+    layout->addLayout(row);
+
+    auto* cancelButton = new QPushButton(QStringLiteral("CANCEL"), shell);
+    cancelButton->setObjectName(QStringLiteral("secondaryPopupButton"));
+    cancelButton->setCursor(Qt::PointingHandCursor);
+    row->addWidget(cancelButton);
+
+    auto* okButton = new QPushButton(QStringLiteral("OK"), shell);
+    okButton->setObjectName(QStringLiteral("primaryPopupButton"));
+    okButton->setCursor(Qt::PointingHandCursor);
+    row->addWidget(okButton);
+
+    QString result = defaultValue;
+    *accepted = false;
+    QObject::connect(cancelButton, &QPushButton::clicked, &dialog, [&]() {
+        *accepted = false;
+        dialog.reject();
+    });
+    QObject::connect(okButton, &QPushButton::clicked, &dialog, [&]() {
+        result = input->text().trimmed();
+        *accepted = true;
+        dialog.accept();
+    });
+
+    dialog.setStyleSheet(baseDialogStyle());
+    dialog.resize(460, 260);
+    centerDialog(dialog, parent);
+    animateDialog(dialog);
+    dialog.exec();
+    return result;
+}
+
+int promptCustomInt(QWidget* parent, const QString& titleText, const QString& bodyText, int minValue, int maxValue, int defaultValue, bool* accepted)
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("customPopupShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("customPopupTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(bodyText, shell);
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("customPopupBody"));
+    layout->addWidget(body);
+
+    auto* input = new QSpinBox(shell);
+    input->setObjectName(QStringLiteral("customPopupInput"));
+    input->setRange(minValue, maxValue);
+    input->setValue(qBound(minValue, defaultValue, maxValue));
+    layout->addWidget(input);
+
+    auto* row = new QHBoxLayout();
+    row->setSpacing(10);
+    layout->addLayout(row);
+
+    auto* cancelButton = new QPushButton(QStringLiteral("CANCEL"), shell);
+    cancelButton->setObjectName(QStringLiteral("secondaryPopupButton"));
+    cancelButton->setCursor(Qt::PointingHandCursor);
+    row->addWidget(cancelButton);
+
+    auto* okButton = new QPushButton(QStringLiteral("OK"), shell);
+    okButton->setObjectName(QStringLiteral("primaryPopupButton"));
+    okButton->setCursor(Qt::PointingHandCursor);
+    row->addWidget(okButton);
+
+    int result = input->value();
+    *accepted = false;
+    QObject::connect(cancelButton, &QPushButton::clicked, &dialog, [&]() {
+        *accepted = false;
+        dialog.reject();
+    });
+    QObject::connect(okButton, &QPushButton::clicked, &dialog, [&]() {
+        result = input->value();
+        *accepted = true;
+        dialog.accept();
+    });
+
+    dialog.setStyleSheet(baseDialogStyle());
+    dialog.resize(440, 260);
+    centerDialog(dialog, parent);
+    animateDialog(dialog);
+    dialog.exec();
+    return result;
+}
+
+QString promptSaveFilePicker(QWidget* parent, const QString& directory)
+{
+    QDir saveDir(directory);
+    const QStringList files = saveDir.entryList(QStringList() << QStringLiteral("*.txt"), QDir::Files, QDir::Name);
+    if (files.isEmpty()) {
+        showCustomNotice(parent, QStringLiteral("Load Game"), QStringLiteral("Belum ada save file di folder data."));
+        return {};
+    }
+
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("customPopupShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(QStringLiteral("LOAD GAME"), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("customPopupTitle"));
+    layout->addWidget(title);
+
+    auto* scroll = new QScrollArea(shell);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    layout->addWidget(scroll, 1);
+
+    auto* listHost = new QWidget(scroll);
+    auto* listLayout = new QVBoxLayout(listHost);
+    listLayout->setContentsMargins(0, 0, 0, 0);
+    listLayout->setSpacing(8);
+    scroll->setWidget(listHost);
+
+    QString selected;
+    for (const QString& file : files) {
+        auto* fileButton = new QPushButton(file, listHost);
+        fileButton->setObjectName(QStringLiteral("filePopupButton"));
+        fileButton->setCursor(Qt::PointingHandCursor);
+        listLayout->addWidget(fileButton);
+        QObject::connect(fileButton, &QPushButton::clicked, &dialog, [&, file]() {
+            selected = file;
+            dialog.accept();
+        });
+    }
+
+    auto* cancelButton = new QPushButton(QStringLiteral("CANCEL"), shell);
+    cancelButton->setObjectName(QStringLiteral("secondaryPopupButton"));
+    cancelButton->setCursor(Qt::PointingHandCursor);
+    layout->addWidget(cancelButton);
+    QObject::connect(cancelButton, &QPushButton::clicked, &dialog, &QDialog::reject);
+
+    dialog.setStyleSheet(baseDialogStyle());
+    dialog.resize(460, 420);
+    centerDialog(dialog, parent);
+    animateDialog(dialog);
+    dialog.exec();
+    return selected;
 }
 
 }  // namespace
@@ -357,7 +701,7 @@ QWidget* GameWindow::buildGamePage()
     configureActionButton(payFineButton, QStringLiteral("PAY FINE"), style()->standardIcon(QStyle::SP_MessageBoxWarning));
     configureActionButton(buildButton, QStringLiteral("BUILD"), style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     configureActionButton(mortgageButton, QStringLiteral("MORTGAGE"), style()->standardIcon(QStyle::SP_DialogApplyButton));
-    configureActionButton(redeemButton, QStringLiteral("REDEEM"), style()->standardIcon(QStyle::SP_DialogResetButton));
+    configureActionButton(redeemButton, QStringLiteral("UNMORTGAGE"), style()->standardIcon(QStyle::SP_DialogResetButton));
     configureActionButton(saveButton, QStringLiteral("SAVE"), style()->standardIcon(QStyle::SP_DialogSaveButton));
 
     actionsLayout->addWidget(rollButton, 0, 0);
@@ -432,11 +776,11 @@ void GameWindow::configureConnections()
     });
 
     connect(startMenuPage, &StartMenuPage::settingsRequested, this, [this]() {
-        QMessageBox::information(this, QStringLiteral("Settings"), QStringLiteral("Menu settings belum diimplementasikan pada versi ini."));
+        showCustomNotice(this, QStringLiteral("Settings"), QStringLiteral("Menu settings belum diimplementasikan pada versi ini."));
     });
 
     connect(startMenuPage, &StartMenuPage::leaderboardRequested, this, [this]() {
-        QMessageBox::information(this, QStringLiteral("Leaderboard"), QStringLiteral("Leaderboard belum tersedia pada versi ini."));
+        showCustomNotice(this, QStringLiteral("Leaderboard"), QStringLiteral("Leaderboard belum tersedia pada versi ini."));
     });
 
     connect(setupPage, &GameSetupPage::backRequested, this, [this]() {
@@ -501,7 +845,7 @@ void GameWindow::configureConnections()
 
     connect(redeemButton, &QToolButton::clicked, this, [this]() {
         executeSessionAction(
-            QStringLiteral("Properti berhasil ditebus."),
+            QStringLiteral("Properti berhasil di-unmortgage."),
             [this](QString* errorMessage) { return session.redeem(errorMessage); }
         );
     });
@@ -526,6 +870,14 @@ void GameWindow::configureSession()
         return promptPropertyPurchase(player, property);
     });
 
+    session.setPropertyNoticeHandler([this](const Player& player, const PropertyTile& property) {
+        showPropertyNotice(player, property);
+    });
+
+    session.setBoardTileSelectionHandler([this](const QString& title, const QVector<int>& validTileIndices) {
+        return promptBoardTileSelection(title, validTileIndices);
+    });
+
     session.setTurnChangedHandler([this]() {
         refreshViewModels();
         selectedPlayerUsername = activePlayerUsername;
@@ -547,7 +899,7 @@ void GameWindow::startNewGame()
 {
     const QStringList names = setupPage->playerNames();
     if (names.size() < 2 || names.size() > 4) {
-        QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Jumlah pemain harus 2 sampai 4."));
+        showCustomNotice(this, QStringLiteral("Validasi"), QStringLiteral("Jumlah pemain harus 2 sampai 4."));
         return;
     }
 
@@ -558,19 +910,19 @@ void GameWindow::startNewGame()
     for (const QString& rawName : names) {
         const QString name = rawName.trimmed();
         if (name.isEmpty()) {
-            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Semua nama pemain yang aktif harus diisi."));
+            showCustomNotice(this, QStringLiteral("Validasi"), QStringLiteral("Semua nama pemain yang aktif harus diisi."));
             return;
         }
         if (name.size() < 3) {
-            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Username minimal 3 karakter."));
+            showCustomNotice(this, QStringLiteral("Validasi"), QStringLiteral("Username minimal 3 karakter."));
             return;
         }
         if (name.contains(QRegularExpression(QStringLiteral("\\s")))) {
-            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Username tidak boleh mengandung spasi."));
+            showCustomNotice(this, QStringLiteral("Validasi"), QStringLiteral("Username tidak boleh mengandung spasi."));
             return;
         }
         if (isUsernameDuplicate(seen, name)) {
-            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Username pemain harus unik."));
+            showCustomNotice(this, QStringLiteral("Validasi"), QStringLiteral("Username pemain harus unik."));
             return;
         }
 
@@ -581,7 +933,7 @@ void GameWindow::startNewGame()
     QString errorMessage;
     if (!session.startNewGame(playerNames, &errorMessage)) {
         if (!errorMessage.isEmpty()) {
-            QMessageBox::warning(this, QStringLiteral("Game Baru"), errorMessage);
+            showCustomNotice(this, QStringLiteral("Game Baru"), errorMessage);
         }
         return;
     }
@@ -599,21 +951,16 @@ void GameWindow::startNewGame()
 void GameWindow::loadGameFromPicker()
 {
     const QString directory = saveDirectoryPath();
-    const QString filePath = QFileDialog::getOpenFileName(
-        this,
-        QStringLiteral("Muat Save File"),
-        directory,
-        QStringLiteral("Text Files (*.txt)")
-    );
+    const QString filename = promptSaveFilePicker(this, directory);
 
-    if (filePath.isEmpty()) {
+    if (filename.isEmpty()) {
         return;
     }
 
     QString errorMessage;
-    if (!session.loadGame(QFileInfo(filePath).fileName().toStdString(), &errorMessage)) {
+    if (!session.loadGame(filename.toStdString(), &errorMessage)) {
         if (!errorMessage.isEmpty()) {
-            QMessageBox::warning(this, QStringLiteral("Load Game"), errorMessage);
+            showCustomNotice(this, QStringLiteral("Load Game"), errorMessage);
         }
         return;
     }
@@ -635,11 +982,10 @@ void GameWindow::saveCurrentGame()
     }
 
     bool accepted = false;
-    QString filename = QInputDialog::getText(
+    QString filename = promptCustomText(
         this,
         QStringLiteral("Simpan Game"),
         QStringLiteral("Masukkan nama file save:"),
-        QLineEdit::Normal,
         QStringLiteral("game_sesi1.txt"),
         &accepted
     ).trimmed();
@@ -655,14 +1001,14 @@ void GameWindow::saveCurrentGame()
     SaveManager saveManager;
     const QString resolvedPath = QString::fromStdString(saveManager.getResolvedDataPath(filename.toStdString()));
     if (QFileInfo::exists(resolvedPath)) {
-        const QMessageBox::StandardButton overwrite = QMessageBox::question(
+        const bool overwrite = showCustomQuestion(
             this,
             QStringLiteral("Timpa File"),
             QStringLiteral("File \"%1\" sudah ada. Timpa file lama?").arg(QFileInfo(resolvedPath).fileName()),
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No
+            QStringLiteral("Yes"),
+            QStringLiteral("No")
         );
-        if (overwrite != QMessageBox::Yes) {
+        if (!overwrite) {
             return;
         }
     }
@@ -678,11 +1024,10 @@ void GameWindow::saveCurrentGame()
 void GameWindow::handleManualRollRequested()
 {
     bool accepted = false;
-    const int dieOne = QInputDialog::getInt(
+    const int dieOne = promptCustomInt(
         this,
         QStringLiteral("Set Dadu"),
         QStringLiteral("Nilai dadu pertama (1-6):"),
-        1,
         1,
         6,
         1,
@@ -692,11 +1037,10 @@ void GameWindow::handleManualRollRequested()
         return;
     }
 
-    const int dieTwo = QInputDialog::getInt(
+    const int dieTwo = promptCustomInt(
         this,
         QStringLiteral("Set Dadu"),
         QStringLiteral("Nilai dadu kedua (1-6):"),
-        1,
         1,
         6,
         1,
@@ -751,7 +1095,7 @@ void GameWindow::showGameFinishedDialogIfNeeded()
         }
     }
 
-    QMessageBox::information(this, QStringLiteral("Game Selesai"), lines.join('\n'));
+    showCustomNotice(this, QStringLiteral("Game Selesai"), lines.join('\n'), QStringLiteral("CONTINUE"));
     refreshActionAvailability();
 }
 
@@ -1083,6 +1427,108 @@ void GameWindow::showPropertyCard(int propertyId)
     propertyCardDialog->show();
     propertyCardDialog->raise();
     propertyCardDialog->activateWindow();
+}
+
+void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& property)
+{
+    const int propertyId = property.getIndex() + 1;
+    if (propertyConfigForId(propertyId) == nullptr) {
+        return;
+    }
+
+    selectedPlayerUsername = QString::fromStdString(player.getUsername());
+    setSelectedProperty(propertyId, false);
+    refreshScene(QStringLiteral("%1 mendarat di %2.")
+        .arg(QString::fromStdString(player.getUsername()))
+        .arg(QString::fromStdString(property.getName())));
+
+    QDialog dialog(this, Qt::Dialog | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
+    dialog.setWindowTitle(QStringLiteral("Property Notice"));
+    dialog.setModal(true);
+    dialog.resize(430, 690);
+
+    auto* layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(14, 14, 14, 14);
+    layout->setSpacing(12);
+
+    auto* card = new PropertyCardWidget(&dialog);
+    card->setConfigData(session.getConfigData());
+    card->setSelectedProperty(propertyId);
+    layout->addWidget(card, 1);
+
+    auto* info = new QLabel(
+        QStringLiteral("%1 mendapatkan %2.")
+            .arg(QString::fromStdString(player.getUsername()))
+            .arg(MonopolyUi::singleLineTileName(property.getName())),
+        &dialog
+    );
+    info->setWordWrap(true);
+    info->setAlignment(Qt::AlignCenter);
+    info->setStyleSheet(QStringLiteral("color:#17232d;font:800 10pt 'Trebuchet MS';"));
+    layout->addWidget(info);
+
+    auto* okButton = new QPushButton(QStringLiteral("OK"), &dialog);
+    okButton->setMinimumHeight(52);
+    okButton->setCursor(Qt::PointingHandCursor);
+    layout->addWidget(okButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "QDialog { background:#e3dece; }"
+        "QPushButton {"
+        "  border-radius: 10px;"
+        "  padding: 10px 18px;"
+        "  font: 900 11pt 'Trebuchet MS';"
+        "  letter-spacing: 1px;"
+        "  background:#1159c7;"
+        "  color:white;"
+        "  border:1px solid #0d49a4;"
+        "}"
+        "QPushButton:hover { background:#1d6ee6; }"
+    ));
+
+    connect(okButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    dialog.exec();
+}
+
+int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int>& validTileIndices)
+{
+    if (validTileIndices.isEmpty()) {
+        return -1;
+    }
+
+    QSet<int> selectable;
+    for (int index : validTileIndices) {
+        if (index >= 0 && index < 40) {
+            selectable.insert(index);
+        }
+    }
+
+    if (selectable.isEmpty()) {
+        return -1;
+    }
+
+    int selectedTileIndex = -1;
+    QEventLoop loop;
+    const QMetaObject::Connection connection = connect(
+        boardWidget,
+        &BoardWidget::tileSelected,
+        &loop,
+        [&](int tileIndex) {
+            selectedTileIndex = tileIndex;
+            loop.quit();
+        }
+    );
+
+    boardWidget->setTileSelectionMode(selectable, title);
+    refreshScene(title);
+    QApplication::processEvents(QEventLoop::AllEvents);
+
+    loop.exec();
+
+    disconnect(connection);
+    boardWidget->clearTileSelectionMode();
+    refreshScene(lastStatusText);
+    return selectedTileIndex;
 }
 
 bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile& property)
