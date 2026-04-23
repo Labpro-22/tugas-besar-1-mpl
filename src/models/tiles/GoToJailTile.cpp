@@ -3,6 +3,7 @@
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "models/tiles/JailTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "core/TurnManager.hpp"
@@ -33,13 +34,18 @@ void GoToJailTile::onLanded(Player& player, GameContext& gameContext) {
 
     Board* board = gameContext.getBoard();
     Tile* jailTile = board == nullptr ? nullptr : board->getTile("PEN");
-    if (jailTile != nullptr) {
-        player.setPosition(jailTile->getIndex());
+    if (const JailTile* jail = dynamic_cast<const JailTile*>(jailTile)) {
+        jail->applyJailStatus(player);
     } else {
-        player.setPosition(10);
+        if (jailTile != nullptr) {
+            player.moveTo(jailTile->getIndex());
+        } else {
+            player.setPosition(10);
+        }
+        player.setStatus(PlayerStatus::JAILED);
+        player.setJailTurns(0);
+        player.setConsecutiveDoubles(0);
     }
-    player.setStatus(PlayerStatus::JAILED);
-    player.setJailTurns(0);
     
     if (gameContext.getLogger() != nullptr) {
         int currentTurn = 0;

@@ -169,24 +169,6 @@ bool Player::isBankrupt() const {
     return status == PlayerStatus::BANKRUPT;
 }
 
-bool Player::isMonopolizing(ColorGroup colorGroup, const std::vector<StreetTile*>& allTiles) const {
-    for (const StreetTile* tile : allTiles) {
-        if (tile->getColorGroup() != colorGroup) continue;
-
-        bool owned = false;
-        for (const PropertyTile* prop : properties) {
-            if (prop == tile) {
-                owned = true;
-                break;
-            }
-        }
-
-        if (!owned) return false;
-    }
-
-    return !allTiles.empty();
-}
-
 void Player::resetTurnState() {
     shieldActive = false;
     discountPercent = 0;

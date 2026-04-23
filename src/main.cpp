@@ -23,7 +23,7 @@ int main() {
         int choice = ui.showMainMenu();
 
         if (choice == 1) {
-            ui.showMessage("Memulai game baru...");
+            ui.showMessage("\nMemulai game baru...");
             int playerCount = ui.promptPlayerCount();
             std::vector<std::string> playerNames = ui.promptPlayerNames(playerCount);
             engine.initialize(config, playerNames);

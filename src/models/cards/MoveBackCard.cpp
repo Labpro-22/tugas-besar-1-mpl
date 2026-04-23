@@ -3,6 +3,7 @@
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
 
@@ -43,6 +44,13 @@ void MoveBackCard::execute(Player& player, GameContext& gameContext) {
             gameContext.getIO()->showMessage(
                 "Bidak dipindahkan ke " + targetTile->getName() +
                     " (" + targetTile->getCode() + ").");
+        }
+        if (MovementService::shouldSkipGoLandingSalary(targetTile)) {
+            if (gameContext.getIO() != nullptr) {
+                gameContext.getIO()->showMessage(
+                    "Pergerakan mundur ke GO tidak memberikan gaji.");
+            }
+            return;
         }
         targetTile->onLanded(player, gameContext);
     }

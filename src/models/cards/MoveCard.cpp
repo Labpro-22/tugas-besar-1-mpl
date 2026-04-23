@@ -3,6 +3,7 @@
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
 
@@ -31,7 +32,6 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     int targetIndex = (player.getPosition() + getValue()) % tileCount;
     bool passedGo = oldPosition + getValue() >= tileCount;
     player.moveTo(targetIndex);
-    player.setUsedSkillThisTurn(true);
 
     if (gameContext.getIO() != nullptr) {
         gameContext.getIO()->showMessage(
@@ -39,11 +39,14 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
                 " maju " + std::to_string(getValue()) + " petak.");
     }
 
-    if (passedGo && targetIndex != 0) {
-        Tile* goTile = board->getTile("GO");
-        if (goTile != nullptr) {
-            goTile->onPassed(player, gameContext);
-        }
+    if (passedGo) {
+        MovementService::awardGoSalaryForForwardMovement(
+            *board,
+            player,
+            gameContext,
+            oldPosition,
+            targetIndex
+        );
     }
 
     Tile* targetTile = board->getTile(targetIndex);

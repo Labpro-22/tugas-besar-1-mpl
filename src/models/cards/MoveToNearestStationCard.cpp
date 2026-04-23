@@ -3,6 +3,7 @@
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/RailroadTile.hpp"
 #include "models/tiles/Tile.hpp"
@@ -26,10 +27,13 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
     bool passedGo = targetIndex <= oldPosition;
     player.moveTo(targetIndex);
     if (passedGo) {
-        Tile* goTile = board->getTile("GO");
-        if (goTile != nullptr) {
-            goTile->onPassed(player, gameContext);
-        }
+        MovementService::awardGoSalaryForForwardMovement(
+            *board,
+            player,
+            gameContext,
+            oldPosition,
+            targetIndex
+        );
     }
 
     if (gameContext.getIO() != nullptr) {

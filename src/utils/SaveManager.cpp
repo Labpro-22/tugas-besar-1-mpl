@@ -377,8 +377,3 @@ GameState SaveManager::loadGame(const std::string& filename) const {
         logs
     );
 }
-
-bool SaveManager::fileExists(const std::string& filename) const {
-    std::ifstream file(resolveDataPath(filename));
-    return file.good();
-}

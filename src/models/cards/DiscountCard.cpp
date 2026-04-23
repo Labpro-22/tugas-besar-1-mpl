@@ -16,7 +16,6 @@ std::string DiscountCard::getTypeName() const {
 
 void DiscountCard::use(Player& player, GameContext& gameContext) {
     player.setDiscountPercent(getValue());
-    player.setUsedSkillThisTurn(true);
     setRemainingDuration(1);
     if (gameContext.getIO() != nullptr) {
         gameContext.getIO()->showMessage(

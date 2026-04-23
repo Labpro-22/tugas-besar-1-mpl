@@ -16,6 +16,7 @@
 #include "models/state/Command.hpp"
 #include "models/state/GameState.hpp"
 #include "models/state/LogEntry.hpp"
+#include "models/tiles/JailTile.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/SaveManager.hpp"
@@ -45,6 +46,39 @@ CommandProcessor::CommandProcessor(
 namespace {
     GameUI* asTerminalUi(GameIO& io) {
         return dynamic_cast<GameUI*>(&io);
+    }
+
+    void expireTemporarySkillEffects(Player& player, GameIO& ui) {
+        const bool hadShield = player.isShieldActive();
+        const bool hadDiscount = player.getDiscountPercent() > 0;
+
+        if (!hadShield && !hadDiscount) {
+            return;
+        }
+
+        player.setShieldActive(false);
+        player.setDiscountPercent(0);
+
+        if (hadShield) {
+            ui.showMessage("Efek ShieldCard berakhir sebelum giliran tambahan.");
+        }
+        if (hadDiscount) {
+            ui.showMessage("Efek DiscountCard berakhir sebelum giliran tambahan.");
+        }
+    }
+
+    void applyJailState(Player& player, Tile* jailTile) {
+        if (const JailTile* jail = dynamic_cast<const JailTile*>(jailTile)) {
+            jail->applyJailStatus(player);
+            return;
+        }
+
+        if (jailTile != nullptr) {
+            player.moveTo(jailTile->getIndex());
+        }
+        player.setStatus(PlayerStatus::JAILED);
+        player.setJailTurns(0);
+        player.setConsecutiveDoubles(0);
     }
 }
 
@@ -235,6 +269,7 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
     player.setHasRolledThisTurn(false);
+    expireTemporarySkillEffects(player, ui);
     ui.showMessage("Double! Kamu bebas dari penjara.");
     ui.showMessage("Silakan lempar dadu lagi untuk melanjutkan giliran.");
     if (GameUI* terminalUi = asTerminalUi(ui)) {
@@ -277,11 +312,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
         player.setConsecutiveDoubles(player.getConsecutiveDoubles() + 1);
         if (player.getConsecutiveDoubles() >= 3) {
             Tile* jailTile = board.getTile("PEN");
-            if (jailTile != nullptr) {
-                player.moveTo(jailTile->getIndex());
-            }
-            player.setStatus(PlayerStatus::JAILED);
-            player.setJailTurns(0);
+            applyJailState(player, jailTile);
             ui.showMessage("Kamu mendapat double tiga kali berturut-turut!");
             ui.showMessage("Bidak langsung dipindahkan ke Penjara dan giliran berakhir.");
             if (logger != nullptr) {
@@ -319,6 +350,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
         player.isActive() &&
         player.getConsecutiveDoubles() > 0 &&
         player.getConsecutiveDoubles() < 3) {
+        expireTemporarySkillEffects(player, ui);
         ui.showMessage("DOUBLE! Kamu mendapat giliran tambahan.");
         player.setHasRolledThisTurn(false);
         return CommandResult(false, false);
@@ -368,7 +400,14 @@ void CommandProcessor::processSkillCommand(Player& player) {
     }
 
     SkillCard* card = usableCards[choice - 1];
-    card->use(player, *context);
+    try {
+        card->use(player, *context);
+    } catch (const SkillUseFailedException& e) {
+        ui.showMessage(e.what());
+        return;
+    }
+
+    player.setUsedSkillThisTurn(true);
     player.setActionTakenThisTurn(true);
     player.removeCard(card);
     context->getSkillDeck()->discardCard(card);

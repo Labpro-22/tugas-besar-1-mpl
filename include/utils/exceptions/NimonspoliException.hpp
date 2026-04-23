@@ -103,3 +103,17 @@ public:
         return reason;
     }
 };
+
+class SkillUseFailedException : public NimonspoliException {
+private:
+    std::string cardType;
+
+public:
+    SkillUseFailedException(const std::string& cardType, const std::string& reason)
+        : NimonspoliException(cardType + ": " + reason),
+          cardType(cardType) {}
+
+    const std::string& getCardType() const {
+        return cardType;
+    }
+};

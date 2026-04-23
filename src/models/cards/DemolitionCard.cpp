@@ -7,6 +7,7 @@
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 
 DemolitionCard::DemolitionCard()
     : SkillCard() {}
@@ -27,7 +28,7 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
 
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt()) {
             continue;
         }
 
@@ -47,8 +48,9 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     }
 
     if (targetProperties.empty()) {
-        io->showMessage("Tidak ada properti lawan yang dapat dihancurkan.");
-        return;
+        throw SkillUseFailedException(
+            getTypeName(),
+            "tidak ada properti lawan yang dapat dihancurkan.");
     }
 
     io->showMessage("Pilih properti lawan yang ingin dihancurkan:");
@@ -71,7 +73,6 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     targetProperty->setBuildingLevel(0);
     targetProperty->setFestivalState(1, 0);
     targetProperty->returnToBank();
-    player.setUsedSkillThisTurn(true);
 
     io->showMessage(
         targetProperty->getName()

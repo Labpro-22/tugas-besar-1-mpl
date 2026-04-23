@@ -173,16 +173,6 @@ std::string BoardRenderer::colorize(const std::string& text, const std::string& 
     return ansiCode + text + ANSI::RESET;
 }
 
-std::string BoardRenderer::renderTileCell(const Tile* tile, const std::vector<Player>& players) const {
-    ColorGroup colorGroup = getTileColorGroup(tile);
-    std::string ansiCode = getAnsiCode(colorMap, colorGroup);
-
-    std::string line1 = padToWidth(tileHeader(tile), CELL_WIDTH);
-    std::string line2 = padToWidth(buildPropertyStatus(tile, players), CELL_WIDTH);
-
-    return colorize(line1, ansiCode) + "\n" + colorize(line2, ansiCode);
-}
-
 void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << "\n";
     std::cout << "+--------------------------------------+\n";
@@ -207,6 +197,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << " ^/^^/^^^/^^^^ : Rumah level 1-4\n";
     std::cout << " *             : Hotel\n";
     std::cout << " NN KODE       : Nomor petak 1-40 dan kode petak\n";
+    std::cout << " PN            : Properti milik pemain N\n";
     std::cout << " (N), *N*      : Bidak pemain, *N* = giliran aktif\n";
     std::cout << " IN:N / V:N    : Di penjara / hanya mampir penjara\n";
     std::cout << " [M]           : Properti digadaikan\n";

@@ -58,6 +58,4 @@ public:
     bool checkGameEnd() const;
 
     std::vector<Player*> determineWinner() const;
-
-    void distributeSkillCards();
 };
