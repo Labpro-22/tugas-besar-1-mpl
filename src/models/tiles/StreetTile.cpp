@@ -83,8 +83,13 @@ int StreetTile::getFestivalDuration() const { return festivalDuration; }
 bool StreetTile::canBuildNext() const { return buildingLevel < 5; }
 
 int StreetTile::getSellValueToBank() const {
-    int totalBuildingValue = (buildingLevel * houseCost) / 2;
-    return getBuyPrice() + totalBuildingValue;
+    int buildingRefund = 0;
+    if (buildingLevel > 0 && buildingLevel < 5) {
+        buildingRefund = buildingLevel * (houseCost / 2);
+    } else if (buildingLevel == 5) {
+        buildingRefund = hotelCost / 2;
+    }
+    return getBuyPrice() + buildingRefund;
 }
 
 PropertyType StreetTile::getPropertyType() const {
