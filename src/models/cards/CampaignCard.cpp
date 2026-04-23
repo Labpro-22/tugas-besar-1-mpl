@@ -4,12 +4,13 @@
 #include "core/GameContext.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
+#include "utils/OutputFormatter.hpp"
 
 CampaignCard::CampaignCard()
     : CampaignCard(200) {}
 
 CampaignCard::CampaignCard(int amount)
-    : ActionCard("Anda mau nyaleg. Bayar M200 kepada setiap pemain."),
+    : ActionCard("Anda mau nyaleg. Bayar " + OutputFormatter::formatMoney(amount) + " kepada setiap pemain."),
       amount(amount) {}
 
 int CampaignCard::getAmount() const {
@@ -33,15 +34,15 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
 
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt()) {
             continue;
         }
 
         int amountToPay = player.consumeDiscountedAmount(amount);
         if (amountToPay != amount) {
             gameContext.showMessage(
-                "Diskon diterapkan dari M" + std::to_string(amount) +
-                    " menjadi M" + std::to_string(amountToPay) + ".");
+                "Diskon diterapkan dari " + OutputFormatter::formatMoney(amount) +
+                    " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
         }
 
         if (!player.canAfford(amountToPay)) {
@@ -61,7 +62,7 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         player -= amountToPay;
         *otherPlayer += amountToPay;
         gameContext.showMessage(
-            player.getUsername() + " membayar M" + std::to_string(amountToPay) +
+            player.getUsername() + " membayar " + OutputFormatter::formatMoney(amountToPay) +
                 " kepada " + otherPlayer->getUsername() + ".");
     }
 }

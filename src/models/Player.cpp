@@ -150,11 +150,9 @@ int Player::getDiscountedAmount(int amount) const {
 }
 
 int Player::consumeDiscountedAmount(int amount) {
-    int discountedAmount = getDiscountedAmount(amount);
-    if (amount > 0 && discountPercent > 0) {
-        discountPercent = 0;
-    }
-    return discountedAmount;
+    // DiscountCard berlaku selama giliran aktif, jadi nilainya baru di-reset
+    // saat turn berikutnya dimulai melalui resetTurnState().
+    return getDiscountedAmount(amount);
 }
 
 bool Player::canAfford(int amount) const {
@@ -173,9 +171,13 @@ bool Player::isBankrupt() const {
     return status == PlayerStatus::BANKRUPT;
 }
 
-void Player::resetTurnState() {
+void Player::clearTemporarySkillEffects() {
     shieldActive = false;
     discountPercent = 0;
+}
+
+void Player::resetTurnState() {
+    clearTemporarySkillEffects();
     usedSkillThisTurn = false;
     rolledThisTurn = false;
     actionTakenThisTurn = false;

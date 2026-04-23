@@ -15,6 +15,8 @@
 
 namespace {
     const int DEED_INNER_WIDTH = 48;
+    const int MENU_INNER_WIDTH = 30;
+    const int HELP_INNER_WIDTH = 61;
 
     std::string centerText(const std::string& text, int width) {
         if (static_cast<int>(text.size()) >= width) {
@@ -39,8 +41,16 @@ namespace {
         return "+" + std::string(DEED_INNER_WIDTH, fill) + "+";
     }
 
+    std::string makeBorder(int width, char fill) {
+        return "+" + std::string(width, fill) + "+";
+    }
+
     std::string makeRow(const std::string& text) {
         return "|" + padRight(text, DEED_INNER_WIDTH) + "|";
+    }
+
+    std::string makeRow(const std::string& text, int width) {
+        return "|" + padRight(text, width) + "|";
     }
 
     std::string makeCenteredRow(const std::string& text) {
@@ -49,6 +59,21 @@ namespace {
 
     std::string makeKeyValueRow(const std::string& key, const std::string& value) {
         return makeRow(padRight(key, 18) + " : " + value);
+    }
+
+    std::string makePreviewKeyValueRow(const std::string& key, const std::string& value) {
+        return makeRow(padRight(key, 14) + " : " + value);
+    }
+
+    std::string fitColumn(const std::string& text, int width) {
+        return padRight(text, width);
+    }
+
+    std::string makeHelpCommandRow(const std::string& command, const std::string& description) {
+        return makeRow(
+            " " + fitColumn(command, 24) + " | " + fitColumn(description, 32),
+            HELP_INNER_WIDTH
+        );
     }
 
     std::string propertyStatusToString(PropertyStatus status) {
@@ -205,21 +230,7 @@ namespace {
 
 namespace OutputFormatter {
     std::string formatMoney(int value) {
-        bool negative = value < 0;
-        std::string digits = std::to_string(negative ? -value : value);
-        std::string result;
-        int groupCount = 0;
-
-        for (int i = static_cast<int>(digits.size()) - 1; i >= 0; --i) {
-            result.insert(result.begin(), digits[i]);
-            ++groupCount;
-            if (groupCount == 3 && i > 0) {
-                result.insert(result.begin(), '.');
-                groupCount = 0;
-            }
-        }
-
-        return std::string(negative ? "-M" : "M") + result;
+        return std::string(value < 0 ? "-M" : "M") + std::to_string(value < 0 ? -value : value);
     }
 
     std::string formatColorGroup(ColorGroup colorGroup) {
@@ -306,12 +317,12 @@ namespace OutputFormatter {
 
     std::vector<std::string> formatMainMenu() {
         return {
-            "+------------------------------+",
-            "|          NIMONSPOLI          |",
-            "+------------------------------+",
-            "| 1. Game Baru                 |",
-            "| 2. Muat Game                 |",
-            "+------------------------------+",
+            makeBorder(MENU_INNER_WIDTH, '-'),
+            makeRow(centerText("NIMONSPOLI", MENU_INNER_WIDTH), MENU_INNER_WIDTH),
+            makeBorder(MENU_INNER_WIDTH, '-'),
+            makeRow(" 1. Game Baru", MENU_INNER_WIDTH),
+            makeRow(" 2. Muat Game", MENU_INNER_WIDTH),
+            makeBorder(MENU_INNER_WIDTH, '-'),
             "Catatan load: MUAT <filename> dari folder data/"
         };
     }
@@ -329,38 +340,38 @@ namespace OutputFormatter {
         const bool canUseSkillCard = hasUsableSkillCard(player);
         std::vector<std::string> lines = {
             "",
-            "+-------------------------------------------------------------+",
-            "| COMMAND TERSEDIA                                            |",
-            "+-------------------------------------------------------------+",
-            "| CETAK_PAPAN             | tampilkan papan                   |",
-            "| CETAK_AKTA KODE         | tampilkan akta properti           |",
-            "| CETAK_PROPERTI          | tampilkan properti pemain         |",
-            "| CETAK_LOG [n]           | tampilkan log transaksi           |",
-            "| SIMPAN file             | simpan game ke folder data/       |"
+            makeBorder(HELP_INNER_WIDTH, '-'),
+            makeRow(" COMMAND TERSEDIA", HELP_INNER_WIDTH),
+            makeBorder(HELP_INNER_WIDTH, '-'),
+            makeHelpCommandRow("CETAK_PAPAN", "tampilkan papan"),
+            makeHelpCommandRow("CETAK_AKTA KODE", "tampilkan akta properti"),
+            makeHelpCommandRow("CETAK_PROPERTI", "tampilkan properti pemain"),
+            makeHelpCommandRow("CETAK_LOG [n]", "tampilkan log transaksi"),
+            makeHelpCommandRow("SIMPAN file", "simpan game ke folder data/")
         };
 
         if (player.isJailed()) {
-            lines.push_back("| BAYAR_DENDA             | keluar dari penjara dengan denda  |");
+            lines.push_back(makeHelpCommandRow("BAYAR_DENDA", "keluar dari penjara dengan denda"));
             if (!player.hasUsedSkillThisTurn() && canUseSkillCard) {
-                lines.push_back("| GUNAKAN_KEMAMPUAN       | pakai kartu non-pergerakan        |");
+                lines.push_back(makeHelpCommandRow("GUNAKAN_KEMAMPUAN", "pakai kartu non-pergerakan"));
             }
             if (!player.hasRolledThisTurn() && player.getJailTurns() <= 3) {
-                lines.push_back("| LEMPAR_DADU             | coba keluar penjara dengan double |");
-                lines.push_back("| ATUR_DADU X Y           | set dadu untuk percobaan double   |");
+                lines.push_back(makeHelpCommandRow("LEMPAR_DADU", "coba keluar penjara dengan double"));
+                lines.push_back(makeHelpCommandRow("ATUR_DADU X Y", "set dadu untuk percobaan double"));
             }
         } else {
             if (!player.hasRolledThisTurn()) {
-                lines.push_back("| LEMPAR_DADU             | lempar dadu                       |");
-                lines.push_back("| ATUR_DADU X Y           | set nilai dadu manual             |");
+                lines.push_back(makeHelpCommandRow("LEMPAR_DADU", "lempar dadu"));
+                lines.push_back(makeHelpCommandRow("ATUR_DADU X Y", "set nilai dadu manual"));
                 if (!player.hasUsedSkillThisTurn() && canUseSkillCard) {
-                    lines.push_back("| GUNAKAN_KEMAMPUAN       | pakai kartu skill                  |");
+                    lines.push_back(makeHelpCommandRow("GUNAKAN_KEMAMPUAN", "pakai kartu skill"));
                 }
             }
-            lines.push_back("| GADAI / TEBUS / BANGUN  | kelola aset                       |");
+            lines.push_back(makeHelpCommandRow("GADAI / TEBUS / BANGUN", "kelola aset"));
         }
 
-        lines.push_back("| HELP / KELUAR           | bantuan / keluar                  |");
-        lines.push_back("+-------------------------------------------------------------+");
+        lines.push_back(makeHelpCommandRow("HELP / KELUAR", "bantuan / keluar"));
+        lines.push_back(makeBorder(HELP_INNER_WIDTH, '-'));
         return lines;
     }
 
@@ -476,19 +487,19 @@ namespace OutputFormatter {
         const std::string rent3 = formatMoney(street.getRentAtLevel(3));
         const std::string rent4 = formatMoney(street.getRentAtLevel(4));
         const std::string rent5 = formatMoney(street.getRentAtLevel(5));
+        const std::string headline = "[" + colorLabel + "] " + tile.getName() + " (" + tile.getCode() + ")";
 
         return {
-            "+================================================+",
-            "| [" + colorLabel + "] " + tile.getName() + " (" + tile.getCode() + ")" +
-                std::string(std::max(0, 33 - static_cast<int>(colorLabel.size() + tile.getName().size() + tile.getCode().size())), ' ') + "|",
-            "| Harga Beli    : " + buyPrice + std::string(std::max(0, 25 - static_cast<int>(buyPrice.size())), ' ') + "|",
-            "| Sewa dasar    : " + rent0 + std::string(std::max(0, 25 - static_cast<int>(rent0.size())), ' ') + "|",
-            "| Sewa 1 rumah  : " + rent1 + std::string(std::max(0, 25 - static_cast<int>(rent1.size())), ' ') + "|",
-            "| Sewa 2 rumah  : " + rent2 + std::string(std::max(0, 25 - static_cast<int>(rent2.size())), ' ') + "|",
-            "| Sewa 3 rumah  : " + rent3 + std::string(std::max(0, 25 - static_cast<int>(rent3.size())), ' ') + "|",
-            "| Sewa 4 rumah  : " + rent4 + std::string(std::max(0, 25 - static_cast<int>(rent4.size())), ' ') + "|",
-            "| Sewa hotel    : " + rent5 + std::string(std::max(0, 25 - static_cast<int>(rent5.size())), ' ') + "|",
-            "+================================================+"
+            makeBorder('='),
+            makeRow(headline),
+            makePreviewKeyValueRow("Harga Beli", buyPrice),
+            makePreviewKeyValueRow("Sewa dasar", rent0),
+            makePreviewKeyValueRow("Sewa 1 rumah", rent1),
+            makePreviewKeyValueRow("Sewa 2 rumah", rent2),
+            makePreviewKeyValueRow("Sewa 3 rumah", rent3),
+            makePreviewKeyValueRow("Sewa 4 rumah", rent4),
+            makePreviewKeyValueRow("Sewa hotel", rent5),
+            makeBorder('=')
         };
     }
 

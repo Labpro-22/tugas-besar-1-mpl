@@ -3,6 +3,7 @@
 # Compiler settings
 CXX      := g++
 CXXFLAGS := -Wall -Wextra -std=c++17 -I include
+DEPFLAGS := -MMD -MP
 
 # Directories
 SRC_DIR     := src
@@ -38,6 +39,7 @@ SRCS := $(call rwildcard,$(SRC_DIR)/,*.cpp)
 
 # Dynamic object mapping: src/xxx/yyy.cpp -> build/<platform>/xxx/yyy.o
 OBJS := $(patsubst $(SRC_DIR)/%.cpp, $(PLATFORM_OBJ_DIR)/%.o, $(SRCS))
+DEPS := $(OBJS:.o=.d)
 
 # Main targets
 all: cli gui-build
@@ -56,7 +58,7 @@ $(TARGET): $(OBJS)
 # Compile source files into object files
 $(PLATFORM_OBJ_DIR)/%.o: $(SRC_DIR)/%.cpp
 	@$(MKDIR_P) $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(DEPFLAGS) -c $< -o $@
 
 # Run the CLI game
 run: cli
@@ -113,3 +115,5 @@ help:
 	@echo "make clean-legacy - remove old mixed-platform build outputs"
 
 .PHONY: all cli clean clean-legacy clean-gui clean-all rebuild rebuild-gui run check-cmake gui-configure gui-build gui-run BuildRun directories help
+
+-include $(DEPS)

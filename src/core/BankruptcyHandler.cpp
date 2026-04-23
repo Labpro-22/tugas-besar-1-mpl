@@ -14,6 +14,13 @@
 #include <vector>
 
 namespace {
+    std::string fitColumn(const std::string& text, int width) {
+        if (static_cast<int>(text.size()) >= width) {
+            return text.substr(0, width);
+        }
+        return text + std::string(width - text.size(), ' ');
+    }
+
     enum class LiquidationAction {
         SELL,
         MORTGAGE
@@ -92,8 +99,8 @@ namespace {
             int totalPotential = 0;
             for (const LiquidationOption& option : estimates) {
                 std::ostringstream line;
-                line << "  " << std::left << std::setw(5) << liquidationActionLabel(option.action)
-                     << std::setw(18) << (option.property->getName() + " (" + option.property->getCode() + ")")
+                line << "  " << fitColumn(liquidationActionLabel(option.action), 5)
+                     << fitColumn(option.property->getName() + " (" + option.property->getCode() + ")", 18)
                      << "[" << OutputFormatter::formatPropertyCategory(*option.property) << "]"
                      << "   -> " << OutputFormatter::formatMoney(option.value);
                 io->showMessage(line.str());
@@ -126,8 +133,8 @@ namespace {
                 continue;
             }
             std::ostringstream line;
-            line << (i + 1) << ". " << std::left << std::setw(18)
-                 << (options[i].property->getName() + " (" + options[i].property->getCode() + ")")
+            line << (i + 1) << ". "
+                 << fitColumn(options[i].property->getName() + " (" + options[i].property->getCode() + ")", 18)
                  << "[" << OutputFormatter::formatPropertyCategory(*options[i].property) << "]  Harga Jual: "
                  << OutputFormatter::formatMoney(options[i].value);
             io->showMessage(line.str());
@@ -139,8 +146,8 @@ namespace {
                 continue;
             }
             std::ostringstream line;
-            line << (i + 1) << ". " << std::left << std::setw(18)
-                 << (options[i].property->getName() + " (" + options[i].property->getCode() + ")")
+            line << (i + 1) << ". "
+                 << fitColumn(options[i].property->getName() + " (" + options[i].property->getCode() + ")", 18)
                  << "[" << OutputFormatter::formatPropertyCategory(*options[i].property) << "]  Nilai Gadai: "
                  << OutputFormatter::formatMoney(options[i].value);
             io->showMessage(line.str());
@@ -154,8 +161,7 @@ namespace {
                 continue;
             }
             std::ostringstream line;
-            line << "  - " << std::left << std::setw(18)
-                 << (prop->getName() + " (" + prop->getCode() + ")")
+            line << "  - " << fitColumn(prop->getName() + " (" + prop->getCode() + ")", 18)
                  << "[" << OutputFormatter::formatPropertyCategory(*prop) << "]  "
                  << propertyStateLabel(*prop);
             lines.push_back(line.str());

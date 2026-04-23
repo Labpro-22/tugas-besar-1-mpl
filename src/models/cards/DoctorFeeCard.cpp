@@ -22,8 +22,8 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda!");
         gameContext.showMessage(
-            "Tagihan M" + std::to_string(amount) +
-                " dibatalkan. Uang Anda tetap: M" + std::to_string(player.getBalance()) + ".");
+            "Tagihan " + OutputFormatter::formatMoney(amount) +
+                " dibatalkan. Uang Anda tetap: " + OutputFormatter::formatMoney(player.getBalance()) + ".");
         return;
     }
 

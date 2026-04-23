@@ -17,10 +17,11 @@ void DiscountCard::use(Player& player, GameContext& gameContext) {
     player.setDiscountPercent(getValue());
     setRemainingDuration(1);
     gameContext.showMessage(
-        "DiscountCard diaktifkan! Pembayaran berikutnya mendapat diskon " +
+        "DiscountCard diaktifkan! Semua pembayaran selama giliran ini mendapat diskon " +
             std::to_string(getValue()) + "%.");
     gameContext.logEvent(
         "KARTU",
-        player.getUsername() + " mengaktifkan DiscountCard diskon " + std::to_string(getValue()) + "%."
+        player.getUsername() + " mengaktifkan DiscountCard diskon " + std::to_string(getValue()) +
+            "% selama giliran ini."
     );
 }

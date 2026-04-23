@@ -50,6 +50,7 @@ public:
     bool isActive() const;
     bool isJailed() const;
     bool isBankrupt() const;
+    void clearTemporarySkillEffects();
     void resetTurnState();
 
     const std::string& getUsername() const;

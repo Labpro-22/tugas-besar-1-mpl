@@ -17,6 +17,13 @@
 #include "utils/TransactionLogger.hpp"
 
 namespace {
+    std::string fitColumn(const std::string& text, int width) {
+        if (static_cast<int>(text.size()) >= width) {
+            return text.substr(0, width);
+        }
+        return text + std::string(width - text.size(), ' ');
+    }
+
     int buildingSellValue(const StreetTile& street) {
         int level = street.getBuildingLevel();
         if (level <= 0) {
@@ -95,8 +102,7 @@ namespace {
         for (StreetTile* street : streets) {
             int cost = street->getBuildingLevel() == 4 ? street->getHotelCost() : street->getHouseCost();
             std::ostringstream line;
-            line << "   - " << std::left << std::setw(26)
-                 << (street->getName() + " (" + street->getCode() + ")")
+            line << "   - " << fitColumn(street->getName() + " (" + street->getCode() + ")", 26)
                  << " : " << OutputFormatter::formatBuildingLabel(*street);
             if (street->getBuildingLevel() < 5) {
                 line << " (Harga " << (street->getBuildingLevel() == 4 ? "hotel" : "rumah")
@@ -115,9 +121,8 @@ namespace {
         for (StreetTile* street : streets) {
             bool isSelectable = std::find(selectable.begin(), selectable.end(), street) != selectable.end();
             std::ostringstream line;
-            line << "- " << std::left << std::setw(26)
-                 << (street->getName() + " (" + street->getCode() + ")")
-                 << " : " << std::setw(8) << OutputFormatter::formatBuildingLabel(*street);
+            line << "- " << fitColumn(street->getName() + " (" + street->getCode() + ")", 26)
+                 << " : " << fitColumn(OutputFormatter::formatBuildingLabel(*street), 8);
 
             if (street->getBuildingLevel() == 5) {
                 line << " <- sudah maksimal, tidak dapat dibangun";
@@ -207,8 +212,8 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
         std::string name = available[i]->getName() + " (" + available[i]->getCode() + ")";
         std::string category = "[" + OutputFormatter::formatPropertyCategory(*available[i]) + "]";
         line << (i + 1) << ". "
-             << std::left << std::setw(21) << name
-             << std::setw(11) << category
+             << fitColumn(name, 21)
+             << fitColumn(category, 11)
              << " Nilai Gadai: " << OutputFormatter::formatMoney(available[i]->getMortgageValue());
         io->showMessage(line.str());
     }
@@ -242,8 +247,8 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
                 std::ostringstream line;
                 std::string name = buildings[i]->getName() + " (" + buildings[i]->getCode() + ")";
                 line << (i + 1) << ". "
-                     << std::left << std::setw(24) << name
-                     << " - " << std::setw(8) << OutputFormatter::formatBuildingLabel(*buildings[i])
+                     << fitColumn(name, 24)
+                     << " - " << fitColumn(OutputFormatter::formatBuildingLabel(*buildings[i]), 8)
                      << " -> Nilai jual bangunan: " << OutputFormatter::formatMoney(buildingSellValue(*buildings[i]));
                 io->showMessage(line.str());
             }
@@ -318,8 +323,8 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
         std::string name = mortgaged[i]->getName() + " (" + mortgaged[i]->getCode() + ")";
         std::string category = "[" + OutputFormatter::formatPropertyCategory(*mortgaged[i]) + "]";
         line << (i + 1) << ". "
-             << std::left << std::setw(18) << name
-             << std::setw(12) << category
+             << fitColumn(name, 18)
+             << fitColumn(category, 12)
              << "[M]  Harga Tebus: " << OutputFormatter::formatMoney(redeemCost);
         io->showMessage(line.str());
     }

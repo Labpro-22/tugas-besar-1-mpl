@@ -4,12 +4,13 @@
 #include "core/GameContext.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
+#include "utils/OutputFormatter.hpp"
 
 BirthdayCard::BirthdayCard()
     : BirthdayCard(100) {}
 
 BirthdayCard::BirthdayCard(int amount)
-    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan M100 dari setiap pemain."),
+    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan " + OutputFormatter::formatMoney(amount) + " dari setiap pemain."),
       amount(amount) {}
 
 int BirthdayCard::getAmount() const {
@@ -24,15 +25,15 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
 
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive() || otherPlayer->isShieldActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt() || otherPlayer->isShieldActive()) {
             continue;
         }
 
         int amountToPay = otherPlayer->consumeDiscountedAmount(amount);
         if (amountToPay != amount) {
             gameContext.showMessage(
-                "Diskon " + otherPlayer->getUsername() + " diterapkan dari M" +
-                std::to_string(amount) + " menjadi M" + std::to_string(amountToPay) + ".");
+                "Diskon " + otherPlayer->getUsername() + " diterapkan dari " +
+                OutputFormatter::formatMoney(amount) + " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
         }
 
         if (!otherPlayer->canAfford(amountToPay)) {
@@ -49,7 +50,7 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         *otherPlayer -= amountToPay;
         player += amountToPay;
         gameContext.showMessage(
-            otherPlayer->getUsername() + " memberi M" + std::to_string(amountToPay) +
+            otherPlayer->getUsername() + " memberi " + OutputFormatter::formatMoney(amountToPay) +
                 " kepada " + player.getUsername() + ".");
     }
 }

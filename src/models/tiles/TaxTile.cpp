@@ -20,7 +20,7 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
 
     if (taxType == TaxType::PPH && gameContext.hasIO()) {
         gameContext.showMessage("Pilih opsi pembayaran pajak:");
-        gameContext.showMessage("1. Bayar flat M" + std::to_string(flatAmount));
+        gameContext.showMessage("1. Bayar flat " + OutputFormatter::formatMoney(flatAmount));
         gameContext.showMessage("2. Bayar " + std::to_string(percentage) + "% dari total kekayaan");
         gameContext.showMessage("(Pilih sebelum menghitung kekayaan!)");
         choice = gameContext.promptIntInRange("Pilihan (1/2): ", 1, 2);
@@ -92,7 +92,7 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
                 currentTurn = gameContext.getTurnManager()->getCurrentTurn();
             }
             gameContext.getLogger()->log(currentTurn, player.getUsername(), "PAJAK",
-                "Membayar pajak sebesar M" + std::to_string(amountToPay));
+                "Membayar pajak sebesar " + OutputFormatter::formatMoney(amountToPay));
         }
     } catch (const InsufficientFundsException& e) {
         if (taxType == TaxType::PPH && choice == 1) {
