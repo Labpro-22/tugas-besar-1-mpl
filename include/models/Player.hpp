@@ -44,6 +44,8 @@ public:
 
     int getTotalWealth() const;
     int getLiquidationMax() const;
+    int getDiscountedAmount(int amount) const;
+    int consumeDiscountedAmount(int amount);
     bool canAfford(int amount) const;
     bool isActive() const;
     bool isJailed() const;

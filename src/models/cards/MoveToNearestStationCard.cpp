@@ -21,7 +21,10 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
         return;
     }
 
-    bool passedGo = player.moveTo(nearestRailroad->getIndex());
+    int oldPosition = player.getPosition();
+    int targetIndex = nearestRailroad->getIndex();
+    bool passedGo = targetIndex <= oldPosition;
+    player.moveTo(targetIndex);
     if (passedGo) {
         Tile* goTile = board->getTile("GO");
         if (goTile != nullptr) {

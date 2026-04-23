@@ -68,7 +68,8 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     PropertyTile* targetProperty = targetProperties[choice - 1];
     Player* owner = targetOwners[choice - 1];
 
-    owner->removeProperty(targetProperty);
+    targetProperty->setBuildingLevel(0);
+    targetProperty->setFestivalState(1, 0);
     targetProperty->returnToBank();
     player.setUsedSkillThisTurn(true);
 
