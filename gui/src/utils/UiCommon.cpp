@@ -116,26 +116,6 @@ QString findImageDirectory()
     return {};
 }
 
-QString findPawnDirectory()
-{
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList startPaths = {QDir::currentPath(), appDir};
-
-    for (const QString& startPath : startPaths) {
-        const QString found = findUpwardDirectory(
-            startPath,
-            QStringLiteral("pion"),
-            {QStringLiteral("ITB.png")}
-        );
-
-        if (!found.isEmpty()) {
-            return found;
-        }
-    }
-
-    return {};
-}
-
 QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
 {
     switch (colorGroup) {
@@ -156,19 +136,7 @@ QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
 
 int displayBuyPrice(const PropertyConfig& property)
 {
-    if (property.getBuyPrice() > 0) {
-        return property.getBuyPrice();
-    }
-
-    switch (property.getPropertyType()) {
-    case PropertyType::RAILROAD:
-        return 200;
-    case PropertyType::UTILITY:
-        return property.getCode() == "PLN" ? 150 : 150;
-    case PropertyType::STREET:
-    default:
-        return 0;
-    }
+    return property.getBuyPrice();
 }
 
 }  // namespace MonopolyUi

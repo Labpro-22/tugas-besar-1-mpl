@@ -29,7 +29,7 @@ void CardTile::onLanded(Player& player, GameContext& gameContext) {
             
             if (card) {
                 if (io != nullptr) {
-                    io->showMessage("Kartu: \"" + card->getText() + "\"");
+                    io->showActionCard(cardType, *card);
                 }
                 card->execute(player, gameContext);
                 deck->discardCard(card); 

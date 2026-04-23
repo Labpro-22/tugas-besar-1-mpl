@@ -10,7 +10,7 @@ class Board;
 class Dice;
 class GameContext;
 class GameState;
-class GameUI;
+class GameIO;
 class Player;
 class TransactionLogger;
 class TurnManager;
@@ -22,7 +22,7 @@ private:
     std::vector<Player>& players;
     Dice& dice;
     TurnManager& turnManager;
-    GameUI& ui;
+    GameIO& ui;
     TransactionLogger* logger;
     GameContext*& context;
     std::function<GameState()> createGameState;
@@ -43,7 +43,7 @@ public:
         std::vector<Player>& players,
         Dice& dice,
         TurnManager& turnManager,
-        GameUI& ui,
+        GameIO& ui,
         TransactionLogger* logger,
         GameContext*& context,
         std::function<GameState()> createGameState

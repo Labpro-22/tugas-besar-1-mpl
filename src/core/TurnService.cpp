@@ -67,20 +67,17 @@ void TurnService::processTurn(
             player.addCard(card);
         } else {
             std::vector<SkillCard*> hand = player.getHand();
+            std::vector<SkillCard*> discardOptions = hand;
+            discardOptions.push_back(card);
             io.showMessage("PERINGATAN: Kamu sudah memiliki 3 kartu di tangan (Maksimal 3)!");
             io.showMessage("Kamu diwajibkan membuang 1 kartu.");
-            io.showMessage("Daftar Kartu Kemampuan Anda:");
 
-            for (int i = 0; i < static_cast<int>(hand.size()); ++i) {
-                io.showMessage(
-                    std::to_string(i + 1) + ". " + hand[i]->getTypeName() +
-                        " - " + DeckFactory::describeSkillCard(hand[i]));
-            }
-            io.showMessage(
-                "4. " + card->getTypeName() + " - " + DeckFactory::describeSkillCard(card));
-
-            int discardChoice = io.promptIntInRange("Pilih nomor kartu yang ingin dibuang (1-4): ", 1, 4);
-            if (discardChoice == 4) {
+            int discardChoice = io.promptSkillCardSelection(
+                "Pilih kartu kemampuan yang ingin dibuang",
+                discardOptions,
+                false
+            );
+            if (discardChoice == static_cast<int>(discardOptions.size())) {
                 io.showMessage(card->getTypeName() + " telah dibuang. Sekarang kamu memiliki 3 kartu di tangan.");
                 skillDeck.discardCard(card);
             } else {

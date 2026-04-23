@@ -3,25 +3,30 @@
 #include <QColor>
 #include <QMap>
 #include <QString>
+#include <QStringList>
 #include <QVector>
 #include <QWidget>
 
+#include <functional>
 #include <vector>
 
-#include "models/config/ConfigData.hpp"
+#include "core/GuiGameSession.hpp"
 #include "models/config/PropertyConfig.hpp"
 #include "views/PropertyPortfolioWidget.hpp"
 
 class BoardWidget;
+class GameSetupPage;
 class QLabel;
 class PropertyCardWidget;
 class PropertyPortfolioWidget;
-class QButtonGroup;
 class QDialog;
-class QHBoxLayout;
 class QFrame;
+class QStackedWidget;
 class QToolButton;
 class QVBoxLayout;
+class StartMenuPage;
+class Player;
+class PropertyTile;
 
 struct PlayerOverview {
     QString name;
@@ -29,18 +34,22 @@ struct PlayerOverview {
     QColor accentColor;
     int balance = 0;
     int tileIndex = 0;
-    QVector<int> ownedPropertyIds;
+    int handCount = 0;
+    int propertyCount = 0;
     bool isCurrentTurn = false;
     bool isInJail = false;
+    bool hasRolledThisTurn = false;
+    bool hasUsedSkillThisTurn = false;
+    bool hasTakenActionThisTurn = false;
 };
 
-struct DemoPropertyState {
+struct PropertyViewState {
     QString ownerUsername;
     bool mortgaged = false;
     int buildingLevel = 0;
 };
 
-struct DemoHistoryEntry {
+struct HistoryEntryView {
     int turn = 1;
     QString username;
     QString actionType;
@@ -50,11 +59,23 @@ struct DemoHistoryEntry {
 class GameWindow : public QWidget
 {
 public:
-    explicit GameWindow(QWidget *parent = nullptr);
+    explicit GameWindow(QWidget* parent = nullptr);
 
 private:
-    void loadConfigData();
-    void initializeGame();
+    void buildRootPages();
+    QWidget* buildGamePage();
+    void configureConnections();
+    void configureSession();
+
+    void startNewGame();
+    void loadGameFromPicker();
+    void saveCurrentGame();
+    void handleManualRollRequested();
+    void executeSessionAction(const QString& successFallback, const std::function<bool(QString*)>& action);
+    void showGameFinishedDialogIfNeeded();
+
+    void refreshViewModels();
+    void refreshScene(const QString& statusText = QString());
     void refreshSidebar();
     void refreshPlayerHeader();
     void refreshPlayerSelector();
@@ -62,56 +83,63 @@ private:
     void refreshStats();
     void refreshHistory();
     void refreshBoardPawns();
+    void refreshActionAvailability();
     void syncSelectedPlayer();
+    void syncSelectedProperty();
     void setSelectedPlayer(const QString& username);
     void setSelectedProperty(int propertyId, bool showPreview = false);
     void showPropertyCard(int propertyId);
-    void handleRollRequested();
-    void saveCurrentGame();
-    void refreshScene(const QString& statusText = QString());
+    bool promptPropertyPurchase(const Player& player, const PropertyTile& property);
+    void applyPendingMessages(const QString& fallback = QString());
 
-    PlayerOverview* playerOverviewByUsername(const QString& username);
     const PlayerOverview* playerOverviewByUsername(const QString& username) const;
     const PropertyConfig* propertyConfigForId(int propertyId) const;
-    const DemoPropertyState* propertyStateForId(int propertyId) const;
-    QVector<int> ownedPropertyIds(const QString& username) const;
+    const PropertyViewState* propertyStateForId(int propertyId) const;
     QVector<PortfolioPropertyView> buildPortfolioForPlayer(const QString& username) const;
     QString pawnAssetNameForPlayer(const QString& username) const;
     QColor accentColorForPlayer(const QString& username) const;
     int totalHouseCount(const QString& username) const;
     int totalHotelCount(const QString& username) const;
+    QString currentTurnStatusText() const;
+    QString saveDirectoryPath() const;
+
+    GuiGameSession session;
+
+    QStackedWidget* pageStack = nullptr;
+    StartMenuPage* startMenuPage = nullptr;
+    GameSetupPage* setupPage = nullptr;
+    QWidget* gamePage = nullptr;
 
     BoardWidget* boardWidget = nullptr;
     QWidget* sidebarPanel = nullptr;
     QLabel* playerAvatarLabel = nullptr;
     QLabel* playerNameLabel = nullptr;
     QLabel* playerMoneyLabel = nullptr;
-    QLabel* playerMetaLabel = nullptr;
-    QHBoxLayout* playerSelectorLayout = nullptr;
-    QButtonGroup* playerSelectorGroup = nullptr;
+    QToolButton* playerSwitchButton = nullptr;
     PropertyPortfolioWidget* portfolioWidget = nullptr;
     QFrame* historyHeaderFrame = nullptr;
     QLabel* houseCountLabel = nullptr;
     QLabel* hotelCountLabel = nullptr;
     QToolButton* rollButton = nullptr;
+    QToolButton* setDiceButton = nullptr;
+    QToolButton* useSkillButton = nullptr;
+    QToolButton* payFineButton = nullptr;
     QToolButton* buildButton = nullptr;
     QToolButton* mortgageButton = nullptr;
+    QToolButton* redeemButton = nullptr;
     QToolButton* saveButton = nullptr;
     QVBoxLayout* historyEntriesLayout = nullptr;
     QDialog* propertyCardDialog = nullptr;
     PropertyCardWidget* propertyCardWidget = nullptr;
 
-    ConfigData configData;
-    bool hasConfigData = false;
     std::vector<PropertyConfig> properties;
-    QMap<QString, QString> pawnAssetByPlayer;
     QMap<QString, QColor> accentColorByPlayer;
     QVector<PlayerOverview> playerOverviews;
-    QMap<int, DemoPropertyState> propertyStateById;
-    QVector<DemoHistoryEntry> historyEntries;
+    QMap<int, PropertyViewState> propertyStateById;
+    QVector<HistoryEntryView> historyEntries;
     QString activePlayerUsername;
     QString selectedPlayerUsername;
     QString lastStatusText;
     int selectedPropertyId = 0;
-    int currentTurn = 1;
+    bool finishDialogShown = false;
 };

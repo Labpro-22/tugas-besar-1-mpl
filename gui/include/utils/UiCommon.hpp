@@ -16,7 +16,6 @@ QString singleLineTileName(const std::string& rawName);
 
 QString findConfigDirectory();
 QString findImageDirectory();
-QString findPawnDirectory();
 
 QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback = QColor());
 int displayBuyPrice(const PropertyConfig& property);

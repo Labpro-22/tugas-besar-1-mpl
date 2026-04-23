@@ -10,6 +10,7 @@
 #include <QPainterPath>
 #include <QPen>
 #include <QPolygon>
+#include <QRegularExpression>
 #include <QStringList>
 #include <QtMath>
 
@@ -138,26 +139,6 @@ QString findImagesDirectory()
     return {};
 }
 
-QString findPionDirectory()
-{
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList startPaths = {QDir::currentPath(), appDir};
-
-    for (const QString& startPath : startPaths) {
-        const QString found = findUpwardDirectory(
-            startPath,
-            QStringLiteral("pion"),
-            {QStringLiteral("ITB.png")}
-        );
-
-        if (!found.isEmpty()) {
-            return found;
-        }
-    }
-
-    return {};
-}
-
 QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
 {
     switch (colorGroup) {
@@ -171,6 +152,18 @@ QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
     case ColorGroup::BIRU_TUA: return Pal::darkBlue;
     default: return fallback;
     }
+}
+
+QString initialsForName(const QString& name)
+{
+    const QStringList parts = name.split(QRegularExpression(QStringLiteral("[_\\s]+")), Qt::SkipEmptyParts);
+    if (parts.isEmpty()) {
+        return name.left(2).toUpper();
+    }
+    if (parts.size() == 1) {
+        return parts.front().left(2).toUpper();
+    }
+    return (parts.front().left(1) + parts.back().left(1)).toUpper();
 }
 }  // namespace
 
@@ -221,7 +214,7 @@ const QPixmap& BoardWidget::pix(const QString &name) const
 
     QPixmap pm;
 
-    const QStringList searchDirs = {findImagesDirectory(), findPionDirectory()};
+    const QStringList searchDirs = {findImagesDirectory()};
     for (const QString& directory : searchDirs) {
         if (directory.isEmpty()) {
             continue;
@@ -277,11 +270,11 @@ void BoardWidget::drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) c
         p.drawPixmap(target, icon);
         p.restore();
     } else {
-        QFont font(QStringLiteral("Arial"), qMax(6, int(r.width() * 0.32)));
+        QFont font(QStringLiteral("Trebuchet MS"), qMax(6, int(r.width() * 0.30)));
         font.setBold(true);
         p.setFont(font);
-        p.setPen(Qt::black);
-        p.drawText(iconRect, Qt::AlignCenter, pawn.name.left(2).toUpper());
+        p.setPen(Qt::white);
+        p.drawText(iconRect, Qt::AlignCenter, initialsForName(pawn.name));
     }
 
     p.setPen(QPen(isActivePawn ? Qt::white : Qt::black, isActivePawn ? 1.8 : 1.0));
@@ -471,14 +464,14 @@ QVector<BoardWidget::CellData> BoardWidget::createCells() const
                     cell.hasStrip = false;
                     cell.stripColor = QColor();
                     cell.accentColor = Pal::line;
-                    cell.price = formatCurrency(property.getBuyPrice() > 0 ? property.getBuyPrice() : 200);
+                    cell.price = property.getBuyPrice() > 0 ? formatCurrency(property.getBuyPrice()) : QString();
                     break;
                 case PropertyType::UTILITY:
                     cell.kind = (property.getCode() == "PLN") ? TileKind::UtilityElec : TileKind::UtilityWater;
                     cell.hasStrip = false;
                     cell.stripColor = QColor();
                     cell.accentColor = Pal::line;
-                    cell.price = formatCurrency(property.getBuyPrice() > 0 ? property.getBuyPrice() : 150);
+                    cell.price = property.getBuyPrice() > 0 ? formatCurrency(property.getBuyPrice()) : QString();
                     break;
                 }
             }

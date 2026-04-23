@@ -45,8 +45,8 @@ void PropertyTransactionService::handlePropertyLanded(
                 io->showMessage("Uang kamu saat ini: M" + std::to_string(player.getBalance()));
             }
 
-            if (price > 0 && player.canAfford(price) && io != nullptr &&
-                io->confirmYN("Apakah kamu ingin membeli properti ini seharga M" + std::to_string(price) + "?")) {
+            if (price > 0 && io != nullptr &&
+                io->confirmPropertyPurchase(player, tile)) {
                 int beforeBalance = player.getBalance();
                 player -= price;
                 tile.transferTo(player);

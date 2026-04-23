@@ -51,25 +51,35 @@ set(QT_CONF_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/qt.conf")
 
 set(PROJECT_SOURCES
     main.cpp
+    src/core/GuiGameSession.cpp
+    src/core/QtGameIO.cpp
     src/utils/UiCommon.cpp
     src/views/BoardWidget.cpp
+    src/views/GameSetupPage.cpp
     src/views/GameWindow.cpp
     src/views/PropertyCardWidget.cpp
     src/views/PropertyPortfolioWidget.cpp
+    src/views/StartMenuPage.cpp
+    include/core/GuiGameSession.hpp
+    include/core/QtGameIO.hpp
     include/utils/UiCommon.hpp
     include/views/BoardWidget.hpp
+    include/views/GameSetupPage.hpp
     include/views/GameWindow.hpp
     include/views/PropertyCardWidget.hpp
     include/views/PropertyPortfolioWidget.hpp
+    include/views/StartMenuPage.hpp
 )
 
-set(GAME_CORE_SOURCES
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/utils/ConfigLoader.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/config/ConfigData.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/config/PropertyConfig.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/config/TaxConfig.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/config/SpecialConfig.cpp
-    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/config/MiscConfig.cpp
+file(GLOB GAME_CORE_SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/core/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/cards/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/config/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/state/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/models/tiles/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/utils/*.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../src/views/*.cpp
 )
 
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
@@ -124,12 +134,6 @@ if(WIN32)
         COMMAND ${CMAKE_COMMAND} -E copy_directory
             "${CMAKE_CURRENT_SOURCE_DIR}/images"
             "$<TARGET_FILE_DIR:${QT_UI_TARGET}>/images"
-    )
-
-    add_custom_command(TARGET ${QT_UI_TARGET} POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_directory
-            "${CMAKE_CURRENT_SOURCE_DIR}/pion"
-            "$<TARGET_FILE_DIR:${QT_UI_TARGET}>/pion"
     )
 
     add_custom_command(TARGET ${QT_UI_TARGET} POST_BUILD

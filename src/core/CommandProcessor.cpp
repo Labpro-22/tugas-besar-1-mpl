@@ -9,6 +9,7 @@
 #include "core/DeckFactory.hpp"
 #include "core/Dice.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/cards/SkillCard.hpp"
@@ -28,7 +29,7 @@ CommandProcessor::CommandProcessor(
     std::vector<Player>& players,
     Dice& dice,
     TurnManager& turnManager,
-    GameUI& ui,
+    GameIO& ui,
     TransactionLogger* logger,
     GameContext*& context,
     std::function<GameState()> createGameState
@@ -40,6 +41,12 @@ CommandProcessor::CommandProcessor(
     logger(logger),
     context(context),
     createGameState(createGameState) {}
+
+namespace {
+    GameUI* asTerminalUi(GameIO& io) {
+        return dynamic_cast<GameUI*>(&io);
+    }
+}
 
 bool CommandProcessor::parseIntStrict(const std::string& text, int& value) const {
     try {
@@ -83,27 +90,31 @@ void CommandProcessor::resolveMovement(Player& player, int totalMove) {
         throw std::runtime_error("Board belum terbangun.");
     }
 
-    int oldPosition = player.getPosition();
-    int newPosition = (oldPosition + totalMove) % tileCount;
-    bool passedGo = oldPosition + totalMove >= tileCount;
-    player.moveTo(newPosition);
+    for (int step = 0; step < totalMove; ++step) {
+        const int previousPosition = player.getPosition();
+        const int nextPosition = (previousPosition + 1) % tileCount;
+        player.moveTo(nextPosition);
+        ui.showPawnStep(player, nextPosition);
 
-    if (passedGo && newPosition != 0 && context != nullptr) {
-        Tile* goTile = board.getTile("GO");
-        if (goTile != nullptr) {
-            goTile->onPassed(player, *context);
+        if (previousPosition + 1 >= tileCount && nextPosition != 0 && context != nullptr) {
+            Tile* goTile = board.getTile("GO");
+            if (goTile != nullptr) {
+                goTile->onPassed(player, *context);
+            }
         }
     }
 
-    Tile* landedTile = board.getTile(newPosition);
+    Tile* landedTile = board.getTile(player.getPosition());
     if (landedTile != nullptr && context != nullptr) {
-        ui.showDiceLanding(
-            dice.getDie1(),
-            dice.getDie2(),
-            dice.getTotal(),
-            player.getUsername(),
-            landedTile->getName(),
-            landedTile->getCode());
+        if (GameUI* terminalUi = asTerminalUi(ui)) {
+            terminalUi->showDiceLanding(
+                dice.getDie1(),
+                dice.getDie2(),
+                dice.getTotal(),
+                player.getUsername(),
+                landedTile->getName(),
+                landedTile->getCode());
+        }
         landedTile->onLanded(player, *context);
     }
 }
@@ -188,6 +199,7 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     ui.showMessage(
         "Hasil: " + std::to_string(dice.getDie1()) + " + " +
             std::to_string(dice.getDie2()) + " = " + std::to_string(dice.getTotal()));
+    ui.showDiceRoll(dice.getDie1(), dice.getDie2());
 
     if (logger != nullptr) {
         logger->log(
@@ -203,7 +215,9 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
         if (player.getJailTurns() >= 3) {
             ui.showMessage("Percobaan sudah 3 kali. Giliran berikutnya wajib BAYAR_DENDA.");
         }
-        ui.getBoardRenderer().render(board, players, turnManager);
+        if (GameUI* terminalUi = asTerminalUi(ui)) {
+            terminalUi->getBoardRenderer().render(board, players, turnManager);
+        }
         return CommandResult(false, true);
     }
 
@@ -213,7 +227,9 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     player.setHasRolledThisTurn(false);
     ui.showMessage("Double! Kamu bebas dari penjara.");
     ui.showMessage("Silakan lempar dadu lagi untuk melanjutkan giliran.");
-    ui.getBoardRenderer().render(board, players, turnManager);
+    if (GameUI* terminalUi = asTerminalUi(ui)) {
+        terminalUi->getBoardRenderer().render(board, players, turnManager);
+    }
     return CommandResult(false, false);
 }
 
@@ -265,7 +281,9 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
                     "PENJARA",
                     "Masuk penjara karena tiga kali double.");
             }
-            ui.getBoardRenderer().render(board, players, turnManager);
+            if (GameUI* terminalUi = asTerminalUi(ui)) {
+                terminalUi->getBoardRenderer().render(board, players, turnManager);
+            }
             return CommandResult(false, true);
         }
     } else {
@@ -281,9 +299,12 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
                 std::to_string(dice.getDie2()) + "=" + std::to_string(dice.getTotal()));
     }
 
+    ui.showDiceRoll(dice.getDie1(), dice.getDie2());
     resolveMovement(player, dice.getTotal());
 
-    ui.getBoardRenderer().render(board, players, turnManager);
+    if (GameUI* terminalUi = asTerminalUi(ui)) {
+        terminalUi->getBoardRenderer().render(board, players, turnManager);
+    }
     if (dice.getDie1() == dice.getDie2() &&
         player.isActive() &&
         player.getConsecutiveDoubles() > 0 &&
@@ -326,18 +347,11 @@ void CommandProcessor::processSkillCommand(Player& player) {
         return;
     }
 
-    ui.showMessage("Daftar Kartu Kemampuan Spesial Anda:");
-    for (int i = 0; i < static_cast<int>(usableCards.size()); ++i) {
-        ui.showMessage(
-            std::to_string(i + 1) + ". " + usableCards[i]->getTypeName() +
-                " - " + DeckFactory::describeSkillCard(usableCards[i]));
-    }
-    ui.showMessage("0. Batal");
-
-    int choice = ui.promptIntInRange(
-        "Pilih kartu yang ingin digunakan (0-" + std::to_string(usableCards.size()) + "): ",
-        0,
-        static_cast<int>(usableCards.size()));
+    int choice = ui.promptSkillCardSelection(
+        "Pilih kartu kemampuan yang ingin digunakan",
+        usableCards,
+        true
+    );
     if (choice == 0) {
         ui.showMessage("Penggunaan kartu dibatalkan.");
         return;
@@ -362,6 +376,11 @@ void CommandProcessor::showLog(const Command& command) {
         return;
     }
 
+    GameUI* terminalUi = asTerminalUi(ui);
+    if (terminalUi == nullptr) {
+        return;
+    }
+
     std::vector<LogEntry> entries;
     if (command.getArgCount() == 1) {
         int count = 0;
@@ -374,7 +393,7 @@ void CommandProcessor::showLog(const Command& command) {
         entries.assign(all.begin(), all.end());
     }
 
-    ui.showLog(entries);
+    terminalUi->showLog(entries);
 }
 
 CommandResult CommandProcessor::process(const Command& command, Player& player) {
@@ -391,7 +410,11 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
     }
 
     if (keyword == "HELP") {
-        ui.showHelp(player);
+        if (GameUI* terminalUi = asTerminalUi(ui)) {
+            terminalUi->showHelp(player);
+        } else {
+            ui.showMessage("Aksi tersedia: roll/set dice, build, mortgage, redeem, use skill, pay fine, save, dan lihat log.");
+        }
         return CommandResult();
     }
 
@@ -400,7 +423,9 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
     }
 
     if (keyword == "CETAK_PAPAN") {
-        ui.getBoardRenderer().render(board, players, turnManager);
+        if (GameUI* terminalUi = asTerminalUi(ui)) {
+            terminalUi->getBoardRenderer().render(board, players, turnManager);
+        }
         return CommandResult();
     }
 
@@ -417,12 +442,16 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         if (tile != nullptr) {
             property = tile->asPropertyTile();
         }
-        ui.getPropertyCardRenderer().renderDeed(property);
+        if (GameUI* terminalUi = asTerminalUi(ui)) {
+            terminalUi->getPropertyCardRenderer().renderDeed(property);
+        }
         return CommandResult();
     }
 
     if (keyword == "CETAK_PROPERTI") {
-        ui.getPropertyCardRenderer().renderPlayerProperties(player);
+        if (GameUI* terminalUi = asTerminalUi(ui)) {
+            terminalUi->getPropertyCardRenderer().renderPlayerProperties(player);
+        }
         return CommandResult();
     }
 

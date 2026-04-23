@@ -1,237 +1,247 @@
 #include "views/GameWindow.hpp"
 
 #include <algorithm>
-#include <exception>
+#include <cctype>
+#include <functional>
 #include <vector>
 
-#include <QAbstractButton>
-#include <QButtonGroup>
+#include <QApplication>
+#include <QAction>
 #include <QDialog>
+#include <QEventLoop>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLayoutItem>
+#include <QMenu>
 #include <QMessageBox>
-#include <QPainter>
-#include <QPainterPath>
-#include <QPixmap>
 #include <QPushButton>
-#include <QRandomGenerator>
+#include <QRegularExpression>
 #include <QScrollArea>
+#include <QStackedWidget>
+#include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
 
-#include "utils/ConfigLoader.hpp"
+#include "models/state/GameState.hpp"
+#include "models/state/LogEntry.hpp"
+#include "models/state/PropertyState.hpp"
+#include "models/tiles/PropertyTile.hpp"
+#include "models/tiles/Tile.hpp"
+#include "utils/SaveManager.hpp"
 #include "utils/UiCommon.hpp"
 #include "views/BoardWidget.hpp"
+#include "views/GameSetupPage.hpp"
 #include "views/PropertyCardWidget.hpp"
 #include "views/PropertyPortfolioWidget.hpp"
+#include "views/StartMenuPage.hpp"
 
 namespace {
 
-QString specialTileLabel(int tileIndex)
-{
-    switch (tileIndex) {
-    case 0:
-        return QStringLiteral("GO");
-    case 2:
-    case 17:
-        return QStringLiteral("Dana Umum");
-    case 4:
-        return QStringLiteral("PPH");
-    case 7:
-    case 33:
-        return QStringLiteral("Festival");
-    case 10:
-        return QStringLiteral("Penjara");
-    case 20:
-        return QStringLiteral("Bebas Parkir");
-    case 22:
-    case 36:
-        return QStringLiteral("Kesempatan");
-    case 30:
-        return QStringLiteral("Go To Jail");
-    case 38:
-        return QStringLiteral("PPNBM");
-    default:
-        return QStringLiteral("Petak %1").arg(tileIndex + 1);
-    }
-}
-
-QPixmap loadPawnPixmap(const QString& assetName, const QSize& desiredSize)
-{
-    QPixmap pixmap;
-    const QString pawnDir = MonopolyUi::findPawnDirectory();
-    if (!pawnDir.isEmpty()) {
-        pixmap.load(pawnDir + '/' + assetName);
-    }
-
-    if (pixmap.isNull()) {
-        return {};
-    }
-
-    return pixmap.scaled(desiredSize, Qt::KeepAspectRatioByExpanding, Qt::SmoothTransformation);
-}
-
 QString shortPlayerLabel(const QString& username)
 {
-    const QStringList parts = username.split(' ', Qt::SkipEmptyParts);
-    if (parts.isEmpty()) {
+    const QStringList pieces = username.split(QRegularExpression(QStringLiteral("[_\\s]+")), Qt::SkipEmptyParts);
+    if (pieces.isEmpty()) {
         return username.left(2).toUpper();
     }
 
-    const QString last = parts.back();
-    if (last.size() <= 4) {
-        return last.toUpper();
+    if (pieces.size() == 1) {
+        return pieces.front().left(2).toUpper();
     }
 
-    return username.left(2).toUpper();
+    return (pieces.front().left(1) + pieces.back().left(1)).toUpper();
 }
 
-QString historyAccentColor(const DemoHistoryEntry& entry)
+QString historyAccentColor(const HistoryEntryView& entry)
 {
     const QString action = entry.actionType.toUpper();
-    if (action == QStringLiteral("SEWA")) {
-        return QStringLiteral("#ff5f5f");
+    if (action == QStringLiteral("SEWA") || action == QStringLiteral("PAJAK")) {
+        return QStringLiteral("#df5c58");
     }
-    if (action == QStringLiteral("BELI")) {
-        return QStringLiteral("#ff9832");
+    if (action == QStringLiteral("BELI") || action == QStringLiteral("LELANG")) {
+        return QStringLiteral("#f38a2d");
     }
-    if (action == QStringLiteral("SYSTEM")) {
+    if (action == QStringLiteral("SYSTEM") || action == QStringLiteral("LOAD") || action == QStringLiteral("SAVE")) {
         return QStringLiteral("#2e8ef7");
     }
-    if (action == QStringLiteral("LEWAT")) {
-        return QStringLiteral("#95a7b3");
+    if (action == QStringLiteral("KARTU") || action == QStringLiteral("KARTU_SKILL")) {
+        return QStringLiteral("#7a49d8");
     }
     return QStringLiteral("#48a45b");
 }
 
-enum class GlyphKind {
-    Dice,
-    Build,
-    Mortgage,
-    Save,
-    House,
-    Hotel
-};
-
-QPixmap makeGlyphPixmap(GlyphKind kind, const QSize& size, const QColor& color = QColor(62, 74, 95))
+QColor playerAccent(int index)
 {
-    QPixmap pixmap(size);
-    pixmap.fill(Qt::transparent);
-
-    QPainter painter(&pixmap);
-    painter.setRenderHint(QPainter::Antialiasing);
-    painter.setPen(QPen(color, qMax(1.6, size.width() * 0.08), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-    painter.setBrush(Qt::NoBrush);
-
-    const QRectF rect(1.5, 1.5, size.width() - 3.0, size.height() - 3.0);
-
-    if (kind == GlyphKind::Dice) {
-        painter.setBrush(color);
-        painter.drawRoundedRect(rect.adjusted(size.width() * 0.18, size.height() * 0.14, -size.width() * 0.18, -size.height() * 0.14), 4, 4);
-        painter.setBrush(Qt::white);
-        const QRectF dice = rect.adjusted(size.width() * 0.22, size.height() * 0.18, -size.width() * 0.22, -size.height() * 0.18);
-        const qreal r = qMax<qreal>(1.2, size.width() * 0.05);
-        const QList<QPointF> pips = {
-            QPointF(dice.left() + dice.width() * 0.28, dice.top() + dice.height() * 0.28),
-            QPointF(dice.right() - dice.width() * 0.28, dice.top() + dice.height() * 0.28),
-            QPointF(dice.center().x(), dice.center().y()),
-            QPointF(dice.left() + dice.width() * 0.28, dice.bottom() - dice.height() * 0.28),
-            QPointF(dice.right() - dice.width() * 0.28, dice.bottom() - dice.height() * 0.28)
-        };
-        for (const QPointF& pip : pips) {
-            painter.drawEllipse(pip, r, r);
-        }
-        return pixmap;
+    switch (index) {
+    case 0:
+        return QColor(28, 97, 214);
+    case 1:
+        return QColor(216, 40, 40);
+    case 2:
+        return QColor(36, 38, 42);
+    default:
+        return QColor(126, 130, 138);
     }
-
-    if (kind == GlyphKind::Build) {
-        painter.drawLine(QPointF(rect.left() + rect.width() * 0.25, rect.bottom() - rect.height() * 0.22),
-                         QPointF(rect.right() - rect.width() * 0.18, rect.top() + rect.height() * 0.18));
-        painter.drawLine(QPointF(rect.left() + rect.width() * 0.18, rect.top() + rect.height() * 0.24),
-                         QPointF(rect.right() - rect.width() * 0.26, rect.bottom() - rect.height() * 0.18));
-        painter.drawArc(QRectF(rect.left() + rect.width() * 0.52, rect.top() + rect.height() * 0.10, rect.width() * 0.20, rect.height() * 0.20), 40 * 16, 220 * 16);
-        painter.drawLine(QPointF(rect.left() + rect.width() * 0.18, rect.top() + rect.height() * 0.24),
-                         QPointF(rect.left() + rect.width() * 0.10, rect.top() + rect.height() * 0.16));
-        return pixmap;
-    }
-
-    if (kind == GlyphKind::Mortgage) {
-        QPainterPath house;
-        house.moveTo(rect.left() + rect.width() * 0.18, rect.top() + rect.height() * 0.48);
-        house.lineTo(rect.center().x(), rect.top() + rect.height() * 0.20);
-        house.lineTo(rect.right() - rect.width() * 0.18, rect.top() + rect.height() * 0.48);
-        house.lineTo(rect.right() - rect.width() * 0.18, rect.bottom() - rect.height() * 0.14);
-        house.lineTo(rect.left() + rect.width() * 0.18, rect.bottom() - rect.height() * 0.14);
-        house.closeSubpath();
-        painter.drawPath(house);
-        painter.drawLine(QPointF(rect.left() + rect.width() * 0.08, rect.bottom() - rect.height() * 0.20),
-                         QPointF(rect.left() + rect.width() * 0.08, rect.top() + rect.height() * 0.40));
-        painter.drawLine(QPointF(rect.left() + rect.width() * 0.08, rect.bottom() - rect.height() * 0.20),
-                         QPointF(rect.left() + rect.width() * 0.22, rect.bottom() - rect.height() * 0.20));
-        return pixmap;
-    }
-
-    if (kind == GlyphKind::Save) {
-        painter.setBrush(color);
-        painter.drawRoundedRect(rect.adjusted(size.width() * 0.20, size.height() * 0.10, -size.width() * 0.20, -size.height() * 0.12), 3, 3);
-        painter.setBrush(Qt::white);
-        painter.drawRect(QRectF(rect.left() + rect.width() * 0.30, rect.top() + rect.height() * 0.16, rect.width() * 0.28, rect.height() * 0.18));
-        painter.drawEllipse(QRectF(rect.center().x() - rect.width() * 0.10, rect.bottom() - rect.height() * 0.36, rect.width() * 0.20, rect.height() * 0.20));
-        return pixmap;
-    }
-
-    if (kind == GlyphKind::House) {
-        painter.setBrush(color);
-        QPainterPath house;
-        house.moveTo(rect.left() + rect.width() * 0.12, rect.top() + rect.height() * 0.46);
-        house.lineTo(rect.center().x(), rect.top() + rect.height() * 0.16);
-        house.lineTo(rect.right() - rect.width() * 0.12, rect.top() + rect.height() * 0.46);
-        house.lineTo(rect.right() - rect.width() * 0.12, rect.bottom() - rect.height() * 0.12);
-        house.lineTo(rect.left() + rect.width() * 0.12, rect.bottom() - rect.height() * 0.12);
-        house.closeSubpath();
-        painter.drawPath(house);
-        painter.setBrush(QColor(255, 255, 255, 120));
-        painter.drawRect(QRectF(rect.center().x() - rect.width() * 0.08, rect.bottom() - rect.height() * 0.34, rect.width() * 0.16, rect.height() * 0.22));
-        return pixmap;
-    }
-
-    painter.setBrush(color);
-    painter.drawRect(QRectF(rect.left() + rect.width() * 0.18, rect.top() + rect.height() * 0.18, rect.width() * 0.64, rect.height() * 0.64));
-    painter.setBrush(QColor(255, 255, 255, 120));
-    painter.drawRect(QRectF(rect.left() + rect.width() * 0.28, rect.top() + rect.height() * 0.28, rect.width() * 0.14, rect.height() * 0.12));
-    painter.drawRect(QRectF(rect.left() + rect.width() * 0.50, rect.top() + rect.height() * 0.28, rect.width() * 0.14, rect.height() * 0.12));
-    painter.drawRect(QRectF(rect.left() + rect.width() * 0.28, rect.top() + rect.height() * 0.50, rect.width() * 0.14, rect.height() * 0.12));
-    painter.drawRect(QRectF(rect.left() + rect.width() * 0.50, rect.top() + rect.height() * 0.50, rect.width() * 0.14, rect.height() * 0.12));
-    return pixmap;
 }
 
-void configureActionButton(QToolButton* button, const QString& text, GlyphKind kind)
+void configureActionButton(QToolButton* button, const QString& text, const QIcon& icon, bool primary = false)
 {
     button->setText(text);
+    button->setIcon(icon);
+    button->setIconSize(QSize(26, 26));
     button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
-    button->setIcon(QIcon(makeGlyphPixmap(kind, QSize(28, 28))));
-    button->setIconSize(QSize(28, 28));
+    button->setCursor(Qt::PointingHandCursor);
+    button->setMinimumHeight(68);
+    button->setObjectName(primary ? QStringLiteral("actionButtonPrimary") : QStringLiteral("actionButton"));
     button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+}
+
+bool isUsernameDuplicate(const QStringList& names, const QString& candidate)
+{
+    const QString normalized = candidate.trimmed().toLower();
+    for (const QString& name : names) {
+        if (name.trimmed().toLower() == normalized) {
+            return true;
+        }
+    }
+    return false;
 }
 
 }  // namespace
 
-GameWindow::GameWindow(QWidget *parent)
-    : QWidget(parent)
+GameWindow::GameWindow(QWidget* parent)
+    : QWidget(parent),
+      session(this)
 {
     setObjectName(QStringLiteral("gameWindow"));
-    setMinimumSize(1180, 760);
+    setMinimumSize(1260, 820);
 
-    auto *rootLayout = new QHBoxLayout(this);
+    accentColorByPlayer.insert(QStringLiteral("Player 1"), QColor(28, 97, 214));
+    accentColorByPlayer.insert(QStringLiteral("Player 2"), QColor(216, 40, 40));
+    accentColorByPlayer.insert(QStringLiteral("Player 3"), QColor(36, 38, 42));
+    accentColorByPlayer.insert(QStringLiteral("Player 4"), QColor(126, 130, 138));
+
+    buildRootPages();
+    configureSession();
+    configureConnections();
+
+    setStyleSheet(
+        "#gameWindow { background: #edf2f7; }"
+        "#boardShell {"
+        "  background: rgba(255,255,255,0.97);"
+        "  border: 1px solid #d7dee6;"
+        "  border-radius: 20px;"
+        "}"
+        "#sidebarPanel {"
+        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(170, 210, 228, 0.96), stop:1 rgba(160, 201, 220, 0.98));"
+        "  border: 1px solid rgba(123, 168, 188, 0.92);"
+        "  border-radius: 22px;"
+        "}"
+        "#playerHeader {"
+        "  background: rgba(255,255,255,0.38);"
+        "  border-top-left-radius: 22px;"
+        "  border-top-right-radius: 22px;"
+        "  border-bottom: 1px solid rgba(111, 148, 165, 0.45);"
+        "}"
+        "#playerAvatar {"
+        "  background: rgba(255,255,255,0.86);"
+        "  border: 2px solid rgba(255,255,255,0.96);"
+        "  border-radius: 11px;"
+        "}"
+        "#playerName { color:#10181f; font: 900 15pt 'Trebuchet MS'; }"
+        "#playerMoney { color:#2f8c2f; font: 900 18pt 'Trebuchet MS'; }"
+        "#portfolioSection, #statsSection, #actionsSection, #historySection { background: transparent; }"
+        "#sidebarDivider { background: rgba(111, 150, 167, 0.55); margin: 6px 18px 4px 18px; }"
+        "#historyHeaderFrame {"
+        "  background: rgba(255,255,255,0.92);"
+        "  border: 1px solid rgba(138,160,174,0.95);"
+        "  border-top-left-radius: 10px;"
+        "  border-top-right-radius: 10px;"
+        "}"
+        "#historyTitle { color:#243744; font:900 8.7pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#historyFilter { color:#596d7d; font:700 8pt 'Courier New'; }"
+        "#historyScroll {"
+        "  background: rgba(255,255,255,0.82);"
+        "  border-left: 1px solid rgba(138,160,174,0.95);"
+        "  border-right: 1px solid rgba(138,160,174,0.95);"
+        "  border-bottom: 1px solid rgba(138,160,174,0.95);"
+        "  border-bottom-left-radius: 10px;"
+        "  border-bottom-right-radius: 10px;"
+        "}"
+        "#statLabelPrimary, #statLabelSecondary { color:#245987; font:900 10pt 'Trebuchet MS'; }"
+        "#statLabelSecondary { color:#3f7a33; }"
+        "#playerSwitchButton {"
+        "  min-width: 54px;"
+        "  min-height: 32px;"
+        "  padding: 4px 10px;"
+        "  border-radius: 16px;"
+        "  border: 1px solid rgba(78,119,136,0.50);"
+        "  background: rgba(255,255,255,0.72);"
+        "  color: #173142;"
+        "  font: 900 8.5pt 'Trebuchet MS';"
+        "}"
+        "#playerSwitchButton:hover {"
+        "  background: rgba(255,255,255,0.94);"
+        "  border: 2px solid #347cb7;"
+        "}"
+        "#actionButtonPrimary, #actionButton {"
+        "  padding: 6px 12px;"
+        "  border-radius: 10px;"
+        "  border: 1px solid rgba(134,152,166,0.9);"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #dfe7ec);"
+        "  color: #162432;"
+        "  font: 900 9.5pt 'Trebuchet MS';"
+        "}"
+        "#actionButtonPrimary {"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #dbefff);"
+        "  border-color: rgba(70, 123, 189, 0.85);"
+        "}"
+        "#actionButtonPrimary:hover, #actionButton:hover {"
+        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #eef4f8);"
+        "}"
+        "#actionButtonPrimary:disabled, #actionButton:disabled {"
+        "  color: rgba(74,88,102,0.55);"
+        "  background: rgba(231,235,239,0.86);"
+        "}"
+        "QDialog { background: #d9d4c5; }"
+    );
+
+    pageStack->setCurrentWidget(startMenuPage);
+}
+
+void GameWindow::buildRootPages()
+{
+    auto* rootLayout = new QVBoxLayout(this);
+    rootLayout->setContentsMargins(0, 0, 0, 0);
+    rootLayout->setSpacing(0);
+
+    pageStack = new QStackedWidget(this);
+    rootLayout->addWidget(pageStack);
+
+    startMenuPage = new StartMenuPage(this);
+    setupPage = new GameSetupPage(this);
+    gamePage = buildGamePage();
+
+    pageStack->addWidget(startMenuPage);
+    pageStack->addWidget(setupPage);
+    pageStack->addWidget(gamePage);
+}
+
+QWidget* GameWindow::buildGamePage()
+{
+    auto* page = new QWidget(this);
+
+    auto* rootLayout = new QHBoxLayout(page);
     rootLayout->setContentsMargins(18, 18, 18, 18);
     rootLayout->setSpacing(16);
 
-    auto *boardShell = new QFrame(this);
+    auto* boardShell = new QFrame(page);
     boardShell->setObjectName(QStringLiteral("boardShell"));
-    auto *boardLayout = new QVBoxLayout(boardShell);
+    auto* boardLayout = new QVBoxLayout(boardShell);
     boardLayout->setContentsMargins(18, 18, 18, 18);
     boardLayout->setSpacing(0);
 
@@ -240,29 +250,29 @@ GameWindow::GameWindow(QWidget *parent)
     boardLayout->addWidget(boardWidget, 1);
     rootLayout->addWidget(boardShell, 1);
 
-    sidebarPanel = new QFrame(this);
+    sidebarPanel = new QFrame(page);
     sidebarPanel->setObjectName(QStringLiteral("sidebarPanel"));
-    sidebarPanel->setMinimumWidth(300);
-    sidebarPanel->setMaximumWidth(330);
-
-    auto *sidebarLayout = new QVBoxLayout(sidebarPanel);
-    sidebarLayout->setContentsMargins(0, 0, 0, 0);
-    sidebarLayout->setSpacing(0);
+    sidebarPanel->setMinimumWidth(320);
+    sidebarPanel->setMaximumWidth(350);
     rootLayout->addWidget(sidebarPanel, 0);
 
-    auto *playerHeader = new QFrame(sidebarPanel);
+    auto* sidebarLayout = new QVBoxLayout(sidebarPanel);
+    sidebarLayout->setContentsMargins(0, 0, 0, 0);
+    sidebarLayout->setSpacing(0);
+
+    auto* playerHeader = new QFrame(sidebarPanel);
     playerHeader->setObjectName(QStringLiteral("playerHeader"));
-    auto *playerHeaderLayout = new QHBoxLayout(playerHeader);
+    auto* playerHeaderLayout = new QHBoxLayout(playerHeader);
     playerHeaderLayout->setContentsMargins(18, 16, 18, 14);
     playerHeaderLayout->setSpacing(12);
 
     playerAvatarLabel = new QLabel(playerHeader);
     playerAvatarLabel->setObjectName(QStringLiteral("playerAvatar"));
-    playerAvatarLabel->setFixedSize(64, 64);
     playerAvatarLabel->setAlignment(Qt::AlignCenter);
+    playerAvatarLabel->setFixedSize(64, 64);
     playerHeaderLayout->addWidget(playerAvatarLabel, 0, Qt::AlignTop);
 
-    auto *playerTextColumn = new QVBoxLayout();
+    auto* playerTextColumn = new QVBoxLayout();
     playerTextColumn->setSpacing(4);
     playerHeaderLayout->addLayout(playerTextColumn, 1);
 
@@ -274,140 +284,122 @@ GameWindow::GameWindow(QWidget *parent)
     playerMoneyLabel->setObjectName(QStringLiteral("playerMoney"));
     playerTextColumn->addWidget(playerMoneyLabel);
 
-    playerMetaLabel = new QLabel(QStringLiteral("Detail pemain akan muncul di sini."), playerHeader);
-    playerMetaLabel->setObjectName(QStringLiteral("playerMeta"));
-    playerMetaLabel->setWordWrap(true);
-    playerMetaLabel->setVisible(false);
-    playerTextColumn->addWidget(playerMetaLabel);
+    playerSwitchButton = new QToolButton(playerHeader);
+    playerSwitchButton->setObjectName(QStringLiteral("playerSwitchButton"));
+    playerSwitchButton->setText(QStringLiteral("--"));
+    playerSwitchButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    playerSwitchButton->setPopupMode(QToolButton::InstantPopup);
+    playerSwitchButton->setCursor(Qt::PointingHandCursor);
+    playerHeaderLayout->addWidget(playerSwitchButton, 0, Qt::AlignTop | Qt::AlignRight);
 
     sidebarLayout->addWidget(playerHeader, 0);
 
-    auto *selectorWrap = new QFrame(sidebarPanel);
-    selectorWrap->setObjectName(QStringLiteral("selectorWrap"));
-    auto *selectorLayout = new QHBoxLayout(selectorWrap);
-    selectorLayout->setContentsMargins(18, 10, 18, 4);
-    selectorLayout->setSpacing(8);
-
-    auto *selectorContainer = new QWidget(selectorWrap);
-    playerSelectorLayout = new QHBoxLayout(selectorContainer);
-    playerSelectorLayout->setContentsMargins(0, 0, 0, 0);
-    playerSelectorLayout->setSpacing(10);
-    selectorLayout->addWidget(selectorContainer, 0);
-    selectorLayout->addStretch(1);
-
-    playerSelectorGroup = new QButtonGroup(this);
-    playerSelectorGroup->setExclusive(true);
-    sidebarLayout->addWidget(selectorWrap, 0);
-
-    auto *portfolioSection = new QFrame(sidebarPanel);
+    auto* portfolioSection = new QFrame(sidebarPanel);
     portfolioSection->setObjectName(QStringLiteral("portfolioSection"));
-    auto *portfolioLayout = new QVBoxLayout(portfolioSection);
+    auto* portfolioLayout = new QVBoxLayout(portfolioSection);
     portfolioLayout->setContentsMargins(18, 4, 18, 4);
     portfolioLayout->setSpacing(0);
 
     portfolioWidget = new PropertyPortfolioWidget(portfolioSection);
-    portfolioWidget->setObjectName(QStringLiteral("portfolioWidget"));
     portfolioWidget->setFixedHeight(208);
     portfolioLayout->addWidget(portfolioWidget, 1);
     sidebarLayout->addWidget(portfolioSection, 0);
 
-    auto *divider = new QFrame(sidebarPanel);
+    auto* divider = new QFrame(sidebarPanel);
     divider->setObjectName(QStringLiteral("sidebarDivider"));
     divider->setFixedHeight(1);
     sidebarLayout->addWidget(divider, 0);
 
-    auto *statsSection = new QFrame(sidebarPanel);
+    auto* statsSection = new QFrame(sidebarPanel);
     statsSection->setObjectName(QStringLiteral("statsSection"));
-    auto *statsLayout = new QHBoxLayout(statsSection);
+    auto* statsLayout = new QHBoxLayout(statsSection);
     statsLayout->setContentsMargins(18, 8, 18, 10);
     statsLayout->setSpacing(10);
 
-    auto *houseIconLabel = new QLabel(statsSection);
-    houseIconLabel->setPixmap(makeGlyphPixmap(GlyphKind::House, QSize(24, 24), QColor(47, 134, 235)));
-    statsLayout->addWidget(houseIconLabel, 0, Qt::AlignVCenter);
+    auto* houseTitle = new QLabel(QStringLiteral("Houses"), statsSection);
+    houseTitle->setStyleSheet(QStringLiteral("color:#244150;font:800 8.5pt 'Trebuchet MS';"));
+    statsLayout->addWidget(houseTitle);
 
     houseCountLabel = new QLabel(QStringLiteral("0"), statsSection);
     houseCountLabel->setObjectName(QStringLiteral("statLabelPrimary"));
-    statsLayout->addWidget(houseCountLabel, 0, Qt::AlignVCenter);
+    statsLayout->addWidget(houseCountLabel);
 
-    auto *hotelIconLabel = new QLabel(statsSection);
-    hotelIconLabel->setPixmap(makeGlyphPixmap(GlyphKind::Hotel, QSize(24, 24), QColor(67, 76, 96)));
-    statsLayout->addWidget(hotelIconLabel, 0, Qt::AlignVCenter);
+    auto* hotelTitle = new QLabel(QStringLiteral("Hotels"), statsSection);
+    hotelTitle->setStyleSheet(QStringLiteral("color:#244150;font:800 8.5pt 'Trebuchet MS';margin-left:8px;"));
+    statsLayout->addWidget(hotelTitle);
 
     hotelCountLabel = new QLabel(QStringLiteral("0"), statsSection);
     hotelCountLabel->setObjectName(QStringLiteral("statLabelSecondary"));
-    statsLayout->addWidget(hotelCountLabel, 0, Qt::AlignVCenter);
+    statsLayout->addWidget(hotelCountLabel);
 
     statsLayout->addStretch(1);
     sidebarLayout->addWidget(statsSection, 0);
 
-    auto *actionsSection = new QFrame(sidebarPanel);
+    auto* actionsSection = new QFrame(sidebarPanel);
     actionsSection->setObjectName(QStringLiteral("actionsSection"));
-    auto *actionsLayout = new QGridLayout(actionsSection);
+    auto* actionsLayout = new QGridLayout(actionsSection);
     actionsLayout->setContentsMargins(18, 0, 18, 12);
     actionsLayout->setHorizontalSpacing(10);
     actionsLayout->setVerticalSpacing(10);
 
     rollButton = new QToolButton(actionsSection);
-    rollButton->setObjectName(QStringLiteral("actionButtonPrimary"));
-    rollButton->setCursor(Qt::PointingHandCursor);
-    rollButton->setMinimumHeight(68);
-    configureActionButton(rollButton, QStringLiteral("ROLL DICE"), GlyphKind::Dice);
-
+    setDiceButton = new QToolButton(actionsSection);
+    useSkillButton = new QToolButton(actionsSection);
+    payFineButton = new QToolButton(actionsSection);
     buildButton = new QToolButton(actionsSection);
-    buildButton->setObjectName(QStringLiteral("actionButton"));
-    buildButton->setCursor(Qt::PointingHandCursor);
-    buildButton->setMinimumHeight(68);
-    configureActionButton(buildButton, QStringLiteral("BUILD"), GlyphKind::Build);
-
     mortgageButton = new QToolButton(actionsSection);
-    mortgageButton->setObjectName(QStringLiteral("actionButton"));
-    mortgageButton->setCursor(Qt::PointingHandCursor);
-    mortgageButton->setMinimumHeight(68);
-    configureActionButton(mortgageButton, QStringLiteral("MORTGAGE"), GlyphKind::Mortgage);
-
+    redeemButton = new QToolButton(actionsSection);
     saveButton = new QToolButton(actionsSection);
-    saveButton->setObjectName(QStringLiteral("actionButton"));
-    saveButton->setCursor(Qt::PointingHandCursor);
-    saveButton->setMinimumHeight(68);
-    configureActionButton(saveButton, QStringLiteral("SAVE"), GlyphKind::Save);
+
+    configureActionButton(rollButton, QStringLiteral("ROLL DICE"), style()->standardIcon(QStyle::SP_MediaPlay), true);
+    configureActionButton(setDiceButton, QStringLiteral("SET DICE"), style()->standardIcon(QStyle::SP_BrowserReload));
+    configureActionButton(useSkillButton, QStringLiteral("USE SKILL"), style()->standardIcon(QStyle::SP_CommandLink));
+    configureActionButton(payFineButton, QStringLiteral("PAY FINE"), style()->standardIcon(QStyle::SP_MessageBoxWarning));
+    configureActionButton(buildButton, QStringLiteral("BUILD"), style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    configureActionButton(mortgageButton, QStringLiteral("MORTGAGE"), style()->standardIcon(QStyle::SP_DialogApplyButton));
+    configureActionButton(redeemButton, QStringLiteral("REDEEM"), style()->standardIcon(QStyle::SP_DialogResetButton));
+    configureActionButton(saveButton, QStringLiteral("SAVE"), style()->standardIcon(QStyle::SP_DialogSaveButton));
 
     actionsLayout->addWidget(rollButton, 0, 0);
-    actionsLayout->addWidget(buildButton, 0, 1);
-    actionsLayout->addWidget(mortgageButton, 1, 0);
-    actionsLayout->addWidget(saveButton, 1, 1);
+    actionsLayout->addWidget(setDiceButton, 0, 1);
+    actionsLayout->addWidget(useSkillButton, 1, 0);
+    actionsLayout->addWidget(payFineButton, 1, 1);
+    actionsLayout->addWidget(buildButton, 2, 0);
+    actionsLayout->addWidget(mortgageButton, 2, 1);
+    actionsLayout->addWidget(redeemButton, 3, 0);
+    actionsLayout->addWidget(saveButton, 3, 1);
     sidebarLayout->addWidget(actionsSection, 0);
 
-    auto *historySection = new QFrame(sidebarPanel);
+    auto* historySection = new QFrame(sidebarPanel);
     historySection->setObjectName(QStringLiteral("historySection"));
-    auto *historySectionLayout = new QVBoxLayout(historySection);
+    auto* historySectionLayout = new QVBoxLayout(historySection);
     historySectionLayout->setContentsMargins(18, 0, 18, 18);
     historySectionLayout->setSpacing(0);
 
     historyHeaderFrame = new QFrame(historySection);
     historyHeaderFrame->setObjectName(QStringLiteral("historyHeaderFrame"));
-    auto *historyHeaderLayout = new QHBoxLayout(historyHeaderFrame);
+    auto* historyHeaderLayout = new QHBoxLayout(historyHeaderFrame);
     historyHeaderLayout->setContentsMargins(10, 8, 10, 8);
     historyHeaderLayout->setSpacing(6);
 
-    auto *historyTitle = new QLabel(QStringLiteral("HISTORY"), historyHeaderFrame);
+    auto* historyTitle = new QLabel(QStringLiteral("HISTORY"), historyHeaderFrame);
     historyTitle->setObjectName(QStringLiteral("historyTitle"));
-    historyHeaderLayout->addWidget(historyTitle, 0, Qt::AlignVCenter);
+    historyHeaderLayout->addWidget(historyTitle);
     historyHeaderLayout->addStretch(1);
 
-    auto *historyFilter = new QLabel(QStringLiteral("---"), historyHeaderFrame);
+    auto* historyFilter = new QLabel(QStringLiteral("LIVE"), historyHeaderFrame);
     historyFilter->setObjectName(QStringLiteral("historyFilter"));
-    historyHeaderLayout->addWidget(historyFilter, 0, Qt::AlignVCenter);
+    historyHeaderLayout->addWidget(historyFilter);
     historySectionLayout->addWidget(historyHeaderFrame, 0);
 
-    auto *historyScroll = new QScrollArea(historySection);
+    auto* historyScroll = new QScrollArea(historySection);
     historyScroll->setObjectName(QStringLiteral("historyScroll"));
     historyScroll->setWidgetResizable(true);
     historyScroll->setFrameShape(QFrame::NoFrame);
     historyScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    historyScroll->setMinimumHeight(210);
+    historyScroll->setMinimumHeight(220);
 
-    auto *historyContent = new QWidget(historyScroll);
+    auto* historyContent = new QWidget(historyScroll);
     historyEntriesLayout = new QVBoxLayout(historyContent);
     historyEntriesLayout->setContentsMargins(0, 0, 0, 0);
     historyEntriesLayout->setSpacing(0);
@@ -420,136 +412,46 @@ GameWindow::GameWindow(QWidget *parent)
     propertyCardDialog->setModal(false);
     propertyCardDialog->setWindowTitle(QStringLiteral("Property Card"));
     propertyCardDialog->resize(410, 620);
-    auto *dialogLayout = new QVBoxLayout(propertyCardDialog);
+    auto* dialogLayout = new QVBoxLayout(propertyCardDialog);
     dialogLayout->setContentsMargins(12, 12, 12, 12);
     propertyCardWidget = new PropertyCardWidget(propertyCardDialog);
     dialogLayout->addWidget(propertyCardWidget);
 
-    setStyleSheet(
-        "#gameWindow {"
-        "  background: #eef2f5;"
-        "}"
-        "#boardShell {"
-        "  background: #ffffff;"
-        "  border: 1px solid #d6dde3;"
-        "  border-radius: 18px;"
-        "}"
-        "#sidebarPanel {"
-        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #a7d0e1, stop:1 #a0cadb);"
-        "  border: 1px solid #7faec0;"
-        "  border-radius: 20px;"
-        "}"
-        "#playerHeader {"
-        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(186, 220, 235, 240), stop:1 rgba(168, 207, 225, 244));"
-        "  border-bottom: 1px solid rgba(112, 150, 165, 0.55);"
-        "  border-top-left-radius: 20px;"
-        "  border-top-right-radius: 20px;"
-        "}"
-        "#selectorWrap, #portfolioSection, #statsSection, #actionsSection, #historySection {"
-        "  background: transparent;"
-        "}"
-        "#sidebarDivider {"
-        "  background: rgba(111, 150, 167, 0.55);"
-        "  margin: 6px 18px 4px 18px;"
-        "}"
-        "#playerAvatar {"
-        "  background: rgba(255, 255, 255, 0.82);"
-        "  border: 2px solid rgba(255, 255, 255, 0.95);"
-        "  border-radius: 11px;"
-        "}"
-        "#playerName {"
-        "  color: #10181f;"
-        "  font: 900 15pt 'Arial';"
-        "}"
-        "#playerMoney {"
-        "  color: #2f8c2f;"
-        "  font: 900 18pt 'Arial';"
-        "}"
-        "#playerMeta {"
-        "  color: #344b59;"
-        "  font: 600 7.5pt 'Arial';"
-        "}"
-        "#sectionLabel {"
-        "  color: #27404d;"
-        "  font: 700 8.5pt 'Arial';"
-        "}"
-        "#sectionTitle {"
-        "  color: #1b2f39;"
-        "  font: 800 10.5pt 'Arial';"
-        "}"
-        "#historyTitle {"
-        "  color: #243744;"
-        "  font: 900 8.5pt 'Arial';"
-        "  letter-spacing: 1px;"
-        "}"
-        "QPushButton[playerChip='true'] {"
-        "  min-width: 48px;"
-        "  min-height: 32px;"
-        "  padding: 5px 12px;"
-        "  border-radius: 16px;"
-        "  border: 1px solid rgba(78, 119, 136, 0.46);"
-        "  background: rgba(255, 255, 255, 0.38);"
-        "  color: #244150;"
-        "  font: 800 8pt 'Arial';"
-        "}"
-        "QPushButton[playerChip='true']:checked {"
-        "  background: rgba(255, 255, 255, 0.92);"
-        "  border: 2px solid #347cb7;"
-        "  color: #122735;"
-        "}"
-        "#statLabelPrimary, #statLabelSecondary {"
-        "  color: #245987;"
-        "  font: 900 10pt 'Arial';"
-        "}"
-        "#statLabelSecondary {"
-        "  color: #3f7a33;"
-        "}"
-        "#actionButtonPrimary, #actionButton {"
-        "  padding: 6px 12px;"
-        "  border-radius: 10px;"
-        "  border: 1px solid rgba(134, 152, 166, 0.9);"
-        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #dfe7ec);"
-        "  color: #162432;"
-        "  font: 900 10pt 'Arial';"
-        "}"
-        "#actionButtonPrimary:hover, #actionButton:hover {"
-        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #ffffff, stop:1 #edf4f7);"
-        "}"
-        "#actionButtonPrimary:pressed, #actionButton:pressed {"
-        "  padding-top: 8px;"
-        "}"
-        "#historyHeaderFrame {"
-        "  background: rgba(255, 255, 255, 0.92);"
-        "  border: 1px solid rgba(138, 160, 174, 0.95);"
-        "  border-top-left-radius: 10px;"
-        "  border-top-right-radius: 10px;"
-        "}"
-        "#historyScroll {"
-        "  background: rgba(255,255,255,0.82);"
-        "  border-left: 1px solid rgba(138, 160, 174, 0.95);"
-        "  border-right: 1px solid rgba(138, 160, 174, 0.95);"
-        "  border-bottom: 1px solid rgba(138, 160, 174, 0.95);"
-        "  border-bottom-left-radius: 10px;"
-        "  border-bottom-right-radius: 10px;"
-        "}"
-        "#historyFilter {"
-        "  color: #596d7d;"
-        "  font: 700 8pt 'Courier New';"
-        "}"
-        "QDialog {"
-        "  background: #d9d4c5;"
-        "}"
-    );
+    return page;
+}
 
-    loadConfigData();
-    initializeGame();
+void GameWindow::configureConnections()
+{
+    connect(startMenuPage, &StartMenuPage::newGameRequested, this, [this]() {
+        setupPage->resetForm();
+        pageStack->setCurrentWidget(setupPage);
+    });
+
+    connect(startMenuPage, &StartMenuPage::loadGameRequested, this, [this]() {
+        loadGameFromPicker();
+    });
+
+    connect(startMenuPage, &StartMenuPage::settingsRequested, this, [this]() {
+        QMessageBox::information(this, QStringLiteral("Settings"), QStringLiteral("Menu settings belum diimplementasikan pada versi ini."));
+    });
+
+    connect(startMenuPage, &StartMenuPage::leaderboardRequested, this, [this]() {
+        QMessageBox::information(this, QStringLiteral("Leaderboard"), QStringLiteral("Leaderboard belum tersedia pada versi ini."));
+    });
+
+    connect(setupPage, &GameSetupPage::backRequested, this, [this]() {
+        pageStack->setCurrentWidget(startMenuPage);
+    });
+
+    connect(setupPage, &GameSetupPage::startRequested, this, [this]() {
+        startNewGame();
+    });
 
     connect(boardWidget, &BoardWidget::propertySelected, this, [this](int propertyId) {
-        const DemoPropertyState* propertyState = propertyStateForId(propertyId);
-        if (propertyState != nullptr) {
-            if (!propertyState->ownerUsername.isEmpty()) {
-                setSelectedPlayer(propertyState->ownerUsername);
-            }
+        const PropertyViewState* propertyState = propertyStateForId(propertyId);
+        if (propertyState != nullptr && !propertyState->ownerUsername.isEmpty() &&
+            propertyState->ownerUsername != QStringLiteral("BANK")) {
+            setSelectedPlayer(propertyState->ownerUsername);
         }
         setSelectedProperty(propertyId, true);
     });
@@ -558,144 +460,380 @@ GameWindow::GameWindow(QWidget *parent)
         setSelectedProperty(propertyId, true);
     });
 
-    connect(playerSelectorGroup, QOverload<QAbstractButton *>::of(&QButtonGroup::buttonClicked), this, [this](QAbstractButton *button) {
-        if (button == nullptr) {
-            return;
-        }
-        setSelectedPlayer(button->property("username").toString());
+    connect(rollButton, &QToolButton::clicked, this, [this]() {
+        executeSessionAction(
+            QStringLiteral("Dadu berhasil dilempar."),
+            [this](QString* errorMessage) { return session.rollDice(errorMessage); }
+        );
     });
 
-    connect(rollButton, &QToolButton::clicked, this, [this]() {
-        handleRollRequested();
+    connect(setDiceButton, &QToolButton::clicked, this, [this]() {
+        handleManualRollRequested();
+    });
+
+    connect(useSkillButton, &QToolButton::clicked, this, [this]() {
+        executeSessionAction(
+            QStringLiteral("Kartu kemampuan diproses."),
+            [this](QString* errorMessage) { return session.useSkill(errorMessage); }
+        );
+    });
+
+    connect(payFineButton, &QToolButton::clicked, this, [this]() {
+        executeSessionAction(
+            QStringLiteral("Pembayaran denda diproses."),
+            [this](QString* errorMessage) { return session.payJailFine(errorMessage); }
+        );
+    });
+
+    connect(buildButton, &QToolButton::clicked, this, [this]() {
+        executeSessionAction(
+            QStringLiteral("Pembangunan berhasil diproses."),
+            [this](QString* errorMessage) { return session.build(errorMessage); }
+        );
+    });
+
+    connect(mortgageButton, &QToolButton::clicked, this, [this]() {
+        executeSessionAction(
+            QStringLiteral("Properti berhasil digadaikan."),
+            [this](QString* errorMessage) { return session.mortgage(errorMessage); }
+        );
+    });
+
+    connect(redeemButton, &QToolButton::clicked, this, [this]() {
+        executeSessionAction(
+            QStringLiteral("Properti berhasil ditebus."),
+            [this](QString* errorMessage) { return session.redeem(errorMessage); }
+        );
     });
 
     connect(saveButton, &QToolButton::clicked, this, [this]() {
         saveCurrentGame();
     });
-
-    connect(buildButton, &QToolButton::clicked, this, [this]() {
-        QMessageBox::information(
-            this,
-            QStringLiteral("Build"),
-            QStringLiteral("Tombol BUILD sudah dipasang di layout baru. Aksi backend build belum kita sambungkan ke flow GUI ini.")
-        );
-    });
-
-    connect(mortgageButton, &QToolButton::clicked, this, [this]() {
-        QMessageBox::information(
-            this,
-            QStringLiteral("Mortgage"),
-            QStringLiteral("Tombol MORTGAGE sudah dipasang di layout baru. Aksi backend mortgage belum kita sambungkan ke flow GUI ini.")
-        );
-    });
 }
 
-void GameWindow::loadConfigData()
+void GameWindow::configureSession()
 {
-    properties.clear();
-    configData = ConfigData();
-    hasConfigData = false;
+    session.setMovementStepHandler([this](const Player&, int) {
+        refreshViewModels();
+        syncSelectedPlayer();
+        syncSelectedProperty();
+        refreshBoardPawns();
+        refreshPlayerHeader();
+        QApplication::processEvents(QEventLoop::AllEvents);
+    });
 
-    const QString configDir = MonopolyUi::findConfigDirectory();
-    propertyCardWidget->setConfigData(configData);
-    if (configDir.isEmpty()) {
+    session.setPropertyPurchaseHandler([this](const Player& player, const PropertyTile& property) {
+        return promptPropertyPurchase(player, property);
+    });
+
+    session.setTurnChangedHandler([this]() {
+        refreshViewModels();
+        selectedPlayerUsername = activePlayerUsername;
+        syncSelectedProperty();
+        refreshBoardPawns();
+        refreshSidebar();
+        refreshActionAvailability();
+        QApplication::processEvents(QEventLoop::AllEvents);
+    });
+
+    QString errorMessage;
+    if (session.loadConfig(&errorMessage)) {
+        properties = session.getConfigData().getPropertyConfigs();
+        propertyCardWidget->setConfigData(session.getConfigData());
+    }
+}
+
+void GameWindow::startNewGame()
+{
+    const QStringList names = setupPage->playerNames();
+    if (names.size() < 2 || names.size() > 4) {
+        QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Jumlah pemain harus 2 sampai 4."));
         return;
     }
 
-    try {
-        ConfigLoader loader(configDir.toStdString());
-        configData = loader.loadAll();
-        properties = configData.getPropertyConfigs();
-        hasConfigData = true;
-        propertyCardWidget->setConfigData(configData);
-    } catch (const std::exception&) {
-        properties.clear();
-        configData = ConfigData();
-        propertyCardWidget->setConfigData(configData);
+    QStringList seen;
+    std::vector<std::string> playerNames;
+    playerNames.reserve(names.size());
+
+    for (const QString& rawName : names) {
+        const QString name = rawName.trimmed();
+        if (name.isEmpty()) {
+            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Semua nama pemain yang aktif harus diisi."));
+            return;
+        }
+        if (name.size() < 3) {
+            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Username minimal 3 karakter."));
+            return;
+        }
+        if (name.contains(QRegularExpression(QStringLiteral("\\s")))) {
+            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Username tidak boleh mengandung spasi."));
+            return;
+        }
+        if (isUsernameDuplicate(seen, name)) {
+            QMessageBox::warning(this, QStringLiteral("Validasi"), QStringLiteral("Username pemain harus unik."));
+            return;
+        }
+
+        seen.append(name);
+        playerNames.push_back(name.toStdString());
     }
+
+    QString errorMessage;
+    if (!session.startNewGame(playerNames, &errorMessage)) {
+        if (!errorMessage.isEmpty()) {
+            QMessageBox::warning(this, QStringLiteral("Game Baru"), errorMessage);
+        }
+        return;
+    }
+
+    properties = session.getConfigData().getPropertyConfigs();
+    propertyCardWidget->setConfigData(session.getConfigData());
+    finishDialogShown = false;
+    selectedPropertyId = 0;
+    selectedPlayerUsername.clear();
+
+    pageStack->setCurrentWidget(gamePage);
+    refreshScene(QStringLiteral("Permainan baru berhasil dimulai."));
 }
 
-void GameWindow::initializeGame()
+void GameWindow::loadGameFromPicker()
 {
-    pawnAssetByPlayer.clear();
-    accentColorByPlayer.clear();
+    const QString directory = saveDirectoryPath();
+    const QString filePath = QFileDialog::getOpenFileName(
+        this,
+        QStringLiteral("Muat Save File"),
+        directory,
+        QStringLiteral("Text Files (*.txt)")
+    );
+
+    if (filePath.isEmpty()) {
+        return;
+    }
+
+    QString errorMessage;
+    if (!session.loadGame(QFileInfo(filePath).fileName().toStdString(), &errorMessage)) {
+        if (!errorMessage.isEmpty()) {
+            QMessageBox::warning(this, QStringLiteral("Load Game"), errorMessage);
+        }
+        return;
+    }
+
+    properties = session.getConfigData().getPropertyConfigs();
+    propertyCardWidget->setConfigData(session.getConfigData());
+    finishDialogShown = false;
+    selectedPropertyId = 0;
+    selectedPlayerUsername.clear();
+
+    pageStack->setCurrentWidget(gamePage);
+    refreshScene(QStringLiteral("Permainan berhasil dimuat."));
+}
+
+void GameWindow::saveCurrentGame()
+{
+    if (!session.isReady()) {
+        return;
+    }
+
+    bool accepted = false;
+    QString filename = QInputDialog::getText(
+        this,
+        QStringLiteral("Simpan Game"),
+        QStringLiteral("Masukkan nama file save:"),
+        QLineEdit::Normal,
+        QStringLiteral("game_sesi1.txt"),
+        &accepted
+    ).trimmed();
+
+    if (!accepted || filename.isEmpty()) {
+        return;
+    }
+
+    if (!filename.endsWith(QStringLiteral(".txt"), Qt::CaseInsensitive)) {
+        filename += QStringLiteral(".txt");
+    }
+
+    SaveManager saveManager;
+    const QString resolvedPath = QString::fromStdString(saveManager.getResolvedDataPath(filename.toStdString()));
+    if (QFileInfo::exists(resolvedPath)) {
+        const QMessageBox::StandardButton overwrite = QMessageBox::question(
+            this,
+            QStringLiteral("Timpa File"),
+            QStringLiteral("File \"%1\" sudah ada. Timpa file lama?").arg(QFileInfo(resolvedPath).fileName()),
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No
+        );
+        if (overwrite != QMessageBox::Yes) {
+            return;
+        }
+    }
+
+    executeSessionAction(
+        QStringLiteral("Permainan berhasil disimpan ke %1.").arg(QFileInfo(resolvedPath).fileName()),
+        [this, filename](QString* errorMessage) {
+            return session.saveGame(filename.toStdString(), errorMessage);
+        }
+    );
+}
+
+void GameWindow::handleManualRollRequested()
+{
+    bool accepted = false;
+    const int dieOne = QInputDialog::getInt(
+        this,
+        QStringLiteral("Set Dadu"),
+        QStringLiteral("Nilai dadu pertama (1-6):"),
+        1,
+        1,
+        6,
+        1,
+        &accepted
+    );
+    if (!accepted) {
+        return;
+    }
+
+    const int dieTwo = QInputDialog::getInt(
+        this,
+        QStringLiteral("Set Dadu"),
+        QStringLiteral("Nilai dadu kedua (1-6):"),
+        1,
+        1,
+        6,
+        1,
+        &accepted
+    );
+    if (!accepted) {
+        return;
+    }
+
+    executeSessionAction(
+        QStringLiteral("Dadu manual berhasil dijalankan."),
+        [this, dieOne, dieTwo](QString* errorMessage) {
+            return session.setDiceAndRoll(dieOne, dieTwo, errorMessage);
+        }
+    );
+}
+
+void GameWindow::executeSessionAction(const QString& successFallback, const std::function<bool(QString*)>& action)
+{
+    QString errorMessage;
+    const bool success = action(&errorMessage);
+    if (!success && !errorMessage.isEmpty()) {
+        lastStatusText = errorMessage;
+    }
+
+    applyPendingMessages(success ? successFallback : errorMessage);
+    refreshScene(lastStatusText);
+    showGameFinishedDialogIfNeeded();
+}
+
+void GameWindow::showGameFinishedDialogIfNeeded()
+{
+    if (!session.isGameEnded() || finishDialogShown) {
+        return;
+    }
+
+    finishDialogShown = true;
+    const std::vector<Player*> winners = session.determineWinner();
+
+    QStringList lines;
+    lines.append(QStringLiteral("Permainan selesai pada turn %1.").arg(session.getCurrentTurn()));
+    if (winners.empty()) {
+        lines.append(QStringLiteral("Tidak ada pemenang yang dapat ditentukan."));
+    } else {
+        lines.append(QStringLiteral("Pemenang:"));
+        for (Player* winner : winners) {
+            if (winner != nullptr) {
+                lines.append(QStringLiteral("- %1 (Total Wealth: M%2)")
+                    .arg(QString::fromStdString(winner->getUsername()))
+                    .arg(winner->getTotalWealth()));
+            }
+        }
+    }
+
+    QMessageBox::information(this, QStringLiteral("Game Selesai"), lines.join('\n'));
+    refreshActionAvailability();
+}
+
+void GameWindow::refreshViewModels()
+{
     playerOverviews.clear();
     propertyStateById.clear();
     historyEntries.clear();
     activePlayerUsername.clear();
-    currentTurn = 1;
 
-    pawnAssetByPlayer.insert(QStringLiteral("Player ITB"), QStringLiteral("ITB.png"));
-    pawnAssetByPlayer.insert(QStringLiteral("Player UGM"), QStringLiteral("UGM.avif"));
-    pawnAssetByPlayer.insert(QStringLiteral("Player UI"), QStringLiteral("UI.jpg"));
-
-    accentColorByPlayer.insert(QStringLiteral("Player ITB"), QColor(255, 120, 90));
-    accentColorByPlayer.insert(QStringLiteral("Player UGM"), QColor(94, 193, 255));
-    accentColorByPlayer.insert(QStringLiteral("Player UI"), QColor(86, 214, 150));
-
-    playerOverviews = {
-        {QStringLiteral("Player ITB"), pawnAssetNameForPlayer(QStringLiteral("Player ITB")), accentColorForPlayer(QStringLiteral("Player ITB")), 1000, 0, {}, true, false},
-        {QStringLiteral("Player UGM"), pawnAssetNameForPlayer(QStringLiteral("Player UGM")), accentColorForPlayer(QStringLiteral("Player UGM")), 1000, 10, {}, false, false},
-        {QStringLiteral("Player UI"), pawnAssetNameForPlayer(QStringLiteral("Player UI")), accentColorForPlayer(QStringLiteral("Player UI")), 1000, 20, {}, false, false}
-    };
-
-    activePlayerUsername = playerOverviews.front().name;
-    selectedPlayerUsername = activePlayerUsername;
-    lastStatusText = QStringLiteral("Mode GUI mandiri aktif. Integrasi gameplay backend sedang dimatikan sementara.");
-
-    const auto assignProperty = [this](int propertyId, const QString& owner, int buildingLevel = 0, bool mortgaged = false) {
-        DemoPropertyState state;
-        state.ownerUsername = owner;
-        state.buildingLevel = buildingLevel;
-        state.mortgaged = mortgaged;
-        propertyStateById.insert(propertyId, state);
-    };
-
-    assignProperty(2, QStringLiteral("Player ITB"), 1);
-    assignProperty(4, QStringLiteral("Player ITB"));
-    assignProperty(7, QStringLiteral("Player ITB"));
-    assignProperty(9, QStringLiteral("Player ITB"));
-    assignProperty(10, QStringLiteral("Player ITB"));
-    assignProperty(12, QStringLiteral("Player ITB"), 1);
-    assignProperty(14, QStringLiteral("Player ITB"));
-    assignProperty(17, QStringLiteral("Player ITB"), 2);
-    assignProperty(18, QStringLiteral("Player ITB"), 2);
-    assignProperty(19, QStringLiteral("Player ITB"), 1);
-    assignProperty(21, QStringLiteral("Player ITB"), 1);
-    assignProperty(26, QStringLiteral("Player ITB"), 1);
-    assignProperty(29, QStringLiteral("Player ITB"), 1);
-    assignProperty(31, QStringLiteral("Player ITB"));
-    assignProperty(35, QStringLiteral("Player ITB"));
-    assignProperty(39, QStringLiteral("Player ITB"));
-
-    assignProperty(1, QStringLiteral("Player UGM"));
-    assignProperty(3, QStringLiteral("Player UGM"));
-    assignProperty(6, QStringLiteral("Player UGM"), 1);
-    assignProperty(8, QStringLiteral("Player UGM"));
-    assignProperty(11, QStringLiteral("Player UGM"));
-    assignProperty(13, QStringLiteral("Player UGM"));
-    assignProperty(15, QStringLiteral("Player UGM"));
-    assignProperty(25, QStringLiteral("Player UGM"));
-    assignProperty(28, QStringLiteral("Player UGM"));
-
-    assignProperty(5, QStringLiteral("Player UI"));
-    assignProperty(16, QStringLiteral("Player UI"));
-    assignProperty(23, QStringLiteral("Player UI"));
-    assignProperty(24, QStringLiteral("Player UI"));
-    assignProperty(27, QStringLiteral("Player UI"));
-    assignProperty(37, QStringLiteral("Player UI"));
-
-    historyEntries = {
-        {1, QStringLiteral("SYSTEM"), QStringLiteral("SYSTEM"), QStringLiteral("Mode GUI berdiri sendiri aktif. Data pemain memakai mock state sementara.")},
-        {1, QStringLiteral("Player ITB"), QStringLiteral("BELI"), QStringLiteral("Menguasai beberapa properti contoh untuk preview portfolio.")},
-        {1, QStringLiteral("Player UGM"), QStringLiteral("BELI"), QStringLiteral("Memiliki beberapa properti agar selector pemain tetap informatif.")},
-        {1, QStringLiteral("Player UI"), QStringLiteral("LEWAT"), QStringLiteral("Belum ada aksi tambahan pada giliran ini.")}
-    };
-
-    refreshScene(lastStatusText);
-    if (!properties.empty()) {
-        setSelectedProperty(properties.front().getId(), false);
+    if (!session.isReady()) {
+        return;
     }
+
+    const GameState gameState = session.snapshot();
+    activePlayerUsername = QString::fromStdString(gameState.getActivePlayerUsername());
+
+    int playerIndex = 0;
+    for (const Player& player : session.getPlayers()) {
+        const QString username = QString::fromStdString(player.getUsername());
+        if (!accentColorByPlayer.contains(username)) {
+            accentColorByPlayer.insert(username, playerAccent(playerIndex));
+        }
+
+        playerOverviews.append({
+            username,
+            pawnAssetNameForPlayer(username),
+            accentColorForPlayer(username),
+            player.getBalance(),
+            player.getPosition(),
+            static_cast<int>(player.getHand().size()),
+            static_cast<int>(player.getProperties().size()),
+            username == activePlayerUsername,
+            player.isJailed(),
+            player.hasRolledThisTurn(),
+            player.hasUsedSkillThisTurn(),
+            player.hasTakenActionThisTurn()
+        });
+        ++playerIndex;
+    }
+
+    for (const PropertyState& propertyState : gameState.getPropertyStates()) {
+        for (const PropertyConfig& property : properties) {
+            if (property.getCode() != propertyState.getCode()) {
+                continue;
+            }
+
+            PropertyViewState viewState;
+            viewState.ownerUsername = QString::fromStdString(propertyState.getOwnerUsername());
+            viewState.mortgaged = propertyState.getStatus() == PropertyStatus::MORTGAGED;
+            viewState.buildingLevel = propertyState.getBuildingLevel() == "H"
+                ? 5
+                : QString::fromStdString(propertyState.getBuildingLevel()).toInt();
+            propertyStateById.insert(property.getId(), viewState);
+            break;
+        }
+    }
+
+    const std::vector<LogEntry>& logs = session.getLogger().getAll();
+    historyEntries.reserve(static_cast<int>(logs.size()));
+    for (const LogEntry& log : logs) {
+        historyEntries.append({
+            log.getTurn(),
+            QString::fromStdString(log.getUsername()),
+            QString::fromStdString(log.getActionType()),
+            QString::fromStdString(log.getDetail())
+        });
+    }
+}
+
+void GameWindow::refreshScene(const QString& statusText)
+{
+    if (!statusText.isEmpty()) {
+        lastStatusText = statusText;
+    }
+
+    refreshViewModels();
+    syncSelectedPlayer();
+    syncSelectedProperty();
+    refreshBoardPawns();
+    refreshSidebar();
+    refreshActionAvailability();
 }
 
 void GameWindow::refreshSidebar()
@@ -713,55 +851,65 @@ void GameWindow::refreshPlayerHeader()
     if (player == nullptr) {
         playerNameLabel->setText(QStringLiteral("Belum ada pemain"));
         playerMoneyLabel->setText(QStringLiteral("M0"));
-        playerMetaLabel->setText(lastStatusText);
-        playerAvatarLabel->setText(QStringLiteral("--"));
         playerAvatarLabel->setPixmap(QPixmap());
+        playerAvatarLabel->setText(QStringLiteral("--"));
+        playerSwitchButton->setText(QStringLiteral("--"));
         return;
     }
 
     playerNameLabel->setText(player->name);
     playerMoneyLabel->setText(MonopolyUi::formatCurrency(player->balance));
-    playerMetaLabel->clear();
+    playerSwitchButton->setText(shortPlayerLabel(player->name));
 
-    const QPixmap pawn = loadPawnPixmap(player->pawnAssetName, QSize(56, 56));
-    if (!pawn.isNull()) {
-        playerAvatarLabel->setStyleSheet(QString());
-        playerAvatarLabel->setText(QString());
-        playerAvatarLabel->setPixmap(pawn);
-    } else {
-        playerAvatarLabel->setPixmap(QPixmap());
-        playerAvatarLabel->setText(shortPlayerLabel(player->name));
-        playerAvatarLabel->setStyleSheet(QStringLiteral(
-            "background: rgba(255,255,255,0.82);"
-            "border: 2px solid rgba(255,255,255,0.95);"
-            "border-radius: 11px;"
-            "color: #203240;"
-            "font: 900 15pt 'Arial';"
-        ));
-    }
+    playerAvatarLabel->setPixmap(QPixmap());
+    playerAvatarLabel->setText(shortPlayerLabel(player->name));
+    const QColor accent = player->accentColor.isValid() ? player->accentColor : QColor(90, 190, 240);
+    playerAvatarLabel->setStyleSheet(QStringLiteral(
+        "background: %1;"
+        "border: 2px solid rgba(255,255,255,0.95);"
+        "border-radius: 11px;"
+        "color: white;"
+        "font: 900 15pt 'Trebuchet MS';"
+    ).arg(accent.name()));
 }
 
 void GameWindow::refreshPlayerSelector()
 {
-    while (QLayoutItem *item = playerSelectorLayout->takeAt(0)) {
-        if (item->widget() != nullptr) {
-            playerSelectorGroup->removeButton(qobject_cast<QAbstractButton*>(item->widget()));
-            item->widget()->deleteLater();
-        }
-        delete item;
+    auto* menu = new QMenu(playerSwitchButton);
+    menu->setStyleSheet(QStringLiteral(
+        "QMenu {"
+        "  background: rgba(255,255,255,0.98);"
+        "  border: 1px solid rgba(123, 153, 171, 0.85);"
+        "  border-radius: 10px;"
+        "  padding: 6px;"
+        "}"
+        "QMenu::item {"
+        "  padding: 8px 18px;"
+        "  color: #173142;"
+        "  font: 800 9pt 'Trebuchet MS';"
+        "}"
+        "QMenu::item:selected {"
+        "  background: rgba(52, 124, 183, 0.16);"
+        "  border-radius: 7px;"
+        "}"
+    ));
+
+    for (const PlayerOverview& player : playerOverviews) {
+        QAction* action = menu->addAction(QStringLiteral("%1  %2")
+            .arg(shortPlayerLabel(player.name), player.name));
+        action->setData(player.name);
+        action->setCheckable(true);
+        action->setChecked(player.name == selectedPlayerUsername);
+        connect(action, &QAction::triggered, this, [this, action]() {
+            setSelectedPlayer(action->data().toString());
+        });
     }
 
-    int buttonIndex = 0;
-    for (const PlayerOverview& player : playerOverviews) {
-        auto *button = new QPushButton(shortPlayerLabel(player.name), sidebarPanel);
-        button->setCheckable(true);
-        button->setProperty("playerChip", true);
-        button->setProperty("username", player.name);
-        button->setChecked(player.name == selectedPlayerUsername);
-        playerSelectorLayout->addWidget(button);
-        playerSelectorGroup->addButton(button, buttonIndex++);
+    QMenu* oldMenu = playerSwitchButton->menu();
+    playerSwitchButton->setMenu(menu);
+    if (oldMenu != nullptr) {
+        oldMenu->deleteLater();
     }
-    playerSelectorLayout->addStretch(1);
 }
 
 void GameWindow::refreshPortfolio()
@@ -778,7 +926,7 @@ void GameWindow::refreshStats()
 
 void GameWindow::refreshHistory()
 {
-    while (QLayoutItem *item = historyEntriesLayout->takeAt(0)) {
+    while (QLayoutItem* item = historyEntriesLayout->takeAt(0)) {
         if (item->widget() != nullptr) {
             item->widget()->deleteLater();
         }
@@ -786,39 +934,39 @@ void GameWindow::refreshHistory()
     }
 
     if (historyEntries.isEmpty()) {
-        auto *emptyLabel = new QLabel(QStringLiteral("Belum ada transaksi yang tercatat."), sidebarPanel);
+        auto* emptyLabel = new QLabel(QStringLiteral("Belum ada transaksi yang tercatat."), sidebarPanel);
         emptyLabel->setWordWrap(true);
-        emptyLabel->setStyleSheet(QStringLiteral("color:#324b58;font:600 8pt 'Arial';padding:12px 10px;"));
+        emptyLabel->setStyleSheet(QStringLiteral("color:#324b58;font:600 8pt 'Trebuchet MS';padding:12px 10px;"));
         historyEntriesLayout->addWidget(emptyLabel);
         historyEntriesLayout->addStretch(1);
         return;
     }
 
     for (auto it = historyEntries.crbegin(); it != historyEntries.crend(); ++it) {
-        auto *entryFrame = new QFrame(sidebarPanel);
+        auto* entryFrame = new QFrame(sidebarPanel);
         entryFrame->setStyleSheet(QStringLiteral(
             "background: rgba(255,255,255,0.78);"
             "border-left: 4px solid %1;"
             "border-bottom: 1px solid rgba(211, 221, 226, 0.95);"
         ).arg(historyAccentColor(*it)));
 
-        auto *entryLayout = new QVBoxLayout(entryFrame);
+        auto* entryLayout = new QVBoxLayout(entryFrame);
         entryLayout->setContentsMargins(10, 8, 10, 8);
         entryLayout->setSpacing(3);
 
-        auto *metaLabel = new QLabel(
+        auto* metaLabel = new QLabel(
             QStringLiteral("Turn %1 | %2 | %3")
                 .arg(it->turn)
                 .arg(it->username)
                 .arg(it->actionType),
             entryFrame
         );
-        metaLabel->setStyleSheet(QStringLiteral("color:#8294a1;font:700 7pt 'Arial';"));
+        metaLabel->setStyleSheet(QStringLiteral("color:#8294a1;font:700 7pt 'Trebuchet MS';"));
         entryLayout->addWidget(metaLabel);
 
-        auto *detailLabel = new QLabel(it->detail, entryFrame);
+        auto* detailLabel = new QLabel(it->detail, entryFrame);
         detailLabel->setWordWrap(true);
-        detailLabel->setStyleSheet(QStringLiteral("color:#17232d;font:700 8.5pt 'Arial';"));
+        detailLabel->setStyleSheet(QStringLiteral("color:#17232d;font:700 8.5pt 'Trebuchet MS';"));
         entryLayout->addWidget(detailLabel);
 
         historyEntriesLayout->addWidget(entryFrame);
@@ -840,6 +988,25 @@ void GameWindow::refreshBoardPawns()
     boardWidget->setActivePawnName(activePlayerUsername);
 }
 
+void GameWindow::refreshActionAvailability()
+{
+    const PlayerOverview* currentPlayerOverview = playerOverviewByUsername(activePlayerUsername);
+    const Player* currentPlayer = session.getCurrentPlayer();
+    const bool hasGame = session.isReady() && currentPlayerOverview != nullptr && currentPlayer != nullptr && !session.isGameEnded();
+    const bool canRoll = hasGame && !currentPlayerOverview->hasRolledThisTurn &&
+        !(currentPlayerOverview->isInJail && currentPlayer->getJailTurns() > 3);
+
+    rollButton->setEnabled(canRoll);
+    setDiceButton->setEnabled(canRoll);
+    useSkillButton->setEnabled(hasGame && !currentPlayerOverview->hasUsedSkillThisTurn &&
+        !currentPlayerOverview->hasRolledThisTurn && !currentPlayer->getHand().empty());
+    payFineButton->setEnabled(hasGame && currentPlayerOverview->isInJail);
+    buildButton->setEnabled(hasGame);
+    mortgageButton->setEnabled(hasGame);
+    redeemButton->setEnabled(hasGame);
+    saveButton->setEnabled(hasGame && !currentPlayerOverview->hasTakenActionThisTurn);
+}
+
 void GameWindow::syncSelectedPlayer()
 {
     if (!selectedPlayerUsername.isEmpty() && playerOverviewByUsername(selectedPlayerUsername) != nullptr) {
@@ -856,6 +1023,26 @@ void GameWindow::syncSelectedPlayer()
     }
 }
 
+void GameWindow::syncSelectedProperty()
+{
+    if (propertyConfigForId(selectedPropertyId) != nullptr) {
+        return;
+    }
+
+    const Player* currentPlayer = session.getCurrentPlayer();
+    if (currentPlayer != nullptr) {
+        const int propertyId = currentPlayer->getPosition() + 1;
+        if (propertyConfigForId(propertyId) != nullptr) {
+            selectedPropertyId = propertyId;
+            return;
+        }
+    }
+
+    if (!properties.empty()) {
+        selectedPropertyId = properties.front().getId();
+    }
+}
+
 void GameWindow::setSelectedPlayer(const QString& username)
 {
     if (username.isEmpty() || playerOverviewByUsername(username) == nullptr) {
@@ -868,6 +1055,10 @@ void GameWindow::setSelectedPlayer(const QString& username)
 
 void GameWindow::setSelectedProperty(int propertyId, bool showPreview)
 {
+    if (propertyConfigForId(propertyId) == nullptr) {
+        return;
+    }
+
     selectedPropertyId = propertyId;
     boardWidget->setSelectedPropertyId(propertyId);
     portfolioWidget->setSelectedPropertyId(propertyId);
@@ -894,94 +1085,104 @@ void GameWindow::showPropertyCard(int propertyId)
     propertyCardDialog->activateWindow();
 }
 
-void GameWindow::handleRollRequested()
+bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile& property)
 {
-    if (playerOverviews.isEmpty()) {
-        QMessageBox::warning(this, QStringLiteral("UI"), QStringLiteral("Belum ada data pemain untuk mode GUI mandiri."));
-        return;
+    const int propertyId = property.getIndex() + 1;
+    if (propertyConfigForId(propertyId) == nullptr) {
+        return player.canAfford(property.getBuyPrice());
     }
 
-    PlayerOverview* activePlayer = playerOverviewByUsername(activePlayerUsername);
-    if (activePlayer == nullptr) {
-        return;
-    }
+    selectedPlayerUsername = QString::fromStdString(player.getUsername());
+    setSelectedProperty(propertyId, false);
+    refreshScene(QStringLiteral("%1 mendarat di %2. Pilih Pay untuk membeli atau Auction untuk melelang.")
+        .arg(QString::fromStdString(player.getUsername()))
+        .arg(QString::fromStdString(property.getName())));
 
-    const int dieOne = QRandomGenerator::global()->bounded(1, 7);
-    const int dieTwo = QRandomGenerator::global()->bounded(1, 7);
-    const int total = dieOne + dieTwo;
-    const int previousPosition = activePlayer->tileIndex;
-    activePlayer->tileIndex = (activePlayer->tileIndex + total) % 40;
-    if (previousPosition + total >= 40) {
-        activePlayer->balance += 200;
-    }
+    QDialog dialog(this, Qt::Dialog | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
+    dialog.setWindowTitle(QStringLiteral("Property Available"));
+    dialog.setModal(true);
+    dialog.resize(430, 720);
 
-    lastStatusText = QStringLiteral("%1 melempar %2 + %3 dan berhenti di petak %4.")
-        .arg(activePlayer->name)
-        .arg(dieOne)
-        .arg(dieTwo)
-        .arg(activePlayer->tileIndex + 1);
+    auto* layout = new QVBoxLayout(&dialog);
+    layout->setContentsMargins(14, 14, 14, 14);
+    layout->setSpacing(12);
 
-    historyEntries.append({currentTurn, activePlayer->name, QStringLiteral("ROLL"), lastStatusText});
+    auto* card = new PropertyCardWidget(&dialog);
+    card->setConfigData(session.getConfigData());
+    card->setSelectedProperty(propertyId);
+    layout->addWidget(card, 1);
 
-    const int landedPropertyId = activePlayer->tileIndex + 1;
-    if (propertyConfigForId(landedPropertyId) != nullptr) {
-        setSelectedProperty(landedPropertyId, false);
-    }
-
-    int activeIndex = 0;
-    for (int i = 0; i < playerOverviews.size(); ++i) {
-        if (playerOverviews[i].name == activePlayerUsername) {
-            activeIndex = i;
-            break;
-        }
-    }
-
-    for (PlayerOverview& player : playerOverviews) {
-        player.isCurrentTurn = false;
-    }
-
-    activeIndex = (activeIndex + 1) % playerOverviews.size();
-    activePlayerUsername = playerOverviews[activeIndex].name;
-    playerOverviews[activeIndex].isCurrentTurn = true;
-    ++currentTurn;
-
-    refreshScene(lastStatusText);
-}
-
-void GameWindow::saveCurrentGame()
-{
-    QMessageBox::information(
-        this,
-        QStringLiteral("Save Dinonaktifkan"),
-        QStringLiteral("Integrasi penyimpanan GUI sengaja dimatikan sementara sampai file logic/game state selesai dirapikan.")
+    auto* info = new QLabel(
+        QStringLiteral("%1 dapat membeli %2 seharga %3.")
+            .arg(QString::fromStdString(player.getUsername()))
+            .arg(MonopolyUi::singleLineTileName(property.getName()))
+            .arg(MonopolyUi::formatCurrency(property.getBuyPrice())),
+        &dialog
     );
+    info->setWordWrap(true);
+    info->setAlignment(Qt::AlignCenter);
+    info->setStyleSheet(QStringLiteral("color:#17232d;font:800 10pt 'Trebuchet MS';"));
+    layout->addWidget(info);
+
+    auto* buttonRow = new QHBoxLayout();
+    buttonRow->setSpacing(12);
+    layout->addLayout(buttonRow);
+
+    auto* payButton = new QPushButton(QStringLiteral("PAY"), &dialog);
+    payButton->setMinimumHeight(52);
+    payButton->setCursor(Qt::PointingHandCursor);
+    payButton->setEnabled(player.canAfford(property.getBuyPrice()));
+
+    auto* auctionButton = new QPushButton(QStringLiteral("AUCTION"), &dialog);
+    auctionButton->setMinimumHeight(52);
+    auctionButton->setCursor(Qt::PointingHandCursor);
+
+    buttonRow->addWidget(payButton);
+    buttonRow->addWidget(auctionButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "QDialog { background:#e3dece; }"
+        "QPushButton {"
+        "  border-radius: 10px;"
+        "  padding: 10px 18px;"
+        "  font: 900 11pt 'Trebuchet MS';"
+        "  letter-spacing: 1px;"
+        "}"
+        "QPushButton:enabled {"
+        "  background:#1159c7;"
+        "  color:white;"
+        "  border:1px solid #0d49a4;"
+        "}"
+        "QPushButton:enabled:hover { background:#1d6ee6; }"
+        "QPushButton:disabled {"
+        "  background:#d8dde3;"
+        "  color:#8d99a6;"
+        "  border:1px solid #c3cad2;"
+        "}"
+    ));
+
+    bool shouldBuy = false;
+    connect(payButton, &QPushButton::clicked, &dialog, [&]() {
+        shouldBuy = true;
+        dialog.accept();
+    });
+    connect(auctionButton, &QPushButton::clicked, &dialog, [&]() {
+        shouldBuy = false;
+        dialog.reject();
+    });
+
+    dialog.exec();
+    return shouldBuy;
 }
 
-void GameWindow::refreshScene(const QString& statusText)
+void GameWindow::applyPendingMessages(const QString& fallback)
 {
-    if (!statusText.isEmpty()) {
-        lastStatusText = statusText;
+    const QStringList messages = session.takePendingMessages();
+    if (!messages.isEmpty()) {
+        lastStatusText = messages.mid(qMax(0, messages.size() - 3)).join('\n');
+    } else if (!fallback.isEmpty()) {
+        lastStatusText = fallback;
     }
-
-    syncSelectedPlayer();
-    refreshBoardPawns();
-    refreshSidebar();
-
-    if (selectedPropertyId > 0) {
-        boardWidget->setSelectedPropertyId(selectedPropertyId);
-        portfolioWidget->setSelectedPropertyId(selectedPropertyId);
-    }
-}
-
-PlayerOverview* GameWindow::playerOverviewByUsername(const QString& username)
-{
-    for (PlayerOverview& player : playerOverviews) {
-        if (player.name == username) {
-            return &player;
-        }
-    }
-
-    return nullptr;
 }
 
 const PlayerOverview* GameWindow::playerOverviewByUsername(const QString& username) const
@@ -991,7 +1192,6 @@ const PlayerOverview* GameWindow::playerOverviewByUsername(const QString& userna
             return &player;
         }
     }
-
     return nullptr;
 }
 
@@ -1002,31 +1202,16 @@ const PropertyConfig* GameWindow::propertyConfigForId(int propertyId) const
             return &property;
         }
     }
-
     return nullptr;
 }
 
-const DemoPropertyState* GameWindow::propertyStateForId(int propertyId) const
+const PropertyViewState* GameWindow::propertyStateForId(int propertyId) const
 {
     const auto it = propertyStateById.constFind(propertyId);
     if (it == propertyStateById.constEnd()) {
         return nullptr;
     }
-
     return &it.value();
-}
-
-QVector<int> GameWindow::ownedPropertyIds(const QString& username) const
-{
-    QVector<int> result;
-    for (auto it = propertyStateById.constBegin(); it != propertyStateById.constEnd(); ++it) {
-        if (it.value().ownerUsername == username) {
-            result.append(it.key());
-        }
-    }
-
-    std::sort(result.begin(), result.end());
-    return result;
 }
 
 QVector<PortfolioPropertyView> GameWindow::buildPortfolioForPlayer(const QString& username) const
@@ -1042,7 +1227,7 @@ QVector<PortfolioPropertyView> GameWindow::buildPortfolioForPlayer(const QString
         entry.propertyType = property.getPropertyType();
         entry.colorGroup = property.getColorGroup();
 
-        const DemoPropertyState* state = propertyStateForId(property.getId());
+        const PropertyViewState* state = propertyStateForId(property.getId());
         if (state != nullptr) {
             entry.owned = state->ownerUsername == username;
             entry.mortgaged = state->mortgaged;
@@ -1057,7 +1242,8 @@ QVector<PortfolioPropertyView> GameWindow::buildPortfolioForPlayer(const QString
 
 QString GameWindow::pawnAssetNameForPlayer(const QString& username) const
 {
-    return pawnAssetByPlayer.value(username, QStringLiteral("fallback_pawn.png"));
+    Q_UNUSED(username);
+    return {};
 }
 
 QColor GameWindow::accentColorForPlayer(const QString& username) const
@@ -1072,10 +1258,8 @@ int GameWindow::totalHouseCount(const QString& username) const
         if (it.value().ownerUsername != username) {
             continue;
         }
-
         houses += std::min(it.value().buildingLevel, 4);
     }
-
     return houses;
 }
 
@@ -1087,6 +1271,42 @@ int GameWindow::totalHotelCount(const QString& username) const
             ++hotels;
         }
     }
-
     return hotels;
+}
+
+QString GameWindow::currentTurnStatusText() const
+{
+    const PlayerOverview* selectedPlayer = playerOverviewByUsername(selectedPlayerUsername);
+    const PlayerOverview* currentPlayer = playerOverviewByUsername(activePlayerUsername);
+    if (selectedPlayer == nullptr || currentPlayer == nullptr) {
+        return lastStatusText;
+    }
+
+    const int maxTurn = session.getMaxTurn();
+    const QString turnText = maxTurn > 0
+        ? QStringLiteral("Turn %1 / %2").arg(session.getCurrentTurn()).arg(maxTurn)
+        : QStringLiteral("Turn %1 / Unlimited").arg(session.getCurrentTurn());
+
+    QString summary = QStringLiteral("%1 | Active: %2 | Cards: %3 | Properties: %4")
+        .arg(turnText)
+        .arg(currentPlayer->name)
+        .arg(selectedPlayer->handCount)
+        .arg(selectedPlayer->propertyCount);
+
+    if (selectedPlayer->isInJail) {
+        summary += QStringLiteral("\nStatus: JAILED");
+    }
+
+    if (!lastStatusText.isEmpty()) {
+        summary += QStringLiteral("\n") + lastStatusText;
+    }
+
+    return summary;
+}
+
+QString GameWindow::saveDirectoryPath() const
+{
+    SaveManager saveManager;
+    const QString resolved = QString::fromStdString(saveManager.getResolvedDataPath("placeholder.txt"));
+    return QFileInfo(resolved).absolutePath();
 }
