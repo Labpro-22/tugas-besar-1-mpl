@@ -29,6 +29,9 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     Tile* jailTileBase = board == nullptr ? nullptr : board->getTile("PEN");
     if (const JailTile* jailTile = dynamic_cast<const JailTile*>(jailTileBase)) {
         jailTile->applyJailStatus(player);
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPawnStep(player, jailTile->getIndex());
+        }
         return;
     }
 
@@ -38,4 +41,7 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
+    if (gameContext.getIO() != nullptr && jailTileBase != nullptr) {
+        gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
+    }
 }

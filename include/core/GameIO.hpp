@@ -34,7 +34,20 @@ public:
     virtual void showPaymentNotification(const std::string& title, const std::string& detail);
     virtual void showAuctionNotification(const std::string& title, const std::string& detail);
     virtual int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid);
+    virtual int promptTaxPaymentOption(
+        const Player& player,
+        const std::string& tileName,
+        int flatAmount,
+        int percentage,
+        int wealth,
+        int percentageAmount
+    );
     virtual int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices);
+    virtual int promptTileSelection(
+        const std::string& title,
+        const std::vector<int>& validTileIndices,
+        bool allowCancel
+    );
     virtual int promptSkillCardSelection(
         const std::string& title,
         const std::vector<SkillCard*>& cards,

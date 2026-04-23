@@ -22,7 +22,7 @@ public:
     void setMovementStepHandler(std::function<void(const Player&, int)> handler);
     void setPropertyPurchaseHandler(std::function<bool(const Player&, const PropertyTile&)> handler);
     void setPropertyNoticeHandler(std::function<void(const Player&, const PropertyTile&)> handler);
-    void setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&)> handler);
+    void setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler);
 
     int promptInt(const std::string& prompt) override;
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
@@ -35,7 +35,20 @@ public:
     void showPaymentNotification(const std::string& title, const std::string& detail) override;
     void showAuctionNotification(const std::string& title, const std::string& detail) override;
     int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
+    int promptTaxPaymentOption(
+        const Player& player,
+        const std::string& tileName,
+        int flatAmount,
+        int percentage,
+        int wealth,
+        int percentageAmount
+    ) override;
     int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices) override;
+    int promptTileSelection(
+        const std::string& title,
+        const std::vector<int>& validTileIndices,
+        bool allowCancel
+    ) override;
     int promptSkillCardSelection(
         const std::string& title,
         const std::vector<SkillCard*>& cards,
@@ -59,5 +72,5 @@ private:
     std::function<void(const Player&, int)> movementStepHandler;
     std::function<bool(const Player&, const PropertyTile&)> propertyPurchaseHandler;
     std::function<void(const Player&, const PropertyTile&)> propertyNoticeHandler;
-    std::function<int(const QString&, const QVector<int>&)> boardTileSelectionHandler;
+    std::function<int(const QString&, const QVector<int>&, bool)> boardTileSelectionHandler;
 };

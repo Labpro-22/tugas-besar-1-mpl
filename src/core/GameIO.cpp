@@ -65,11 +65,52 @@ int GameIO::promptAuctionBid(const PropertyTile&, const Player& bidder, int high
             ". Masukkan bid (0 untuk pass): ");
 }
 
+int GameIO::promptTaxPaymentOption(
+    const Player&,
+    const std::string& tileName,
+    int flatAmount,
+    int percentage,
+    int wealth,
+    int percentageAmount
+)
+{
+    showMessage("Pilih opsi pembayaran " + tileName + ":");
+    showMessage("Bayar tetap: M" + std::to_string(flatAmount));
+    showMessage(
+        "Bayar berdasarkan kekayaan: " + std::to_string(percentage) +
+            "% dari total kekayaan M" + std::to_string(wealth) +
+            " = M" + std::to_string(percentageAmount));
+
+    const int choice = promptIntInRange(
+        "Pilih pembayaran: 1 untuk bayar tetap, 2 untuk persentase kekayaan: ",
+        1,
+        2);
+    return choice;
+}
+
 int GameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
+{
+    return promptTileSelection(title, validTileIndices, false);
+}
+
+int GameIO::promptTileSelection(
+    const std::string& title,
+    const std::vector<int>& validTileIndices,
+    bool allowCancel
+)
 {
     showMessage(title);
     for (int index : validTileIndices) {
         showMessage(std::to_string(index + 1) + ". Tile " + std::to_string(index + 1));
+    }
+
+    if (allowCancel) {
+        showMessage("0. Batal");
+        const int choice = promptIntInRange(
+            "Pilih tile (0-40): ",
+            0,
+            40);
+        return choice - 1;
     }
 
     const int choice = promptIntInRange(

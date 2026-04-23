@@ -874,8 +874,8 @@ void GameWindow::configureSession()
         showPropertyNotice(player, property);
     });
 
-    session.setBoardTileSelectionHandler([this](const QString& title, const QVector<int>& validTileIndices) {
-        return promptBoardTileSelection(title, validTileIndices);
+    session.setBoardTileSelectionHandler([this](const QString& title, const QVector<int>& validTileIndices, bool allowCancel) {
+        return promptBoardTileSelection(title, validTileIndices, allowCancel);
     });
 
     session.setTurnChangedHandler([this]() {
@@ -1330,6 +1330,16 @@ void GameWindow::refreshBoardPawns()
 
     boardWidget->setPawns(pawnData);
     boardWidget->setActivePawnName(activePlayerUsername);
+
+    QVector<BoardWidget::BuildingData> buildingData;
+    buildingData.reserve(propertyStateById.size());
+    for (auto it = propertyStateById.constBegin(); it != propertyStateById.constEnd(); ++it) {
+        if (it.value().buildingLevel <= 0) {
+            continue;
+        }
+        buildingData.append({it.key() - 1, it.value().buildingLevel});
+    }
+    boardWidget->setBuildings(buildingData);
 }
 
 void GameWindow::refreshActionAvailability()
@@ -1490,7 +1500,7 @@ void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& pr
     dialog.exec();
 }
 
-int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int>& validTileIndices)
+int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int>& validTileIndices, bool allowCancel)
 {
     if (validTileIndices.isEmpty()) {
         return -1;
@@ -1518,14 +1528,24 @@ int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int
             loop.quit();
         }
     );
+    const QMetaObject::Connection cancelConnection = connect(
+        boardWidget,
+        &BoardWidget::tileSelectionCanceled,
+        &loop,
+        [&]() {
+            selectedTileIndex = -1;
+            loop.quit();
+        }
+    );
 
-    boardWidget->setTileSelectionMode(selectable, title);
+    boardWidget->setTileSelectionMode(selectable, title, allowCancel);
     refreshScene(title);
     QApplication::processEvents(QEventLoop::AllEvents);
 
     loop.exec();
 
     disconnect(connection);
+    disconnect(cancelConnection);
     boardWidget->clearTileSelectionMode();
     refreshScene(lastStatusText);
     return selectedTileIndex;

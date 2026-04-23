@@ -52,7 +52,7 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
-                otherPlayer->getUsername() + " membayar M" + std::to_string(amount) +
+                otherPlayer->getUsername() + " membayar M" + std::to_string(amountToPay) +
                     " kepada " + player.getUsername() + ".");
             gameContext.getIO()->showMessage(
                 otherPlayer->getUsername() + " memberi M" + std::to_string(amountToPay) +

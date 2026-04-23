@@ -37,6 +37,7 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
     }
 
     if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showPawnStep(player, targetIndex);
         gameContext.getIO()->showMessage(
             "Bidak dipindahkan ke stasiun terdekat: " + nearestRailroad->getName() +
                 " (" + nearestRailroad->getCode() + ").");

@@ -22,11 +22,15 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
     }
 
     if (taxType == TaxType::PPH && io != nullptr) {
-        io->showMessage("Pilih opsi pembayaran pajak:");
-        io->showMessage("1. Bayar flat M" + std::to_string(flatAmount));
-        io->showMessage("2. Bayar " + std::to_string(percentage) + "% dari total kekayaan");
-        io->showMessage("(Pilih sebelum menghitung kekayaan!)");
-        choice = io->promptIntInRange("Pilihan (1/2): ", 1, 2);
+        const int wealth = calculateWealth(player);
+        const int percentageAmount = (wealth * percentage) / 100;
+        choice = io->promptTaxPaymentOption(
+            player,
+            getName(),
+            flatAmount,
+            percentage,
+            wealth,
+            percentageAmount);
     }
 
     int amountToPay = calculateTaxAmount(player, choice);

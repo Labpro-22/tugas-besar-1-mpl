@@ -36,15 +36,24 @@ void FestivalTile::onLanded(Player& player, GameContext& gameContext) {
         return;
     }
 
-    io->showMessage("Pilih lahan yang akan mendapat efek festival:");
-    for (int i = 0; i < static_cast<int>(streets.size()); ++i) {
-        io->showMessage(
-            std::to_string(i + 1) + ". " + streets[i]->getName() +
-                " (" + streets[i]->getCode() + ")");
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(streets.size());
+    for (StreetTile* street : streets) {
+        if (street != nullptr) {
+            validTileIndices.push_back(street->getIndex());
+        }
     }
 
-    int choice = io->promptIntInRange("Pilih lahan: ", 1, static_cast<int>(streets.size()));
-    applyFestivalEffect(streets[choice - 1], player, gameContext);
+    int selectedTileIndex = io->promptTileSelection(
+        "Pilih lahan yang akan mendapat efek festival langsung dari board.",
+        validTileIndices);
+
+    for (StreetTile* street : streets) {
+        if (street != nullptr && street->getIndex() == selectedTileIndex) {
+            applyFestivalEffect(street, player, gameContext);
+            return;
+        }
+    }
 }
 
 void FestivalTile::getPlayerStreets(const Player& player, std::vector<StreetTile*>& outStreets) const {

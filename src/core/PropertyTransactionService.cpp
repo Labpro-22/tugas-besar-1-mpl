@@ -57,7 +57,7 @@ void PropertyTransactionService::handlePropertyLanded(
 
                 io->showPaymentNotification(
                     "PAYMENT",
-                    player.getUsername() + " membayar M" + std::to_string(price) +
+                    player.getUsername() + " membayar M" + std::to_string(finalPrice) +
                         " ke Bank untuk membeli " + tile.getName() + ".");
                 io->showMessage(tile.getName() + " kini menjadi milikmu!");
                 io->showMessage(
@@ -80,6 +80,15 @@ void PropertyTransactionService::handlePropertyLanded(
             int finalPrice = player.consumeDiscountedAmount(price);
             if (finalPrice > 0) {
                 player -= finalPrice;
+            }
+            if (io != nullptr) {
+                io->showPropertyNotice(player, tile);
+                if (finalPrice > 0) {
+                    io->showPaymentNotification(
+                        "PAYMENT",
+                        player.getUsername() + " membayar M" + std::to_string(finalPrice) +
+                            " ke Bank untuk mendapatkan " + tile.getName() + ".");
+                }
             }
             tile.transferTo(player);
             if (io != nullptr) {
@@ -130,14 +139,7 @@ void PropertyTransactionService::handlePropertyLanded(
 
                 int amount = 0;
                 if (io != nullptr) {
-                    int displayedHighestBid = auction->getHighestBidder() == nullptr
-                        ? 0
-                        : auction->getHighestBid();
-                    amount = io->promptInt(
-                        bidder->getUsername() +
-                            " saldo M" + std::to_string(bidder->getBalance()) +
-                            ", bid tertinggi M" + std::to_string(displayedHighestBid) +
-                            ". Masukkan bid (-1 untuk pass): ");
+                    amount = io->promptAuctionBid(tile, *bidder, auction->getHighestBid());
                 }
 
                 if (amount < 0) {
@@ -169,13 +171,10 @@ void PropertyTransactionService::handlePropertyLanded(
                     io->showMessage(
                         "Belum ada pemain yang melakukan bid. " +
                         forcedBidder->getUsername() + " wajib melakukan bid awal.");
-                    amount = io->promptIntInRange(
-                        forcedBidder->getUsername() +
-                            " saldo M" + std::to_string(forcedBidder->getBalance()) +
-                            ". Masukkan bid awal (0-" +
-                            std::to_string(forcedBidder->getBalance()) + "): ",
-                        0,
-                        forcedBidder->getBalance());
+                    amount = io->promptAuctionBid(tile, *forcedBidder, auction->getHighestBid());
+                    if (amount < 0) {
+                        amount = 0;
+                    }
                 }
 
                 try {

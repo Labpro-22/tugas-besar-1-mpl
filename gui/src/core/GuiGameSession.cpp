@@ -122,7 +122,7 @@ void GuiGameSession::setPropertyNoticeHandler(std::function<void(const Player&, 
     io.setPropertyNoticeHandler(std::move(handler));
 }
 
-void GuiGameSession::setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&)> handler)
+void GuiGameSession::setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler)
 {
     io.setBoardTileSelectionHandler(std::move(handler));
 }

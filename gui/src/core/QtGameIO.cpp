@@ -455,7 +455,7 @@ void QtGameIO::setPropertyNoticeHandler(std::function<void(const Player&, const 
     propertyNoticeHandler = std::move(handler);
 }
 
-void QtGameIO::setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&)> handler)
+void QtGameIO::setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler)
 {
     boardTileSelectionHandler = std::move(handler);
 }
@@ -803,7 +803,7 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
         QStringLiteral("%1\nSaldo: M%2 | Bid tertinggi: M%3")
             .arg(toQString(bidder.getUsername()))
             .arg(bidder.getBalance())
-            .arg(highestBid),
+            .arg(qMax(0, highestBid)),
         shell
     );
     bidderLabel->setAlignment(Qt::AlignCenter);
@@ -816,12 +816,12 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     bidInput->setRange(0, qMax(0, bidder.getBalance()));
     bidInput->setSingleStep(10);
     bidInput->setPrefix(QStringLiteral("M"));
-    bidInput->setValue(bidder.getBalance() > highestBid ? highestBid + 1 : 0);
-    bidInput->setEnabled(bidder.getBalance() > highestBid);
+    bidInput->setValue(highestBid < 0 ? 0 : qMin(bidder.getBalance(), highestBid + 1));
+    bidInput->setEnabled(highestBid < 0 || bidder.getBalance() > highestBid);
     layout->addWidget(bidInput);
 
     auto* hint = new QLabel(
-        bidder.getBalance() > highestBid
+        highestBid < 0 || bidder.getBalance() > highestBid
             ? QStringLiteral("Masukkan bid lebih tinggi dari bid saat ini, atau pass.")
             : QStringLiteral("Saldo tidak cukup untuk menaikkan bid. Pilih pass."),
         shell
@@ -845,7 +845,7 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     bidButton->setObjectName(QStringLiteral("auctionBidButton"));
     bidButton->setCursor(Qt::PointingHandCursor);
     bidButton->setMinimumHeight(42);
-    bidButton->setEnabled(bidder.getBalance() > highestBid);
+    bidButton->setEnabled(highestBid < 0 || bidder.getBalance() > highestBid);
     buttonRow->addWidget(bidButton);
 
     dialog.setStyleSheet(QStringLiteral(
@@ -886,7 +886,7 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
 
     int selectedBid = 0;
     QObject::connect(passButton, &QPushButton::clicked, &dialog, [&]() {
-        selectedBid = 0;
+        selectedBid = -1;
         dialog.reject();
     });
     QObject::connect(bidButton, &QPushButton::clicked, &dialog, [&]() {
@@ -901,10 +901,137 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     return selectedBid;
 }
 
-int QtGameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
+int QtGameIO::promptTaxPaymentOption(
+    const Player& player,
+    const std::string& tileName,
+    int flatAmount,
+    int percentage,
+    int wealth,
+    int percentageAmount
+)
 {
     if (isTestMode()) {
-        return validTileIndices.empty() ? -1 : validTileIndices.front();
+        Q_UNUSED(player);
+        Q_UNUSED(tileName);
+        Q_UNUSED(flatAmount);
+        Q_UNUSED(percentage);
+        Q_UNUSED(wealth);
+        Q_UNUSED(percentageAmount);
+        return 1;
+    }
+
+    QDialog dialog(dialogParent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("taxShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(QStringLiteral("PPH"), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("taxTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(
+        QStringLiteral("%1 mendarat di %2.\nPilih metode pembayaran pajak.")
+            .arg(toQString(player.getUsername()))
+            .arg(toQString(tileName)),
+        shell
+    );
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("taxBody"));
+    layout->addWidget(body);
+
+    auto* wealthLabel = new QLabel(
+        QStringLiteral("Total kekayaan: M%1").arg(wealth),
+        shell
+    );
+    wealthLabel->setAlignment(Qt::AlignCenter);
+    wealthLabel->setObjectName(QStringLiteral("taxWealth"));
+    layout->addWidget(wealthLabel);
+
+    auto* flatButton = new QPushButton(
+        QStringLiteral("BAYAR TETAP - M%1").arg(flatAmount),
+        shell
+    );
+    flatButton->setObjectName(QStringLiteral("taxPrimaryButton"));
+    flatButton->setCursor(Qt::PointingHandCursor);
+    flatButton->setMinimumHeight(48);
+    layout->addWidget(flatButton);
+
+    auto* percentButton = new QPushButton(
+        QStringLiteral("BAYAR %1% DARI KEKAYAAN - M%2")
+            .arg(percentage)
+            .arg(percentageAmount),
+        shell
+    );
+    percentButton->setObjectName(QStringLiteral("taxSecondaryButton"));
+    percentButton->setCursor(Qt::PointingHandCursor);
+    percentButton->setMinimumHeight(48);
+    layout->addWidget(percentButton);
+
+    auto* hint = new QLabel(QStringLiteral("Pilihan ini menentukan pajak yang langsung dibayarkan ke Bank."), shell);
+    hint->setAlignment(Qt::AlignCenter);
+    hint->setWordWrap(true);
+    hint->setObjectName(QStringLiteral("taxHint"));
+    layout->addWidget(hint);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#taxShell {"
+        "  background: #fffef8;"
+        "  border: 2px solid #111;"
+        "  border-radius: 2px;"
+        "}"
+        "#taxTitle { color:#090909; font:900 16pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#taxBody { color:#17232d; font:800 10.5pt 'Trebuchet MS'; line-height:120%; }"
+        "#taxWealth { color:#2f8c2f; font:900 12pt 'Trebuchet MS'; }"
+        "#taxHint { color:#5d6670; font:700 8.8pt 'Trebuchet MS'; }"
+        "QPushButton { border-radius:4px; font:900 9.5pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#taxPrimaryButton { background:#111; color:white; border:none; }"
+        "#taxPrimaryButton:hover { background:#2a2a2a; }"
+        "#taxSecondaryButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#taxSecondaryButton:hover { background:#f4efe2; }"
+    ));
+
+    int selectedChoice = 1;
+    QObject::connect(flatButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedChoice = 1;
+        dialog.accept();
+    });
+    QObject::connect(percentButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedChoice = 2;
+        dialog.accept();
+    });
+
+    dialog.resize(460, 340);
+    centerDialogOnParent(dialog, dialogParent);
+    animateDialogEntrance(dialog);
+    dialog.exec();
+    return selectedChoice;
+}
+
+int QtGameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
+{
+    return promptTileSelection(title, validTileIndices, false);
+}
+
+int QtGameIO::promptTileSelection(
+    const std::string& title,
+    const std::vector<int>& validTileIndices,
+    bool allowCancel
+)
+{
+    if (isTestMode()) {
+        return allowCancel ? -1 : (validTileIndices.empty() ? -1 : validTileIndices.front());
     }
 
     if (boardTileSelectionHandler) {
@@ -913,10 +1040,10 @@ int QtGameIO::promptTileSelection(const std::string& title, const std::vector<in
         for (int index : validTileIndices) {
             indices.append(index);
         }
-        return boardTileSelectionHandler(toQString(title), indices);
+        return boardTileSelectionHandler(toQString(title), indices, allowCancel);
     }
 
-    return GameIO::promptTileSelection(title, validTileIndices);
+    return GameIO::promptTileSelection(title, validTileIndices, allowCancel);
 }
 
 int QtGameIO::promptSkillCardSelection(

@@ -9,6 +9,7 @@
 #include "core/DeckFactory.hpp"
 #include "core/Dice.hpp"
 #include "core/GameContext.hpp"
+#include "core/MovementService.hpp"
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
@@ -125,22 +126,23 @@ void CommandProcessor::resolveMovement(Player& player, int totalMove) {
         throw std::runtime_error("Board belum terbangun.");
     }
 
+    const int oldPosition = player.getPosition();
     for (int step = 0; step < totalMove; ++step) {
         const int previousPosition = player.getPosition();
         const int nextPosition = (previousPosition + 1) % tileCount;
         player.moveTo(nextPosition);
         ui.showPawnStep(player, nextPosition);
-
-        if (previousPosition + 1 >= tileCount && nextPosition != 0 && context != nullptr) {
-            Tile* goTile = board.getTile("GO");
-            if (goTile != nullptr) {
-                goTile->onPassed(player, *context);
-            }
-        }
     }
 
     Tile* landedTile = board.getTile(player.getPosition());
     if (landedTile != nullptr && context != nullptr) {
+        MovementService::awardGoSalaryForForwardMovement(
+            board,
+            player,
+            *context,
+            oldPosition,
+            player.getPosition()
+        );
         if (GameUI* terminalUi = asTerminalUi(ui)) {
             terminalUi->showDiceLanding(
                 dice.getDie1(),
@@ -195,6 +197,10 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     player.setStatus(PlayerStatus::ACTIVE);
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
+    ui.showPaymentNotification(
+        "PAYMENT",
+        player.getUsername() + " membayar denda M" + std::to_string(fineToPay) +
+            " untuk keluar dari penjara.");
     ui.showMessage("Denda M" + std::to_string(fineToPay) + " dibayar. Kamu bebas dari penjara.");
 
     if (logger != nullptr) {

@@ -34,6 +34,7 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     player.moveTo(targetIndex);
 
     if (gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showPawnStep(player, targetIndex);
         gameContext.getIO()->showMessage(
             "MoveCard digunakan! " + player.getUsername() +
                 " maju " + std::to_string(getValue()) + " petak.");

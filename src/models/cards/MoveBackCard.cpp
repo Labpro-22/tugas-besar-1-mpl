@@ -41,6 +41,7 @@ void MoveBackCard::execute(Player& player, GameContext& gameContext) {
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile != nullptr) {
         if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPawnStep(player, targetIndex);
             gameContext.getIO()->showMessage(
                 "Bidak dipindahkan ke " + targetTile->getName() +
                     " (" + targetTile->getCode() + ").");

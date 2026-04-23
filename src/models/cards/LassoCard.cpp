@@ -65,6 +65,7 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
     target->moveTo(destinationIndex);
 
     if (io != nullptr) {
+        io->showPawnStep(*target, destinationIndex);
         io->showMessage(target->getUsername() + " ditarik ke posisi " +
                         player.getUsername() + ".");
     }
