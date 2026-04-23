@@ -27,16 +27,23 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
         return;
     }
 
-    if (player.canAfford(amount)) {
+    int amountToPay = player.consumeDiscountedAmount(amount);
+    if (amountToPay != amount && gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            "Diskon diterapkan dari M" + std::to_string(amount) +
+                " menjadi M" + std::to_string(amountToPay) + ".");
+    }
+
+    if (player.canAfford(amountToPay)) {
         int beforeBalance = player.getBalance();
-        player -= amount;
+        player -= amountToPay;
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
                 player.getUsername() + " membayar biaya dokter M" +
                     std::to_string(amount) + " ke Bank.");
             gameContext.getIO()->showMessage(
-                "Kamu membayar M" + std::to_string(amount) +
+                "Kamu membayar M" + std::to_string(amountToPay) +
                     " ke Bank. Sisa Uang = M" + std::to_string(player.getBalance()) + ".");
             gameContext.getIO()->showMessage(
                 "Uang kamu: M" + std::to_string(beforeBalance) +
@@ -47,15 +54,15 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
 
     if (gameContext.getIO() != nullptr) {
         gameContext.getIO()->showMessage(
-            "Kamu tidak mampu membayar biaya dokter! (M" + std::to_string(amount) + ")");
+            "Kamu tidak mampu membayar biaya dokter! (M" + std::to_string(amountToPay) + ")");
         gameContext.getIO()->showMessage("Uang kamu saat ini: M" + std::to_string(player.getBalance()));
     }
 
     BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
     if (bankruptcyHandler != nullptr) {
-        bankruptcyHandler->handleBankruptcy(player, nullptr, amount, gameContext);
+        bankruptcyHandler->handleBankruptcy(player, nullptr, amountToPay, gameContext);
         return;
     }
 
-    player -= amount;
+    player -= amountToPay;
 }

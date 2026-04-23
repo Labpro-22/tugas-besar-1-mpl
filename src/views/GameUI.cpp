@@ -247,7 +247,7 @@ int GameUI::promptIntInRange(const std::string& prompt, int minValue, int maxVal
 
 Command GameUI::promptPlayerCommand(const std::string& username) {
     std::cout << "\n";
-    std::cout << "Bingung? ketik HELP ea...";
+    std::cout << "Bingung? ketik HELP ea...\n";
     while (true) {
         std::cout << "> [" << username << "]: ";
         Command command = cmdParser.readCommand();

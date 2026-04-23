@@ -29,20 +29,33 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
             continue;
         }
 
-        if (!otherPlayer->canAfford(amount)) {
-            gameContext.getBankruptcyHandler()->handleBankruptcy(*otherPlayer, &player, amount, gameContext);
+        int amountToPay = otherPlayer->consumeDiscountedAmount(amount);
+        if (amountToPay != amount && gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage(
+                "Diskon " + otherPlayer->getUsername() + " diterapkan dari M" +
+                std::to_string(amount) + " menjadi M" + std::to_string(amountToPay) + ".");
+        }
+
+        if (!otherPlayer->canAfford(amountToPay)) {
+            BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
+            if (bankruptcyHandler != nullptr) {
+                bankruptcyHandler->handleBankruptcy(*otherPlayer, &player, amountToPay, gameContext);
+            } else {
+                *otherPlayer -= amountToPay;
+                player += amountToPay;
+            }
             continue;
         }
 
-        *otherPlayer -= amount;
-        player += amount;
+        *otherPlayer -= amountToPay;
+        player += amountToPay;
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
                 otherPlayer->getUsername() + " membayar M" + std::to_string(amount) +
                     " kepada " + player.getUsername() + ".");
             gameContext.getIO()->showMessage(
-                otherPlayer->getUsername() + " memberi M" + std::to_string(amount) +
+                otherPlayer->getUsername() + " memberi M" + std::to_string(amountToPay) +
                     " kepada " + player.getUsername() + ".");
         }
     }

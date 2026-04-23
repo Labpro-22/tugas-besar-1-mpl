@@ -127,15 +127,30 @@ int Player::getTotalWealth() const {
 int Player::getLiquidationMax() const {
     int total = balance;
     for (const PropertyTile* prop : properties) {
-        if (prop->getStatus() == PropertyStatus::MORTGAGED) {
+        if (prop == nullptr || prop->getStatus() == PropertyStatus::MORTGAGED) {
             continue;
         }
 
-        int sellValue = prop->getSellValueToBank();
-        int mortgageValue = prop->getMortgageValue();
-        total += std::max(sellValue, mortgageValue);
+        total += std::max(prop->getSellValueToBank(), prop->getMortgageValue());
     }
     return total;
+}
+
+int Player::getDiscountedAmount(int amount) const {
+    if (amount <= 0 || discountPercent <= 0) {
+        return amount;
+    }
+
+    int discount = (amount * discountPercent) / 100;
+    return std::max(0, amount - discount);
+}
+
+int Player::consumeDiscountedAmount(int amount) {
+    int discountedAmount = getDiscountedAmount(amount);
+    if (amount > 0 && discountPercent > 0) {
+        discountPercent = 0;
+    }
+    return discountedAmount;
 }
 
 bool Player::canAfford(int amount) const {

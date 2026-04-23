@@ -10,7 +10,7 @@
 
 AuctionManager::AuctionManager()
     : property(nullptr),
-      highestBid(0),
+      highestBid(-1),
       highestBidder(nullptr),
       consecutivePasses(0),
       lastNonPasser(nullptr) {}
@@ -44,7 +44,11 @@ bool AuctionManager::processBid(Player* player, int amount) {
         return false;
     }
 
-    if (amount <= highestBid) {
+    if (amount < 0) {
+        return false;
+    }
+
+    if (highestBidder != nullptr && amount <= highestBid) {
         return false;
     }
 
@@ -64,12 +68,8 @@ void AuctionManager::processPass(Player* player) {
         auto it = std::find(auctionOrder.begin(), auctionOrder.end(), player);
         if (it != auctionOrder.end()) {
             int idx = static_cast<int>(std::distance(auctionOrder.begin(), it));
-            int prevIdx = (idx - 1 + static_cast<int>(auctionOrder.size()))
-                          % static_cast<int>(auctionOrder.size());
-
-            if (auctionOrder[prevIdx] != player) {
-                lastNonPasser = auctionOrder[prevIdx];
-            }
+            int nextIdx = (idx + 1) % static_cast<int>(auctionOrder.size());
+            lastNonPasser = auctionOrder[nextIdx];
         }
     }
 
@@ -81,6 +81,11 @@ bool AuctionManager::isFinished(int totalActivePlayers) const {
     if (totalActivePlayers <= 1) {
         return true;
     }
+
+    if (highestBidder == nullptr) {
+        return consecutivePasses >= (totalActivePlayers - 1);
+    }
+
     return consecutivePasses >= (totalActivePlayers - 1);
 }
 
@@ -95,7 +100,7 @@ void AuctionManager::finalizeAuction() {
 
 void AuctionManager::reset() {
     property          = nullptr;
-    highestBid        = 0;
+    highestBid        = -1;
     highestBidder     = nullptr;
     consecutivePasses = 0;
     lastNonPasser     = nullptr;

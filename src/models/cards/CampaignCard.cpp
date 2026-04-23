@@ -33,23 +33,36 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
             continue;
         }
 
-        if (!player.canAfford(amount)) {
-            gameContext.getBankruptcyHandler()->handleBankruptcy(player, otherPlayer, amount, gameContext);
+        int amountToPay = player.consumeDiscountedAmount(amount);
+        if (amountToPay != amount && gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage(
+                "Diskon diterapkan dari M" + std::to_string(amount) +
+                    " menjadi M" + std::to_string(amountToPay) + ".");
+        }
+
+        if (!player.canAfford(amountToPay)) {
+            BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
+            if (bankruptcyHandler != nullptr) {
+                bankruptcyHandler->handleBankruptcy(player, otherPlayer, amountToPay, gameContext);
+            } else {
+                player -= amountToPay;
+                *otherPlayer += amountToPay;
+            }
             if (player.isBankrupt()) {
                 return;
             }
             continue;
         }
 
-        player -= amount;
-        *otherPlayer += amount;
+        player -= amountToPay;
+        *otherPlayer += amountToPay;
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
                 player.getUsername() + " membayar M" + std::to_string(amount) +
                     " kepada " + otherPlayer->getUsername() + ".");
             gameContext.getIO()->showMessage(
-                player.getUsername() + " membayar M" + std::to_string(amount) +
+                player.getUsername() + " membayar M" + std::to_string(amountToPay) +
                     " kepada " + otherPlayer->getUsername() + ".");
         }
     }

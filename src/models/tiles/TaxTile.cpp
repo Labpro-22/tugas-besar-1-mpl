@@ -42,6 +42,24 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
 }
 
 void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay) const {
+    if (player.isShieldActive()) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari pajak.");
+        }
+        gameContext.logEvent(
+            "PAJAK",
+            player.getUsername() + " terlindungi ShieldCard dari pajak.");
+        return;
+    }
+
+    int originalAmount = amountToPay;
+    amountToPay = player.consumeDiscountedAmount(amountToPay);
+    if (amountToPay != originalAmount && gameContext.getIO() != nullptr) {
+        gameContext.getIO()->showMessage(
+            "Diskon diterapkan dari M" + std::to_string(originalAmount) +
+                " menjadi M" + std::to_string(amountToPay) + ".");
+    }
+
     try {
         int beforeBalance = player.getBalance();
         player -= amountToPay;
@@ -87,6 +105,10 @@ int TaxTile::calculateWealth(const Player& player) const {
     int total = player.getBalance();
     
     for (auto* property : player.getProperties()) {
+        if (property == nullptr) {
+            continue;
+        }
+
         total += property->getBuyPrice();
         
         if (property->getPropertyType() == PropertyType::STREET) {
