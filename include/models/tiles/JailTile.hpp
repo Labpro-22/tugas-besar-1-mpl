@@ -12,7 +12,7 @@ public:
 
     void onLanded(Player& player, GameContext& gameContext) override;
     std::string getDisplayLabel() const override;
-    void applyJailStatus(Player& player) const;
+    void applyJailStatus(Player& player) const override;
     void processJailTurn(Player& player, GameContext& gameContext) const;
     int getJailFine() const override;
 };

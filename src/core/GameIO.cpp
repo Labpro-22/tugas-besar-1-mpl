@@ -2,11 +2,14 @@
 
 #include <string>
 
+#include "core/Board.hpp"
 #include "core/DeckFactory.hpp"
+#include "core/TurnManager.hpp"
 #include "models/cards/ActionCard.hpp"
 #include "models/cards/SkillCard.hpp"
 #include "models/Enums.hpp"
 #include "models/Player.hpp"
+#include "models/state/LogEntry.hpp"
 #include "models/tiles/PropertyTile.hpp"
 
 void GameIO::showPawnStep(const Player&, int)
@@ -14,6 +17,10 @@ void GameIO::showPawnStep(const Player&, int)
 }
 
 void GameIO::showDiceRoll(int, int)
+{
+}
+
+void GameIO::showDiceLanding(int, int, int, const std::string&, const std::string&, const std::string&)
 {
 }
 
@@ -68,4 +75,24 @@ int GameIO::promptSkillCardSelection(
         "Pilih kartu (1-" + std::to_string(cards.size()) + "): ",
         1,
         static_cast<int>(cards.size()));
+}
+
+void GameIO::showHelp(const Player&)
+{
+}
+
+void GameIO::renderBoard(const Board&, const std::vector<Player>&, const TurnManager&)
+{
+}
+
+void GameIO::showPropertyDeed(const PropertyTile*)
+{
+}
+
+void GameIO::showPlayerProperties(const Player&)
+{
+}
+
+void GameIO::showLogEntries(const std::vector<LogEntry>&)
+{
 }

@@ -324,7 +324,7 @@ void GameUI::showHelp(const Player& player) {
             std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
             std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
             if (!player.hasUsedSkillThisTurn() && hasUsableSkillCard(player)) {
-                std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill                   |\n";
+                std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill                  |\n";
             }
         }
         std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
@@ -390,6 +390,22 @@ void GameUI::showLog(const std::vector<LogEntry>& entries, int n) {
     for (int i = start; i < static_cast<int>(entries.size()); i++) {
         std::cout << entries[i].toString() << std::endl;
     }
+}
+
+void GameUI::showLogEntries(const std::vector<LogEntry>& entries) {
+    showLog(entries);
+}
+
+void GameUI::renderBoard(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager) {
+    boardRenderer.render(board, players, turnManager);
+}
+
+void GameUI::showPropertyDeed(const PropertyTile* property) {
+    propRenderer.renderDeed(property);
+}
+
+void GameUI::showPlayerProperties(const Player& player) {
+    propRenderer.renderPlayerProperties(player);
 }
 
 BoardRenderer& GameUI::getBoardRenderer() {

@@ -27,7 +27,7 @@ int main() {
             int playerCount = ui.promptPlayerCount();
             std::vector<std::string> playerNames = ui.promptPlayerNames(playerCount);
             engine.initialize(config, playerNames);
-            ui.showMessage("Game baru berhasil diinisialisasi.");
+            ui.showMessage("\n\nGame baru berhasil diinisialisasi.");
             engine.runGameLoop();
         } else if (choice == 2) {
             Command loadCommand = ui.promptLoadCommand();

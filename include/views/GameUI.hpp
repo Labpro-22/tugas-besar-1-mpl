@@ -42,7 +42,7 @@ public:
         int turn = 0,
         const std::string& username = "SYSTEM"
     );
-    void showHelp(const Player& player);
+    void showHelp(const Player& player) override;
     void showSection(const std::string& title);
     void showTurnSummary(const Player& player, int turn);
     void showDiceLanding(
@@ -52,11 +52,15 @@ public:
         const std::string& playerName,
         const std::string& tileName,
         const std::string& tileCode
-    );
+    ) override;
     void showWinner(const std::vector<Player*>& winners, GameContext& context);
 
     void showLog(const std::vector<LogEntry>& entries);
     void showLog(const std::vector<LogEntry>& entries, int n);
+    void showLogEntries(const std::vector<LogEntry>& entries) override;
+    void renderBoard(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager) override;
+    void showPropertyDeed(const PropertyTile* property) override;
+    void showPlayerProperties(const Player& player) override;
 
     BoardRenderer& getBoardRenderer();
     PropertyCardRenderer& getPropertyCardRenderer();

@@ -27,6 +27,7 @@ public:
 
     virtual void onLanded(Player& player, GameContext& gameContext) = 0;
     virtual void onPassed(Player& player, GameContext& gameContext);
+    virtual void applyJailStatus(Player& player) const;
     virtual PropertyTile* asPropertyTile();
     virtual const PropertyTile* asPropertyTile() const;
     virtual int getJailFine() const;

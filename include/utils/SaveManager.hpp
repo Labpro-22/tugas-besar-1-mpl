@@ -13,7 +13,7 @@ class LogEntry;
 
 class SaveManager {
 private:
-    std::string filePath;
+    mutable std::string filePath;
 
     std::string resolveDataPath(const std::string& filename) const;
     std::string statusToString(PlayerStatus status) const;
