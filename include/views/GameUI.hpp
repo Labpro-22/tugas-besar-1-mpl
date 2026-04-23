@@ -9,7 +9,6 @@
 #include "models/state/Command.hpp"
 #include "models/state/LogEntry.hpp"
 #include "views/BoardRenderer.hpp"
-#include "views/CommandParser.hpp"
 #include "views/PropertyCardRenderer.hpp"
 
 class TransactionLogger;
@@ -17,8 +16,9 @@ class TransactionLogger;
 class GameUI : public GameIO {
 private:
     BoardRenderer boardRenderer;
-    CommandParser cmdParser;
     PropertyCardRenderer propRenderer;
+
+    Command readCommand();
 
 public:
     int showMainMenu();
@@ -59,6 +59,5 @@ public:
     void showLog(const std::vector<LogEntry>& entries, int n);
 
     BoardRenderer& getBoardRenderer();
-    CommandParser& getCommandParser();
     PropertyCardRenderer& getPropertyCardRenderer();
 };

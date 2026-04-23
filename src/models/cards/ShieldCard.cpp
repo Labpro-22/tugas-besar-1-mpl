@@ -13,10 +13,9 @@ std::string ShieldCard::getTypeName() const {
 
 void ShieldCard::use(Player& player, GameContext& gameContext) {
     player.setShieldActive(true);
-    player.setUsedSkillThisTurn(true);
     if (gameContext.getIO() != nullptr) {
         gameContext.getIO()->showMessage(
-            "ShieldCard diaktifkan! Anda kebal terhadap tagihan atau sanksi selama giliran ini.");
+            "ShieldCard diaktifkan! Kamu kebal terhadap tagihan atau sanksi pada aksi ini.");
     }
     gameContext.logEvent("KARTU", player.getUsername() + " mengaktifkan ShieldCard.");
 }

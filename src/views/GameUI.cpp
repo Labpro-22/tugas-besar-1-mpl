@@ -93,6 +93,26 @@ namespace {
     }
 }
 
+Command GameUI::readCommand() {
+    std::string line;
+    if (!std::getline(std::cin, line)) {
+        std::cin.clear();
+        return Command("KELUAR", {});
+    }
+
+    std::stringstream stream(line);
+    std::string keyword;
+    std::vector<std::string> args;
+    stream >> keyword;
+
+    std::string arg;
+    while (stream >> arg) {
+        args.push_back(arg);
+    }
+
+    return Command(keyword, args);
+}
+
 int GameUI::showMainMenu() {
     std::cout << "+------------------------------+" << std::endl;
     std::cout << "|          NIMONSPOLI          |" << std::endl;
@@ -123,7 +143,7 @@ Command GameUI::promptLoadCommand() {
     std::cout << "File akan dicari dari folder data/." << std::endl;
     while (true) {
         std::cout << "> ";
-        Command command = cmdParser.readCommand();
+        Command command = readCommand();
         if (!command.getKeyword().empty()) {
             return command;
         }
@@ -153,7 +173,7 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
     for (int i = 0; i < n; i++) {
         std::string name;
         while (true) {
-            std::cout << "Masukkan nama pemain " << (i + 1) << ": ";
+            std::cout << "Masukkan Username pemain " << (i + 1) << ": ";
             if (!std::getline(std::cin, name)) {
                 throwIfInputClosed();
             }
@@ -161,12 +181,12 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
             name = trimWhitespace(name);
 
             if (name.empty()) {
-                std::cout << "Nama pemain tidak boleh kosong." << std::endl;
+                std::cout << "Username tidak boleh kosong." << std::endl;
                 continue;
             }
 
             if (name.size() < 3) {
-                std::cout << "Username minimal 3 karakter." << std::endl;
+                std::cout << "Username minimal berisi 3 karakter." << std::endl;
                 continue;
             }
 
@@ -250,7 +270,7 @@ Command GameUI::promptPlayerCommand(const std::string& username) {
     std::cout << "Bingung? ketik HELP ea...\n";
     while (true) {
         std::cout << "> [" << username << "]: ";
-        Command command = cmdParser.readCommand();
+        Command command = readCommand();
         if (!command.getKeyword().empty()) {
             return command;
         }
@@ -304,7 +324,7 @@ void GameUI::showHelp(const Player& player) {
             std::cout << "| LEMPAR_DADU             | lempar dadu                       |\n";
             std::cout << "| ATUR_DADU X Y           | set nilai dadu manual             |\n";
             if (!player.hasUsedSkillThisTurn() && hasUsableSkillCard(player)) {
-                std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill sebelum dadu    |\n";
+                std::cout << "| GUNAKAN_KEMAMPUAN       | pakai kartu skill                   |\n";
             }
         }
         std::cout << "| GADAI / TEBUS / BANGUN  | kelola aset                       |\n";
@@ -374,10 +394,6 @@ void GameUI::showLog(const std::vector<LogEntry>& entries, int n) {
 
 BoardRenderer& GameUI::getBoardRenderer() {
     return boardRenderer;
-}
-
-CommandParser& GameUI::getCommandParser() {
-    return cmdParser;
 }
 
 PropertyCardRenderer& GameUI::getPropertyCardRenderer() {

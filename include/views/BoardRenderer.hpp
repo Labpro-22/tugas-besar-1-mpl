@@ -16,7 +16,6 @@ private:
 
 public:
     void render(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager);
-    std::string renderTileCell(const Tile* tile, const std::vector<Player>& players) const;
     void renderLegend(const std::vector<Player>& players) const;
     std::string colorize(const std::string& text, const std::string& ansiCode) const;
 };

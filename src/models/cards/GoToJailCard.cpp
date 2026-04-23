@@ -4,6 +4,7 @@
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
 #include "models/Player.hpp"
+#include "models/tiles/JailTile.hpp"
 #include "models/tiles/Tile.hpp"
 
 GoToJailCard::GoToJailCard()
@@ -25,21 +26,16 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     }
 
     Board* board = gameContext.getBoard();
-    if (board == nullptr) {
-        player.setStatus(PlayerStatus::JAILED);
-        player.setJailTurns(0);
+    Tile* jailTileBase = board == nullptr ? nullptr : board->getTile("PEN");
+    if (const JailTile* jailTile = dynamic_cast<const JailTile*>(jailTileBase)) {
+        jailTile->applyJailStatus(player);
         return;
     }
-
-    Tile* jailTileBase = board->getTile("PEN");
 
     if (jailTileBase != nullptr) {
         player.moveTo(jailTileBase->getIndex());
-        player.setStatus(PlayerStatus::JAILED);
-        player.setJailTurns(0);
-        player.setConsecutiveDoubles(0);
-        return;
     }
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);
+    player.setConsecutiveDoubles(0);
 }

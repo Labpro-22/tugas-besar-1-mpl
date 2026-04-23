@@ -19,12 +19,21 @@ void GameIO::showDiceRoll(int, int)
 
 bool GameIO::confirmPropertyPurchase(const Player& player, const PropertyTile& property)
 {
-    if (!player.canAfford(property.getBuyPrice())) {
+    const int originalPrice = property.getBuyPrice();
+    const int finalPrice = player.getDiscountedAmount(originalPrice);
+
+    if (!player.canAfford(finalPrice)) {
         return false;
     }
 
-    return confirmYN("Apakah kamu ingin membeli properti ini seharga M" +
-        std::to_string(property.getBuyPrice()) + "?");
+    std::string prompt = "Apakah kamu ingin membeli properti ini seharga M" +
+        std::to_string(finalPrice);
+    if (finalPrice != originalPrice) {
+        prompt += " (setelah diskon dari M" + std::to_string(originalPrice) + ")";
+    }
+    prompt += "?";
+
+    return confirmYN(prompt);
 }
 
 void GameIO::showPropertyNotice(const Player&, const PropertyTile& property)

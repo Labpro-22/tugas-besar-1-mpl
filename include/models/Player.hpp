@@ -50,7 +50,6 @@ public:
     bool isActive() const;
     bool isJailed() const;
     bool isBankrupt() const;
-    bool isMonopolizing(ColorGroup colorGroup, const std::vector<StreetTile*>& allTiles) const;
     void resetTurnState();
 
     const std::string& getUsername() const;

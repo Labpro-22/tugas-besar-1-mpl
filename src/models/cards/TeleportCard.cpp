@@ -5,6 +5,7 @@
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
 
@@ -49,8 +50,15 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
         return;
     }
 
+    int oldPosition = player.getPosition();
     player.moveTo(targetIndex);
-    player.setUsedSkillThisTurn(true);
+    MovementService::awardGoSalaryForForwardMovement(
+        *board,
+        player,
+        gameContext,
+        oldPosition,
+        targetIndex
+    );
 
     io->showMessage(
         "Teleport berhasil! " + player.getUsername()

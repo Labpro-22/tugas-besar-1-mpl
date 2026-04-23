@@ -19,6 +19,13 @@ int CampaignCard::getAmount() const {
 
 void CampaignCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage(
+                "[SHIELD ACTIVE]: Efek ShieldCard melindungi kamu dari tagihan CampaignCard.");
+        }
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " terlindungi ShieldCard dari CampaignCard.");
         return;
     }
 

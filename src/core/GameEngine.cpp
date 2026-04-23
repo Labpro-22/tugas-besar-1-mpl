@@ -326,31 +326,6 @@ std::vector<Player*> GameEngine::determineWinner() const {
     return winners;
 }
 
-void GameEngine::distributeSkillCards() {
-    for (Player* player : turnManager.getActivePlayers()) {
-        if (player == nullptr || player->isBankrupt()) {
-            continue;
-        }
-
-        try {
-            SkillCard* card = skillDeck.draw();
-            try {
-                player->addCard(card);
-            } catch (const CardHandFullException&) {
-                skillDeck.discardCard(card);
-            }
-        } catch (const std::exception& e) {
-            if (logger != nullptr) {
-                logger->log(
-                    turnManager.getCurrentTurn(),
-                    "SYSTEM",
-                    "KARTU_SKILL",
-                    std::string("Gagal membagikan kartu skill: ") + e.what());
-            }
-        }
-    }
-}
-
 void GameEngine::randomizeTurnOrder() {
     std::vector<Player*> playerPointers = buildPlayerPointers(players);
     std::shuffle(playerPointers.begin(), playerPointers.end(), std::mt19937(std::random_device{}()));

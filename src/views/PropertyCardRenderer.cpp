@@ -218,35 +218,3 @@ void PropertyCardRenderer::renderPlayerProperties(const Player& player) const {
         }
     }
 }
-
-void PropertyCardRenderer::renderAuctionUI(const PropertyTile* property,
-                                           int currentBid,
-                                           const Player* bidder) const {
-    printDivider();
-    std::cout << "PANEL LELANG" << std::endl;
-    printDivider();
-
-    if (property == nullptr) {
-        std::cout << "Tidak ada properti yang sedang dilelang." << std::endl;
-        printDivider('-');
-        return;
-    }
-
-    printKeyValue("Properti", property->getName() + " (" + property->getCode() + ")");
-    printKeyValue("Status", propertyStatusToString(property->getStatus()));
-    printKeyValue("Harga Saat Ini", currentBid);
-    printKeyValue("Penawar Tertinggi", bidder != nullptr ? bidder->getUsername() : "-");
-    printKeyValue("Nilai Gadai", property->getMortgageValue());
-
-    if (property->getPropertyType() == PropertyType::STREET) {
-        printKeyValue("Jenis", "STREET");
-        printKeyValue("Warna", colorGroupToString(property->getColorGroup()));
-    } else if (property->getPropertyType() == PropertyType::RAILROAD) {
-        printKeyValue("Jenis", "RAILROAD");
-    } else if (property->getPropertyType() == PropertyType::UTILITY) {
-        printKeyValue("Jenis", "UTILITY");
-    }
-
-    printDivider('-');
-    std::cout << "Masukkan bid lebih besar dari harga saat ini atau PASS." << std::endl;
-}
