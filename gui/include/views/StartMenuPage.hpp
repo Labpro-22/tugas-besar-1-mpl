@@ -21,8 +21,11 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
+    void updateResponsiveLayout();
+
     QPushButton* newGameButton = nullptr;
     QPushButton* loadGameButton = nullptr;
     QToolButton* settingsButton = nullptr;

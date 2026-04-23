@@ -9,7 +9,6 @@ int main(int argc, char *argv[])
 
     GameWindow window;
     window.setWindowTitle(QStringLiteral("Nimonspoli Board"));
-    window.resize(1240, 800);
     window.show();
 
     return app.exec();

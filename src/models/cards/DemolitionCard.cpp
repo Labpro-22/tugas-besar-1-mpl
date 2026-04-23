@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
@@ -17,7 +18,8 @@ std::string DemolitionCard::getTypeName() const {
 
 void DemolitionCard::use(Player& player, GameContext& gameContext) {
     TurnManager* turnManager = gameContext.getTurnManager();
-    if (turnManager == nullptr || !gameContext.hasIO()) {
+    GameIO* io = gameContext.getIO();
+    if (turnManager == nullptr || io == nullptr) {
         return;
     }
 
@@ -51,22 +53,48 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
             "tidak ada properti lawan yang dapat dihancurkan.");
     }
 
-    gameContext.showMessage("Pilih properti lawan yang ingin dihancurkan:");
-    for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
-        gameContext.showMessage(
-            std::to_string(i + 1) + ". "
-                + targetOwners[i]->getUsername()
-                + " - " + targetProperties[i]->getName()
-                + " (" + targetProperties[i]->getCode() + ")");
+    int choice = -1;
+    if (io->usesRichGuiPresentation()) {
+        std::vector<int> validTileIndices;
+        validTileIndices.reserve(targetProperties.size());
+        for (PropertyTile* property : targetProperties) {
+            if (property != nullptr) {
+                validTileIndices.push_back(property->getIndex());
+            }
+        }
+
+        const int selectedTileIndex = io->promptTileSelection(
+            "Pilih properti lawan yang ingin dihancurkan langsung dari board.",
+            validTileIndices);
+
+        for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+            if (targetProperties[i] != nullptr && targetProperties[i]->getIndex() == selectedTileIndex) {
+                choice = i;
+                break;
+            }
+        }
+    } else {
+        gameContext.showMessage("Pilih properti lawan yang ingin dihancurkan:");
+        for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+            gameContext.showMessage(
+                std::to_string(i + 1) + ". "
+                    + targetOwners[i]->getUsername()
+                    + " - " + targetProperties[i]->getName()
+                    + " (" + targetProperties[i]->getCode() + ")");
+        }
+
+        choice = gameContext.promptIntInRange(
+            "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
+            1,
+            static_cast<int>(targetProperties.size())) - 1;
     }
 
-    int choice = gameContext.promptIntInRange(
-        "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
-        1,
-        static_cast<int>(targetProperties.size()));
+    if (choice < 0) {
+        return;
+    }
 
-    PropertyTile* targetProperty = targetProperties[choice - 1];
-    Player* owner = targetOwners[choice - 1];
+    PropertyTile* targetProperty = targetProperties[choice];
+    Player* owner = targetOwners[choice];
 
     targetProperty->setBuildingLevel(0);
     targetProperty->setFestivalState(1, 0);

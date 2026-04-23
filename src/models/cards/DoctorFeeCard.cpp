@@ -4,6 +4,7 @@
 
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 #include "utils/OutputFormatter.hpp"
 
@@ -35,10 +36,20 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
     }
 
     if (player.canAfford(amountToPay)) {
+        int beforeBalance = player.getBalance();
         player -= amountToPay;
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar biaya dokter " +
+                    OutputFormatter::formatMoney(amountToPay) + " ke Bank.");
+        }
         gameContext.showMessage(
             "Kamu membayar " + OutputFormatter::formatMoney(amountToPay) +
                 " ke Bank. Sisa Uang = " + OutputFormatter::formatMoney(player.getBalance()) + ".");
+        gameContext.showMessage(
+            "Uang kamu: " + OutputFormatter::formatMoney(beforeBalance) +
+                " -> " + OutputFormatter::formatMoney(player.getBalance()) + ".");
         return;
     }
 

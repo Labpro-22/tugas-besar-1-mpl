@@ -21,6 +21,8 @@ public:
     void setDialogParent(QWidget* dialogParent);
     void setMovementStepHandler(std::function<void(const Player&, int)> handler);
     void setPropertyPurchaseHandler(std::function<bool(const Player&, const PropertyTile&)> handler);
+    void setPropertyNoticeHandler(std::function<void(const Player&, const PropertyTile&)> handler);
+    void setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler);
 
     int promptInt(const std::string& prompt) override;
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
@@ -28,7 +30,26 @@ public:
     void showDiceRoll(int die1, int die2) override;
     void showPawnStep(const Player& player, int tileIndex) override;
     bool confirmPropertyPurchase(const Player& player, const PropertyTile& property) override;
+    void showPropertyNotice(const Player& player, const PropertyTile& property) override;
     void showActionCard(CardType cardType, const ActionCard& card) override;
+    void showPaymentNotification(const std::string& title, const std::string& detail) override;
+    void showAuctionNotification(const std::string& title, const std::string& detail) override;
+    bool usesRichGuiPresentation() const override;
+    int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
+    int promptTaxPaymentOption(
+        const Player& player,
+        const std::string& tileName,
+        int flatAmount,
+        int percentage,
+        int wealth,
+        int percentageAmount
+    ) override;
+    int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices) override;
+    int promptTileSelection(
+        const std::string& title,
+        const std::vector<int>& validTileIndices,
+        bool allowCancel
+    ) override;
     int promptSkillCardSelection(
         const std::string& title,
         const std::vector<SkillCard*>& cards,
@@ -51,4 +72,6 @@ private:
     QStringList pendingMessages;
     std::function<void(const Player&, int)> movementStepHandler;
     std::function<bool(const Player&, const PropertyTile&)> propertyPurchaseHandler;
+    std::function<void(const Player&, const PropertyTile&)> propertyNoticeHandler;
+    std::function<int(const QString&, const QVector<int>&, bool)> boardTileSelectionHandler;
 };

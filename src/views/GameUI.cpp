@@ -6,6 +6,7 @@
 #include <sstream>
 
 #include "core/TurnManager.hpp"
+#include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/OutputFormatter.hpp"
 #include "utils/exceptions/ExceptionHandler.hpp"
@@ -305,6 +306,62 @@ int GameUI::promptAuctionBid(const std::string& playerName, int highestBid, int 
     }
 }
 
+int GameUI::promptAuctionBid(const PropertyTile&, const Player& bidder, int highestBid) {
+    return promptAuctionBid(bidder.getUsername(), highestBid, bidder.getBalance());
+}
+
+int GameUI::promptTaxPaymentOption(
+    const Player&,
+    const std::string& tileName,
+    int flatAmount,
+    int percentage,
+    int wealth,
+    int percentageAmount
+) {
+    showMessage("Pilih opsi pembayaran " + tileName + ":");
+    showMessage("1. Bayar tetap: " + OutputFormatter::formatMoney(flatAmount));
+    showMessage(
+        "2. Bayar berdasarkan kekayaan: " + std::to_string(percentage) +
+        "% dari total kekayaan " + OutputFormatter::formatMoney(wealth) +
+        " = " + OutputFormatter::formatMoney(percentageAmount));
+    return promptIntInRange("Pilih pembayaran (1-2): ", 1, 2);
+}
+
+int GameUI::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices) {
+    return promptTileSelection(title, validTileIndices, false);
+}
+
+int GameUI::promptTileSelection(
+    const std::string& title,
+    const std::vector<int>& validTileIndices,
+    bool allowCancel
+) {
+    if (validTileIndices.empty()) {
+        return -1;
+    }
+
+    showMessage(title);
+
+    if (allowCancel) {
+        showMessage("Masukkan nomor tile sesuai daftar di atas, atau 0 untuk batal.");
+        const int choice = promptIntInRange(
+            "Pilih tile (0-" + std::to_string(validTileIndices.size()) + "): ",
+            0,
+            static_cast<int>(validTileIndices.size()));
+        if (choice == 0) {
+            return -1;
+        }
+        return validTileIndices[static_cast<std::size_t>(choice - 1)];
+    }
+
+    showMessage("Masukkan nomor tile sesuai daftar di atas.");
+    const int choice = promptIntInRange(
+        "Pilih tile (1-" + std::to_string(validTileIndices.size()) + "): ",
+        1,
+        static_cast<int>(validTileIndices.size()));
+    return validTileIndices[static_cast<std::size_t>(choice - 1)];
+}
+
 Command GameUI::promptPlayerCommand(const std::string& username) {
     std::cout << "\n";
     std::cout << "Bingung? ketik HELP ea...\n";
@@ -337,6 +394,20 @@ void GameUI::showUnknownError(
     const std::string& username
 ) {
     ExceptionHandler::handleUnknown(std::cout, logger, turn, username);
+}
+
+void GameUI::showPropertyNotice(const Player&, const PropertyTile& property) {
+    (void)property;
+}
+
+void GameUI::showPaymentNotification(const std::string& title, const std::string& detail) {
+    (void)title;
+    (void)detail;
+}
+
+void GameUI::showAuctionNotification(const std::string& title, const std::string& detail) {
+    (void)title;
+    (void)detail;
 }
 
 void GameUI::showHelp(const Player& player) {

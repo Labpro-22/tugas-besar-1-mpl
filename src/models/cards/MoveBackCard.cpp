@@ -4,6 +4,7 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
@@ -39,6 +40,9 @@ void MoveBackCard::execute(Player& player, GameContext& gameContext) {
 
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile != nullptr) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPawnStep(player, targetIndex);
+        }
         gameContext.showMessage(
             "Bidak dipindahkan ke " + targetTile->getName() +
                 " (" + targetTile->getCode() + ").");

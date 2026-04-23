@@ -341,6 +341,12 @@ void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
         if (creditor) {
             creditor->setBalance(creditor->getBalance() + amount);
         }
+        if (context.getIO() != nullptr) {
+            context.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar M" + std::to_string(amount) +
+                    (creditor == nullptr ? " ke Bank." : " kepada " + creditor->getUsername() + "."));
+        }
     }
 }
 
@@ -427,6 +433,10 @@ void BankruptcyHandler::auctionBankruptAssets(
         int totalPlayers = static_cast<int>(auctionOrder.size());
 
         if (io != nullptr) {
+            io->showAuctionNotification(
+                "AUCTION",
+                "Lelang aset bangkrut " + property->getName() +
+                " (" + property->getCode() + ") dimulai.");
             io->showMessage(
                 "Properti " + property->getName() + " (" + property->getCode() + ") akan dilelang!");
             io->showMessage("");
@@ -444,10 +454,7 @@ void BankruptcyHandler::auctionBankruptAssets(
 
                 int amount = 0;
                 if (io != nullptr) {
-                    amount = io->promptAuctionBid(
-                        bidder->getUsername(),
-                        auction->getHighestBid(),
-                        bidder->getBalance());
+                    amount = io->promptAuctionBid(*property, *bidder, auction->getHighestBid());
                 }
 
                 if (amount < 0) {
@@ -483,10 +490,10 @@ void BankruptcyHandler::auctionBankruptAssets(
                     io->showMessage(
                         "Belum ada pemain yang melakukan bid. " +
                         forcedBidder->getUsername() + " wajib melakukan bid awal.");
-                    amount = io->promptAuctionBid(
-                        forcedBidder->getUsername(),
-                        auction->getHighestBid(),
-                        forcedBidder->getBalance());
+                    amount = io->promptAuctionBid(*property, *forcedBidder, auction->getHighestBid());
+                    if (amount < 0) {
+                        amount = 0;
+                    }
                 }
 
                 try {
@@ -519,6 +526,14 @@ void BankruptcyHandler::auctionBankruptAssets(
                 io->showMessage("Pemenang: " + winner->getUsername());
                 io->showMessage("Harga akhir: " + OutputFormatter::formatMoney(winningBid));
                 io->showMessage("");
+                io->showPaymentNotification(
+                    "PAYMENT",
+                    winner->getUsername() + " membayar M" + std::to_string(winningBid) +
+                        " ke Bank untuk memenangkan " + property->getName() + ".");
+                io->showAuctionNotification(
+                    "AUCTION",
+                    winner->getUsername() + " memenangkan " + property->getName() +
+                        " seharga M" + std::to_string(winningBid) + ".");
                 io->showMessage(
                     "Properti " + property->getName() + " (" + property->getCode() +
                     ") kini dimiliki " + winner->getUsername() + "."
@@ -528,6 +543,9 @@ void BankruptcyHandler::auctionBankruptAssets(
             context.logEvent("LELANG", property->getCode() + " tidak terjual pada lelang aset bangkrut.");
             if (io != nullptr) {
                 io->showMessage("Lelang selesai!");
+                io->showAuctionNotification(
+                    "AUCTION",
+                    "Lelang selesai. " + property->getName() + " tidak terjual.");
                 io->showMessage(property->getName() + " tidak terjual.");
             }
         }

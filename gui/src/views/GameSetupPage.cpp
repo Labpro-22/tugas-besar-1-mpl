@@ -1,5 +1,7 @@
 #include "views/GameSetupPage.hpp"
 
+#include <algorithm>
+
 #include <QButtonGroup>
 #include <QFrame>
 #include <QGridLayout>
@@ -9,6 +11,7 @@
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QVBoxLayout>
 
 namespace {
@@ -48,35 +51,35 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     outerLayout->setAlignment(Qt::AlignCenter);
     rootLayout->addLayout(outerLayout, 1);
 
-    auto* card = new QFrame(this);
-    card->setObjectName(QStringLiteral("setupCard"));
-    card->setFixedWidth(780);
-    outerLayout->addWidget(card, 0, Qt::AlignCenter);
+    setupCard = new QFrame(this);
+    setupCard->setObjectName(QStringLiteral("setupCard"));
+    setupCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    outerLayout->addWidget(setupCard, 0, Qt::AlignCenter);
 
-    auto* cardLayout = new QVBoxLayout(card);
+    auto* cardLayout = new QVBoxLayout(setupCard);
     cardLayout->setContentsMargins(52, 40, 52, 40);
     cardLayout->setSpacing(22);
 
-    auto* backButton = new QPushButton(QStringLiteral("<  BACK"), card);
+    auto* backButton = new QPushButton(QStringLiteral("<  BACK"), setupCard);
     backButton->setObjectName(QStringLiteral("backButton"));
     backButton->setCursor(Qt::PointingHandCursor);
     backButton->setFlat(true);
     backButton->setMaximumWidth(130);
     cardLayout->addWidget(backButton, 0, Qt::AlignLeft);
 
-    auto* titleLabel = new QLabel(QStringLiteral("Game Setup"), card);
+    auto* titleLabel = new QLabel(QStringLiteral("Game Setup"), setupCard);
     titleLabel->setStyleSheet(QStringLiteral("color:#05070a;font:900 30pt 'Trebuchet MS';"));
     cardLayout->addWidget(titleLabel);
 
-    auto* subtitleLabel = new QLabel(QStringLiteral("Configure the player slots for the upcoming match."), card);
+    auto* subtitleLabel = new QLabel(QStringLiteral("Configure the player slots for the upcoming match."), setupCard);
     subtitleLabel->setStyleSheet(QStringLiteral("color:#343a43;font:500 15pt 'Trebuchet MS';"));
     cardLayout->addWidget(subtitleLabel);
 
-    auto* countLabel = new QLabel(QStringLiteral("NUMBER OF PLAYERS"), card);
+    auto* countLabel = new QLabel(QStringLiteral("NUMBER OF PLAYERS"), setupCard);
     countLabel->setStyleSheet(QStringLiteral("margin-top:18px;color:#101318;font:800 11pt 'Trebuchet MS';letter-spacing:1px;"));
     cardLayout->addWidget(countLabel);
 
-    auto* countWrap = new QFrame(card);
+    auto* countWrap = new QFrame(setupCard);
     countWrap->setObjectName(QStringLiteral("countWrap"));
     auto* countLayout = new QHBoxLayout(countWrap);
     countLayout->setContentsMargins(0, 0, 0, 0);
@@ -102,12 +105,12 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     }
     twoPlayersButton->setChecked(true);
 
-    auto* divider = new QFrame(card);
+    auto* divider = new QFrame(setupCard);
     divider->setObjectName(QStringLiteral("sectionDivider"));
     divider->setFixedHeight(1);
     cardLayout->addWidget(divider);
 
-    auto* playerDetailsLabel = new QLabel(QStringLiteral("PLAYER DETAILS"), card);
+    auto* playerDetailsLabel = new QLabel(QStringLiteral("PLAYER DETAILS"), setupCard);
     playerDetailsLabel->setStyleSheet(QStringLiteral("color:#101318;font:800 11pt 'Trebuchet MS';letter-spacing:1px;"));
     cardLayout->addWidget(playerDetailsLabel);
 
@@ -117,7 +120,7 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     cardLayout->addLayout(grid);
 
     for (int index = 0; index < 4; ++index) {
-        auto* playerCard = new QFrame(card);
+        auto* playerCard = new QFrame(setupCard);
         playerCard->setProperty("playerEntryCard", true);
 
         auto* playerCardLayout = new QVBoxLayout(playerCard);
@@ -153,7 +156,7 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     auto* bottomRow = new QHBoxLayout();
     bottomRow->addStretch(1);
 
-    auto* startButton = new QPushButton(QStringLiteral("START GAME"), card);
+    auto* startButton = new QPushButton(QStringLiteral("START GAME"), setupCard);
     startButton->setObjectName(QStringLiteral("startButton"));
     startButton->setCursor(Qt::PointingHandCursor);
     startButton->setMinimumSize(220, 68);
@@ -215,6 +218,7 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     });
 
     applyPlayerCount(2);
+    updateResponsiveLayout();
 }
 
 int GameSetupPage::playerCount() const
@@ -261,9 +265,22 @@ void GameSetupPage::paintEvent(QPaintEvent* event)
     painter.drawEllipse(QPointF(width() * 0.74, height() * 0.12), width() * 0.28, height() * 0.20);
 }
 
+void GameSetupPage::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateResponsiveLayout();
+}
+
 void GameSetupPage::applyPlayerCount(int count)
 {
     for (int index = 0; index < playerCards.size(); ++index) {
         playerCards[index]->setVisible(index < count);
+    }
+}
+
+void GameSetupPage::updateResponsiveLayout()
+{
+    if (setupCard != nullptr) {
+        setupCard->setMaximumWidth(std::clamp(width() - 80, 520, 780));
     }
 }

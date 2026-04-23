@@ -24,6 +24,7 @@ namespace {
                keyword == "CETAK_PROPERTI" ||
                keyword == "GADAI" ||
                keyword == "TEBUS" ||
+               keyword == "UNMORTGAGE" ||
                keyword == "BANGUN" ||
                keyword == "SIMPAN" ||
                keyword == "MUAT" ||
@@ -123,7 +124,7 @@ namespace {
             return argCount == 0;
         }
 
-        if (keyword == "TEBUS") {
+        if (keyword == "TEBUS" || keyword == "UNMORTGAGE") {
             return argCount == 0;
         }
 

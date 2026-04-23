@@ -139,6 +139,41 @@ QString findImagesDirectory()
     return {};
 }
 
+QString findHouseHotelsDirectory()
+{
+    const QString appDir = QCoreApplication::applicationDirPath();
+    const QStringList startPaths = {QDir::currentPath(), appDir};
+
+    for (const QString& startPath : startPaths) {
+        const QString found = findUpwardDirectory(
+            startPath,
+            QStringLiteral("househotels"),
+            {QStringLiteral("Property 1=1 House.png")}
+        );
+
+        if (!found.isEmpty()) {
+            return found;
+        }
+    }
+
+    return {};
+}
+
+QString buildingAssetName(int buildingLevel)
+{
+    if (buildingLevel >= 5) {
+        return QStringLiteral("Property 1=Hotel.png");
+    }
+
+    switch (buildingLevel) {
+    case 1: return QStringLiteral("Property 1=1 House.png");
+    case 2: return QStringLiteral("Property 1=2 House.png");
+    case 3: return QStringLiteral("Property 1=3 House.png");
+    case 4: return QStringLiteral("Property 1=4 House.png");
+    default: return {};
+    }
+}
+
 QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
 {
     switch (colorGroup) {
@@ -198,9 +233,39 @@ void BoardWidget::setSelectedPropertyId(int propertyId)
     update();
 }
 
+void BoardWidget::setTileSelectionMode(const QSet<int>& validTileIndices, const QString& promptText, bool allowCancel)
+{
+    tileSelectionMode = true;
+    tileSelectionAllowCancel = allowCancel;
+    selectableTileIndices = validTileIndices;
+    selectionPromptText = promptText;
+    setCursor(Qt::PointingHandCursor);
+    update();
+}
+
+void BoardWidget::clearTileSelectionMode()
+{
+    if (!tileSelectionMode && selectableTileIndices.isEmpty() && selectionPromptText.isEmpty() && !tileSelectionAllowCancel) {
+        return;
+    }
+
+    tileSelectionMode = false;
+    tileSelectionAllowCancel = false;
+    selectableTileIndices.clear();
+    selectionPromptText.clear();
+    unsetCursor();
+    update();
+}
+
 void BoardWidget::setPawns(const QVector<PawnData>& pawnData)
 {
     pawns = pawnData;
+    update();
+}
+
+void BoardWidget::setBuildings(const QVector<BuildingData>& buildingData)
+{
+    buildings = buildingData;
     update();
 }
 
@@ -214,7 +279,7 @@ const QPixmap& BoardWidget::pix(const QString &name) const
 
     QPixmap pm;
 
-    const QStringList searchDirs = {findImagesDirectory()};
+    const QStringList searchDirs = {findImagesDirectory(), findHouseHotelsDirectory()};
     for (const QString& directory : searchDirs) {
         if (directory.isEmpty()) {
             continue;
@@ -353,6 +418,67 @@ static void drawPix(QPainter &p, const QPixmap &pm, const QRect &r)
                r.center().y() - scaled.height()/2,
                scaled.width(), scaled.height());
     p.drawPixmap(dest, pm);
+}
+
+void BoardWidget::drawBuildings(QPainter &p, const QRect &board, int cs, int es) const
+{
+    if (buildings.isEmpty()) {
+        return;
+    }
+
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing);
+
+    for (const BuildingData& building : buildings) {
+        if (building.tileIndex < 0 || building.tileIndex >= cells.size() || building.buildingLevel <= 0) {
+            continue;
+        }
+        if (cells[building.tileIndex].kind != TileKind::Property) {
+            continue;
+        }
+
+        const QRect tile = tileRect(building.tileIndex, board, cs, es);
+        const int size = qMax(20, int(qMin(tile.width(), tile.height()) * 0.38));
+        QRect iconRect;
+
+        switch (sideForIndex(building.tileIndex)) {
+        case EdgeSide::Bottom:
+            iconRect = QRect(tile.center().x() - size / 2, tile.top() + tile.height() / 6, size, size);
+            break;
+        case EdgeSide::Top:
+            iconRect = QRect(tile.center().x() - size / 2, tile.bottom() - tile.height() / 6 - size, size, size);
+            break;
+        case EdgeSide::Left:
+            iconRect = QRect(tile.right() - tile.width() / 6 - size, tile.center().y() - size / 2, size, size);
+            break;
+        case EdgeSide::Right:
+            iconRect = QRect(tile.left() + tile.width() / 6, tile.center().y() - size / 2, size, size);
+            break;
+        case EdgeSide::Corner:
+            continue;
+        }
+
+        const QString assetName = buildingAssetName(building.buildingLevel);
+        const QPixmap& asset = pix(assetName);
+
+        p.setPen(Qt::NoPen);
+        p.setBrush(QColor(0, 0, 0, 46));
+        p.drawEllipse(iconRect.adjusted(2, size - size / 5, -2, 3));
+
+        if (!asset.isNull()) {
+            drawPix(p, asset, iconRect);
+        } else {
+            p.setBrush(building.buildingLevel >= 5 ? QColor(30, 94, 170) : QColor(42, 154, 78));
+            p.setPen(QPen(QColor(17, 17, 17), 1));
+            p.drawRoundedRect(iconRect, 3, 3);
+            QFont font(QStringLiteral("Trebuchet MS"), qMax(7, size / 3), QFont::Black);
+            p.setFont(font);
+            p.setPen(Qt::white);
+            p.drawText(iconRect, Qt::AlignCenter, building.buildingLevel >= 5 ? QStringLiteral("H") : QString::number(building.buildingLevel));
+        }
+    }
+
+    p.restore();
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -513,6 +639,22 @@ QRect BoardWidget::tileRect(int i, const QRect &b, int cs, int es) const
     return                        {x+cs+9*es, y+cs+(i-31)*es, cs, es};
 }
 
+QRect BoardWidget::selectionPromptRect(const QRect& centerRect) const
+{
+    return centerRect.adjusted(
+        centerRect.width() / 8,
+        centerRect.height() / 3,
+        -centerRect.width() / 8,
+        -centerRect.height() / 3);
+}
+
+QRect BoardWidget::selectionCancelRect(const QRect& centerRect) const
+{
+    const QRect prompt = selectionPromptRect(centerRect);
+    const int size = qMax(26, qMin(prompt.width(), prompt.height()) / 6);
+    return QRect(prompt.right() - size - 10, prompt.top() + 10, size, size);
+}
+
 bool BoardWidget::isInspectableTile(int idx) const
 {
     if (idx < 0 || idx >= cells.size()) {
@@ -535,10 +677,24 @@ void BoardWidget::mousePressEvent(QMouseEvent *event)
     const QRect board = boardBounds();
     const int cs = qMax(88, int(board.width() * 0.138));
     const int es = (board.width() - 2 * cs) / 9;
+    const QRect cr(board.x() + cs, board.y() + cs, es * 9, es * 9);
+
+    if (tileSelectionMode && tileSelectionAllowCancel && selectionCancelRect(cr).contains(event->pos())) {
+        emit tileSelectionCanceled();
+        return;
+    }
 
     for (int index = 0; index < 40; ++index) {
         if (!tileRect(index, board, cs, es).contains(event->pos())) {
             continue;
+        }
+
+        if (tileSelectionMode) {
+            if (selectableTileIndices.contains(index)) {
+                setSelectedPropertyId(index + 1);
+                emit tileSelected(index);
+            }
+            break;
         }
 
         if (isInspectableTile(index)) {
@@ -970,6 +1126,27 @@ void BoardWidget::drawCell(QPainter &p, int idx, const QRect &r) const
     }
 }
 
+void BoardWidget::drawSelectionOverlay(QPainter& p, int idx, const QRect& r) const
+{
+    if (!tileSelectionMode) {
+        return;
+    }
+
+    const bool selectable = selectableTileIndices.contains(idx);
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing);
+
+    if (!selectable) {
+        p.fillRect(r, QColor(70, 74, 78, 138));
+    } else {
+        p.setBrush(QColor(255, 242, 0, 54));
+        p.setPen(QPen(QColor(18, 98, 197), 3));
+        p.drawRect(r.adjusted(4, 4, -4, -4));
+    }
+
+    p.restore();
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  paintEvent
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1000,6 +1177,11 @@ void BoardWidget::paintEvent(QPaintEvent *event)
     for (int i = 0; i < 40; ++i)
         drawCell(p, i, tileRect(i, board, cs, es));
 
+    drawBuildings(p, board, cs, es);
+
+    for (int i = 0; i < 40; ++i)
+        drawSelectionOverlay(p, i, tileRect(i, board, cs, es));
+
     drawPawns(p, board, cs, es);
 
     // Redraw outer board border on top
@@ -1008,4 +1190,31 @@ void BoardWidget::paintEvent(QPaintEvent *event)
     p.drawRect(board);
     p.setPen(QPen(Pal::line, 2));
     p.drawRect(cr);
+
+    if (tileSelectionMode && !selectionPromptText.isEmpty()) {
+        p.save();
+        p.setRenderHint(QPainter::Antialiasing);
+        QRect promptRect = selectionPromptRect(cr);
+        p.setPen(QPen(QColor(17, 17, 17), 2));
+        p.setBrush(QColor(255, 254, 248, 236));
+        p.drawRect(promptRect);
+
+        QRect textRect = promptRect.adjusted(16, 12, -16, -12);
+        if (tileSelectionAllowCancel) {
+            const QRect cancelRect = selectionCancelRect(cr);
+            textRect.setRight(cancelRect.left() - 8);
+            p.setBrush(QColor(17, 17, 17));
+            p.setPen(Qt::NoPen);
+            p.drawRect(cancelRect);
+            p.setPen(QPen(Qt::white, 3, Qt::SolidLine, Qt::RoundCap));
+            p.drawLine(cancelRect.topLeft() + QPoint(8, 8), cancelRect.bottomRight() - QPoint(8, 8));
+            p.drawLine(cancelRect.topRight() + QPoint(-8, 8), cancelRect.bottomLeft() + QPoint(8, -8));
+        }
+
+        QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(10, cr.width() / 36), QFont::Black);
+        p.setFont(titleFont);
+        p.setPen(QColor(17, 17, 17));
+        p.drawText(textRect, Qt::AlignCenter | Qt::TextWordWrap, selectionPromptText.toUpper());
+        p.restore();
+    }
 }

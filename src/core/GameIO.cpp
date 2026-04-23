@@ -44,6 +44,11 @@ bool GameIO::confirmPropertyPurchase(const Player& player, const PropertyTile& p
     return confirmYN(prompt);
 }
 
+void GameIO::showPropertyNotice(const Player&, const PropertyTile& property)
+{
+    showMessage(property.getName());
+}
+
 int GameIO::promptAuctionBid(const std::string&, int, int)
 {
     return -1;
@@ -57,6 +62,86 @@ std::string GameIO::promptText(const std::string&)
 void GameIO::showActionCard(CardType, const ActionCard& card)
 {
     showMessage("Kartu: \"" + card.getText() + "\"");
+}
+
+void GameIO::showPaymentNotification(const std::string& title, const std::string& detail)
+{
+    showMessage(title + ": " + detail);
+}
+
+void GameIO::showAuctionNotification(const std::string& title, const std::string& detail)
+{
+    showMessage(title + ": " + detail);
+}
+
+bool GameIO::usesRichGuiPresentation() const
+{
+    return false;
+}
+
+int GameIO::promptAuctionBid(const PropertyTile&, const Player& bidder, int highestBid)
+{
+    return promptInt(
+        bidder.getUsername() +
+            " saldo M" + std::to_string(bidder.getBalance()) +
+            ", bid tertinggi M" + std::to_string(highestBid) +
+            ". Masukkan bid (0 untuk pass): ");
+}
+
+int GameIO::promptTaxPaymentOption(
+    const Player&,
+    const std::string& tileName,
+    int flatAmount,
+    int percentage,
+    int wealth,
+    int percentageAmount
+)
+{
+    showMessage("Pilih opsi pembayaran " + tileName + ":");
+    showMessage("Bayar tetap: M" + std::to_string(flatAmount));
+    showMessage(
+        "Bayar berdasarkan kekayaan: " + std::to_string(percentage) +
+            "% dari total kekayaan M" + std::to_string(wealth) +
+            " = M" + std::to_string(percentageAmount));
+
+    const int choice = promptIntInRange(
+        "Pilih pembayaran: 1 untuk bayar tetap, 2 untuk persentase kekayaan: ",
+        1,
+        2);
+    return choice;
+}
+
+int GameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
+{
+    return promptTileSelection(title, validTileIndices, false);
+}
+
+int GameIO::promptTileSelection(
+    const std::string& title,
+    const std::vector<int>& validTileIndices,
+    bool allowCancel
+)
+{
+    showMessage(title);
+    for (int index : validTileIndices) {
+        showMessage(std::to_string(index + 1) + ". Tile " + std::to_string(index + 1));
+    }
+
+    if (allowCancel) {
+        showMessage("0. Batal");
+        const int choice = promptIntInRange(
+            "Pilih tile (0-40): ",
+            0,
+            40);
+        return choice - 1;
+    }
+
+    const int choice = promptIntInRange(
+        "Pilih tile (1-40): ",
+        1,
+        40);
+
+    return choice - 1;
 }
 
 int GameIO::promptSkillCardSelection(

@@ -2,6 +2,7 @@
 
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "utils/OutputFormatter.hpp"
@@ -61,6 +62,13 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
 
         player -= amountToPay;
         *otherPlayer += amountToPay;
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar " +
+                    OutputFormatter::formatMoney(amountToPay) + " kepada " +
+                    otherPlayer->getUsername() + ".");
+        }
         gameContext.showMessage(
             player.getUsername() + " membayar " + OutputFormatter::formatMoney(amountToPay) +
                 " kepada " + otherPlayer->getUsername() + ".");

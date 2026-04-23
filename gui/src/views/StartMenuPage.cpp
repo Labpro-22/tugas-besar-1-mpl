@@ -1,5 +1,7 @@
 #include "views/StartMenuPage.hpp"
 
+#include <algorithm>
+
 #include <QFont>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
@@ -8,6 +10,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QResizeEvent>
 #include <QStyle>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -118,6 +121,18 @@ StartMenuPage::StartMenuPage(QWidget* parent)
     utilityRow->setAlignment(Qt::AlignCenter);
     centerLayout->addLayout(utilityRow);
 
+    settingsButton = new QToolButton(this);
+    settingsButton->setCursor(Qt::PointingHandCursor);
+    settingsButton->setText(QStringLiteral("SETTINGS"));
+    settingsButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    utilityRow->addWidget(settingsButton);
+
+    leaderboardButton = new QToolButton(this);
+    leaderboardButton->setCursor(Qt::PointingHandCursor);
+    leaderboardButton->setText(QStringLiteral("LEADERBOARD"));
+    leaderboardButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
+    utilityRow->addWidget(leaderboardButton);
+
     auto* shadow = new QGraphicsDropShadowEffect(this);
     shadow->setBlurRadius(42);
     shadow->setOffset(0, 18);
@@ -157,6 +172,8 @@ StartMenuPage::StartMenuPage(QWidget* parent)
     connect(loadGameButton, &QPushButton::clicked, this, &StartMenuPage::loadGameRequested);
     connect(settingsButton, &QToolButton::clicked, this, &StartMenuPage::settingsRequested);
     connect(leaderboardButton, &QToolButton::clicked, this, &StartMenuPage::leaderboardRequested);
+
+    updateResponsiveLayout();
 }
 
 void StartMenuPage::paintEvent(QPaintEvent* event)
@@ -213,4 +230,42 @@ void StartMenuPage::paintEvent(QPaintEvent* event)
         );
     }
     painter.restore();
+}
+
+void StartMenuPage::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateResponsiveLayout();
+}
+
+void StartMenuPage::updateResponsiveLayout()
+{
+    const int buttonWidth = std::clamp(width() - 120, 280, 400);
+    const int buttonHeight = std::clamp(height() / 11, 56, 74);
+    const int iconSize = std::clamp(buttonHeight / 3, 18, 24);
+    const int titleSize = std::clamp(width() / 28, 24, 34);
+    const int subtitleSize = std::clamp(width() / 64, 11, 15);
+
+    if (newGameButton != nullptr) {
+        newGameButton->setMinimumSize(buttonWidth, buttonHeight);
+        newGameButton->setMaximumWidth(buttonWidth);
+        newGameButton->setIconSize(QSize(iconSize, iconSize));
+    }
+
+    if (loadGameButton != nullptr) {
+        loadGameButton->setMinimumSize(buttonWidth, buttonHeight);
+        loadGameButton->setMaximumWidth(buttonWidth);
+        loadGameButton->setIconSize(QSize(iconSize, iconSize));
+    }
+
+    if (titleLabel != nullptr) {
+        QFont titleFont(QStringLiteral("Trebuchet MS"), titleSize, QFont::Black);
+        titleLabel->setFont(titleFont);
+    }
+
+    if (subtitleLabel != nullptr) {
+        subtitleLabel->setStyleSheet(QStringLiteral(
+            "color:#3c4857;font:700 %1pt 'Trebuchet MS';"
+        ).arg(subtitleSize));
+    }
 }

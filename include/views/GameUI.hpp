@@ -31,6 +31,21 @@ public:
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
     std::string promptText(const std::string& prompt) override;
     int promptAuctionBid(const std::string& playerName, int highestBid, int balance) override;
+    int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
+    int promptTaxPaymentOption(
+        const Player& player,
+        const std::string& tileName,
+        int flatAmount,
+        int percentage,
+        int wealth,
+        int percentageAmount
+    ) override;
+    int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices) override;
+    int promptTileSelection(
+        const std::string& title,
+        const std::vector<int>& validTileIndices,
+        bool allowCancel
+    ) override;
     Command promptPlayerCommand(const std::string& username);
     void showMessage(const std::string& message) override;
     void showError(
@@ -44,6 +59,9 @@ public:
         int turn = 0,
         const std::string& username = "SYSTEM"
     );
+    void showPropertyNotice(const Player& player, const PropertyTile& property) override;
+    void showPaymentNotification(const std::string& title, const std::string& detail) override;
+    void showAuctionNotification(const std::string& title, const std::string& detail) override;
     void showHelp(const Player& player) override;
     void showSection(const std::string& title);
     void showTurnSummary(const Player& player);

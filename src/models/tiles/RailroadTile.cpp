@@ -1,5 +1,6 @@
 #include "models/tiles/RailroadTile.hpp"
 #include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
 #include "models/Player.hpp"
 
 RailroadTile::RailroadTile() : PropertyTile() {}
@@ -10,7 +11,11 @@ RailroadTile::RailroadTile(
 ) : PropertyTile(index, code, name, 0, mortgageValue), rentTable(rentTable) {}
 
 void RailroadTile::onLanded(Player& player, GameContext& gameContext) {
+    GameIO* io = gameContext.getIO();
     if (getStatus() == PropertyStatus::BANK) {
+        if (io != nullptr) {
+            io->showPropertyNotice(player, *this);
+        }
         transferTo(player);
         gameContext.showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
         gameContext.showMessage("Belum ada yang menginjaknya duluan, stasiun ini kini menjadi milikmu!");

@@ -37,13 +37,35 @@ void FestivalTile::onLanded(Player& player, GameContext& gameContext) {
         return lhs->getIndex() < rhs->getIndex();
     });
 
+    GameIO* io = gameContext.getIO();
+    if (io->usesRichGuiPresentation()) {
+        std::vector<int> validTileIndices;
+        validTileIndices.reserve(streets.size());
+        for (StreetTile* street : streets) {
+            if (street != nullptr) {
+                validTileIndices.push_back(street->getIndex());
+            }
+        }
+
+        int selectedTileIndex = io->promptTileSelection(
+            "Pilih lahan yang akan mendapat efek festival langsung dari board.",
+            validTileIndices);
+
+        for (StreetTile* street : streets) {
+            if (street != nullptr && street->getIndex() == selectedTileIndex) {
+                applyFestivalEffect(street, player, gameContext);
+                return;
+            }
+        }
+        return;
+    }
+
     gameContext.showMessage("");
     gameContext.showMessage("Daftar properti milikmu:");
     for (StreetTile* street : streets) {
         gameContext.showMessage("- " + street->getCode() + " (" + street->getName() + ")");
     }
 
-    GameIO* io = gameContext.getIO();
     while (io != nullptr) {
         std::string code = io->promptText("\nMasukkan kode properti: ");
         for (StreetTile* street : streets) {

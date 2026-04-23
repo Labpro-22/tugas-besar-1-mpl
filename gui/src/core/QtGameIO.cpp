@@ -10,9 +10,7 @@
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
-#include <QInputDialog>
 #include <QLabel>
-#include <QMessageBox>
 #include <QPainter>
 #include <QPixmap>
 #include <QPropertyAnimation>
@@ -20,12 +18,14 @@
 #include <QRandomGenerator>
 #include <QScrollArea>
 #include <QString>
+#include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
 
 #include "core/DeckFactory.hpp"
 #include "models/Enums.hpp"
+#include "models/Player.hpp"
 #include "models/cards/ActionCard.hpp"
 #include "models/cards/SkillCard.hpp"
 #include "models/tiles/PropertyTile.hpp"
@@ -163,6 +163,271 @@ void animateDialogEntrance(QDialog& dialog)
     });
 }
 
+void centerDialogOnParent(QDialog& dialog, QWidget* parent)
+{
+    dialog.adjustSize();
+    if (parent != nullptr) {
+        const QPoint center = parent->mapToGlobal(parent->rect().center());
+        dialog.move(center.x() - dialog.width() / 2, center.y() - dialog.height() / 2);
+    }
+}
+
+void showNoticeCard(QWidget* parent, const QString& titleText, const QString& bodyText, const QString& buttonText)
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("noticeCardShell"));
+    shell->setMinimumSize(430, 250);
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(12);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("noticeCardTitle"));
+    layout->addWidget(title);
+
+    layout->addStretch(1);
+
+    auto* body = new QLabel(bodyText.toUpper(), shell);
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("noticeCardBody"));
+    layout->addWidget(body);
+
+    layout->addStretch(1);
+
+    auto* footerRow = new QHBoxLayout();
+    footerRow->setSpacing(8);
+    auto* leftLine = new QFrame(shell);
+    leftLine->setFrameShape(QFrame::HLine);
+    auto* footer = new QLabel(QStringLiteral("NIMONSPOLI"), shell);
+    footer->setObjectName(QStringLiteral("noticeCardFooter"));
+    auto* rightLine = new QFrame(shell);
+    rightLine->setFrameShape(QFrame::HLine);
+    footerRow->addWidget(leftLine, 1);
+    footerRow->addWidget(footer, 0);
+    footerRow->addWidget(rightLine, 1);
+    layout->addLayout(footerRow);
+
+    auto* continueButton = new QPushButton(buttonText.toUpper(), shell);
+    continueButton->setCursor(Qt::PointingHandCursor);
+    continueButton->setMinimumHeight(38);
+    layout->addWidget(continueButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#noticeCardShell {"
+        "  background: #fffef8;"
+        "  border: 2px solid #1b1b1b;"
+        "  border-radius: 2px;"
+        "}"
+        "#noticeCardTitle {"
+        "  color: #090909;"
+        "  font: 900 15pt 'Trebuchet MS';"
+        "  letter-spacing: 0.5px;"
+        "}"
+        "#noticeCardBody {"
+        "  color: #111;"
+        "  font: 800 12pt 'Trebuchet MS';"
+        "  line-height: 120%;"
+        "}"
+        "#noticeCardFooter {"
+        "  color: #111;"
+        "  font: 700 8pt 'Trebuchet MS';"
+        "}"
+        "QPushButton {"
+        "  background: #111;"
+        "  color: white;"
+        "  border: none;"
+        "  border-radius: 4px;"
+        "  font: 900 9pt 'Trebuchet MS';"
+        "  letter-spacing: 1px;"
+        "}"
+        "QPushButton:hover { background: #2a2a2a; }"
+    ));
+
+    QObject::connect(continueButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    centerDialogOnParent(dialog, parent);
+    animateDialogEntrance(dialog);
+    dialog.exec();
+}
+
+bool showChoiceCard(
+    QWidget* parent,
+    const QString& titleText,
+    const QString& bodyText,
+    const QString& acceptText,
+    const QString& rejectText
+)
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("choiceCardShell"));
+    shell->setMinimumSize(430, 250);
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("choiceCardTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(bodyText, shell);
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("choiceCardBody"));
+    layout->addWidget(body, 1);
+
+    auto* buttonRow = new QHBoxLayout();
+    buttonRow->setSpacing(10);
+    layout->addLayout(buttonRow);
+
+    auto* rejectButton = new QPushButton(rejectText.toUpper(), shell);
+    rejectButton->setObjectName(QStringLiteral("choiceRejectButton"));
+    rejectButton->setCursor(Qt::PointingHandCursor);
+    rejectButton->setMinimumHeight(40);
+    buttonRow->addWidget(rejectButton);
+
+    auto* acceptButton = new QPushButton(acceptText.toUpper(), shell);
+    acceptButton->setObjectName(QStringLiteral("choiceAcceptButton"));
+    acceptButton->setCursor(Qt::PointingHandCursor);
+    acceptButton->setMinimumHeight(40);
+    buttonRow->addWidget(acceptButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#choiceCardShell { background:#fffef8; border:2px solid #1b1b1b; border-radius:2px; }"
+        "#choiceCardTitle { color:#090909; font:900 15pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#choiceCardBody { color:#111; font:800 11pt 'Trebuchet MS'; line-height:120%; }"
+        "QPushButton { border-radius:4px; font:900 9pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#choiceRejectButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#choiceRejectButton:hover { background:#f4efe2; }"
+        "#choiceAcceptButton { background:#111; color:white; border:none; }"
+        "#choiceAcceptButton:hover { background:#2a2a2a; }"
+    ));
+
+    bool accepted = false;
+    QObject::connect(rejectButton, &QPushButton::clicked, &dialog, [&]() {
+        accepted = false;
+        dialog.reject();
+    });
+    QObject::connect(acceptButton, &QPushButton::clicked, &dialog, [&]() {
+        accepted = true;
+        dialog.accept();
+    });
+
+    centerDialogOnParent(dialog, parent);
+    animateDialogEntrance(dialog);
+    dialog.exec();
+    return accepted;
+}
+
+int showNumberPrompt(
+    QWidget* parent,
+    const QString& titleText,
+    const QString& promptText,
+    int minValue,
+    int maxValue,
+    int initialValue,
+    bool* accepted
+)
+{
+    QDialog dialog(parent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("numberPromptShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(titleText.toUpper(), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("numberPromptTitle"));
+    layout->addWidget(title);
+
+    auto* prompt = new QLabel(promptText, shell);
+    prompt->setAlignment(Qt::AlignCenter);
+    prompt->setWordWrap(true);
+    prompt->setObjectName(QStringLiteral("numberPromptBody"));
+    layout->addWidget(prompt);
+
+    auto* input = new QSpinBox(shell);
+    input->setObjectName(QStringLiteral("numberPromptInput"));
+    input->setRange(minValue, maxValue);
+    input->setValue(qBound(minValue, initialValue, maxValue));
+    input->setSingleStep(1);
+    layout->addWidget(input);
+
+    auto* buttonRow = new QHBoxLayout();
+    buttonRow->setSpacing(10);
+    layout->addLayout(buttonRow);
+
+    auto* cancelButton = new QPushButton(QStringLiteral("CANCEL"), shell);
+    cancelButton->setObjectName(QStringLiteral("numberCancelButton"));
+    cancelButton->setCursor(Qt::PointingHandCursor);
+    cancelButton->setMinimumHeight(40);
+    buttonRow->addWidget(cancelButton);
+
+    auto* okButton = new QPushButton(QStringLiteral("OK"), shell);
+    okButton->setObjectName(QStringLiteral("numberOkButton"));
+    okButton->setCursor(Qt::PointingHandCursor);
+    okButton->setMinimumHeight(40);
+    buttonRow->addWidget(okButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#numberPromptShell { background:#fffef8; border:2px solid #111; border-radius:2px; }"
+        "#numberPromptTitle { color:#090909; font:900 15pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#numberPromptBody { color:#26333f; font:800 10pt 'Trebuchet MS'; }"
+        "#numberPromptInput { min-height:42px; padding:4px 10px; border:2px solid #111; border-radius:4px; background:white; color:#111; font:900 13pt 'Trebuchet MS'; }"
+        "QPushButton { border-radius:4px; font:900 9pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#numberCancelButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#numberCancelButton:hover { background:#f4efe2; }"
+        "#numberOkButton { background:#111; color:white; border:none; }"
+        "#numberOkButton:hover { background:#2a2a2a; }"
+    ));
+
+    int value = input->value();
+    *accepted = false;
+    QObject::connect(cancelButton, &QPushButton::clicked, &dialog, [&]() {
+        *accepted = false;
+        dialog.reject();
+    });
+    QObject::connect(okButton, &QPushButton::clicked, &dialog, [&]() {
+        value = input->value();
+        *accepted = true;
+        dialog.accept();
+    });
+
+    dialog.resize(450, 270);
+    centerDialogOnParent(dialog, parent);
+    animateDialogEntrance(dialog);
+    dialog.exec();
+    return value;
+}
+
 }  // namespace
 
 QtGameIO::QtGameIO(QWidget* dialogParent)
@@ -185,6 +450,16 @@ void QtGameIO::setPropertyPurchaseHandler(std::function<bool(const Player&, cons
     propertyPurchaseHandler = std::move(handler);
 }
 
+void QtGameIO::setPropertyNoticeHandler(std::function<void(const Player&, const PropertyTile&)> handler)
+{
+    propertyNoticeHandler = std::move(handler);
+}
+
+void QtGameIO::setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler)
+{
+    boardTileSelectionHandler = std::move(handler);
+}
+
 int QtGameIO::promptInt(const std::string& prompt)
 {
     if (isTestMode()) {
@@ -193,16 +468,14 @@ int QtGameIO::promptInt(const std::string& prompt)
     }
 
     bool accepted = false;
-    const int value = QInputDialog::getInt(
+    const int value = showNumberPrompt(
         dialogParent,
         QStringLiteral("Input Angka"),
         toQString(prompt),
         0,
-        0,
         std::numeric_limits<int>::max(),
-        1,
-        &accepted
-    );
+        0,
+        &accepted);
 
     if (!accepted) {
         throw std::runtime_error("Aksi dibatalkan oleh pengguna.");
@@ -220,16 +493,14 @@ int QtGameIO::promptIntInRange(const std::string& prompt, int minValue, int maxV
     }
 
     bool accepted = false;
-    const int value = QInputDialog::getInt(
+    const int value = showNumberPrompt(
         dialogParent,
         QStringLiteral("Pilih Opsi"),
         toQString(prompt),
         minValue,
-        minValue,
         maxValue,
-        1,
-        &accepted
-    );
+        minValue,
+        &accepted);
 
     if (!accepted) {
         throw std::runtime_error("Aksi dibatalkan oleh pengguna.");
@@ -245,15 +516,12 @@ bool QtGameIO::confirmYN(const std::string& message)
         return false;
     }
 
-    const QMessageBox::StandardButton result = QMessageBox::question(
+    return showChoiceCard(
         dialogParent,
         QStringLiteral("Konfirmasi"),
         toQString(message),
-        QMessageBox::Yes | QMessageBox::No,
-        QMessageBox::Yes
-    );
-
-    return result == QMessageBox::Yes;
+        QStringLiteral("Yes"),
+        QStringLiteral("No"));
 }
 
 void QtGameIO::showDiceRoll(int die1, int die2)
@@ -360,6 +628,20 @@ bool QtGameIO::confirmPropertyPurchase(const Player& player, const PropertyTile&
     return GameIO::confirmPropertyPurchase(player, property);
 }
 
+void QtGameIO::showPropertyNotice(const Player& player, const PropertyTile& property)
+{
+    if (isTestMode()) {
+        return;
+    }
+
+    if (propertyNoticeHandler) {
+        propertyNoticeHandler(player, property);
+        return;
+    }
+
+    GameIO::showPropertyNotice(player, property);
+}
+
 void QtGameIO::showActionCard(CardType cardType, const ActionCard& card)
 {
     pendingMessages.append(QStringLiteral("Kartu: \"%1\"").arg(toQString(card.getText())));
@@ -457,6 +739,316 @@ void QtGameIO::showActionCard(CardType cardType, const ActionCard& card)
     }
     animateDialogEntrance(dialog);
     dialog.exec();
+}
+
+void QtGameIO::showPaymentNotification(const std::string& title, const std::string& detail)
+{
+    if (isTestMode()) {
+        return;
+    }
+
+    showNoticeCard(dialogParent, toQString(title), toQString(detail), QStringLiteral("CONTINUE"));
+}
+
+void QtGameIO::showAuctionNotification(const std::string& title, const std::string& detail)
+{
+    if (isTestMode()) {
+        return;
+    }
+
+    showNoticeCard(dialogParent, toQString(title), toQString(detail), QStringLiteral("CONTINUE"));
+}
+
+bool QtGameIO::usesRichGuiPresentation() const
+{
+    return true;
+}
+
+int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid)
+{
+    if (isTestMode()) {
+        Q_UNUSED(property);
+        Q_UNUSED(bidder);
+        Q_UNUSED(highestBid);
+        return 0;
+    }
+
+    QDialog dialog(dialogParent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("auctionShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(QStringLiteral("AUCTION"), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("auctionTitle"));
+    layout->addWidget(title);
+
+    auto* propertyLabel = new QLabel(
+        QStringLiteral("%1 (%2)")
+            .arg(toQString(property.getName()))
+            .arg(toQString(property.getCode())),
+        shell
+    );
+    propertyLabel->setAlignment(Qt::AlignCenter);
+    propertyLabel->setWordWrap(true);
+    propertyLabel->setObjectName(QStringLiteral("auctionProperty"));
+    layout->addWidget(propertyLabel);
+
+    auto* bidderLabel = new QLabel(
+        QStringLiteral("%1\nSaldo: M%2 | Bid tertinggi: M%3")
+            .arg(toQString(bidder.getUsername()))
+            .arg(bidder.getBalance())
+            .arg(qMax(0, highestBid)),
+        shell
+    );
+    bidderLabel->setAlignment(Qt::AlignCenter);
+    bidderLabel->setWordWrap(true);
+    bidderLabel->setObjectName(QStringLiteral("auctionBidder"));
+    layout->addWidget(bidderLabel);
+
+    auto* bidInput = new QSpinBox(shell);
+    bidInput->setObjectName(QStringLiteral("auctionBidInput"));
+    bidInput->setRange(0, qMax(0, bidder.getBalance()));
+    bidInput->setSingleStep(10);
+    bidInput->setPrefix(QStringLiteral("M"));
+    bidInput->setValue(highestBid < 0 ? 0 : qMin(bidder.getBalance(), highestBid + 1));
+    bidInput->setEnabled(highestBid < 0 || bidder.getBalance() > highestBid);
+    layout->addWidget(bidInput);
+
+    auto* hint = new QLabel(
+        highestBid < 0 || bidder.getBalance() > highestBid
+            ? QStringLiteral("Masukkan bid lebih tinggi dari bid saat ini, atau pass.")
+            : QStringLiteral("Saldo tidak cukup untuk menaikkan bid. Pilih pass."),
+        shell
+    );
+    hint->setAlignment(Qt::AlignCenter);
+    hint->setWordWrap(true);
+    hint->setObjectName(QStringLiteral("auctionHint"));
+    layout->addWidget(hint);
+
+    auto* buttonRow = new QHBoxLayout();
+    buttonRow->setSpacing(10);
+    layout->addLayout(buttonRow);
+
+    auto* passButton = new QPushButton(QStringLiteral("PASS"), shell);
+    passButton->setObjectName(QStringLiteral("auctionPassButton"));
+    passButton->setCursor(Qt::PointingHandCursor);
+    passButton->setMinimumHeight(42);
+    buttonRow->addWidget(passButton);
+
+    auto* bidButton = new QPushButton(QStringLiteral("BID"), shell);
+    bidButton->setObjectName(QStringLiteral("auctionBidButton"));
+    bidButton->setCursor(Qt::PointingHandCursor);
+    bidButton->setMinimumHeight(42);
+    bidButton->setEnabled(highestBid < 0 || bidder.getBalance() > highestBid);
+    buttonRow->addWidget(bidButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#auctionShell {"
+        "  background: #fffef8;"
+        "  border: 2px solid #111;"
+        "  border-radius: 2px;"
+        "}"
+        "#auctionTitle {"
+        "  color:#090909;"
+        "  font:900 16pt 'Trebuchet MS';"
+        "  letter-spacing:0.5px;"
+        "}"
+        "#auctionProperty { color:#111; font:900 12pt 'Trebuchet MS'; }"
+        "#auctionBidder { color:#26333f; font:800 10pt 'Trebuchet MS'; }"
+        "#auctionHint { color:#5d6670; font:700 8.8pt 'Trebuchet MS'; }"
+        "#auctionBidInput {"
+        "  min-height: 42px;"
+        "  padding: 4px 10px;"
+        "  border: 2px solid #111;"
+        "  border-radius: 4px;"
+        "  background: white;"
+        "  color:#111;"
+        "  font:900 13pt 'Trebuchet MS';"
+        "}"
+        "QPushButton {"
+        "  border: none;"
+        "  border-radius: 4px;"
+        "  font: 900 9pt 'Trebuchet MS';"
+        "  letter-spacing: 1px;"
+        "}"
+        "#auctionPassButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#auctionPassButton:hover { background:#f4efe2; }"
+        "#auctionBidButton { background:#111; color:white; }"
+        "#auctionBidButton:hover { background:#2a2a2a; }"
+        "#auctionBidButton:disabled { background:#c9c5b9; color:#777; }"
+    ));
+
+    int selectedBid = 0;
+    QObject::connect(passButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedBid = -1;
+        dialog.reject();
+    });
+    QObject::connect(bidButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedBid = bidInput->value();
+        dialog.accept();
+    });
+
+    dialog.resize(450, 330);
+    centerDialogOnParent(dialog, dialogParent);
+    animateDialogEntrance(dialog);
+    dialog.exec();
+    return selectedBid;
+}
+
+int QtGameIO::promptTaxPaymentOption(
+    const Player& player,
+    const std::string& tileName,
+    int flatAmount,
+    int percentage,
+    int wealth,
+    int percentageAmount
+)
+{
+    if (isTestMode()) {
+        Q_UNUSED(player);
+        Q_UNUSED(tileName);
+        Q_UNUSED(flatAmount);
+        Q_UNUSED(percentage);
+        Q_UNUSED(wealth);
+        Q_UNUSED(percentageAmount);
+        return 1;
+    }
+
+    QDialog dialog(dialogParent, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("taxShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(QStringLiteral("PPH"), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("taxTitle"));
+    layout->addWidget(title);
+
+    auto* body = new QLabel(
+        QStringLiteral("%1 mendarat di %2.\nPilih metode pembayaran pajak.")
+            .arg(toQString(player.getUsername()))
+            .arg(toQString(tileName)),
+        shell
+    );
+    body->setAlignment(Qt::AlignCenter);
+    body->setWordWrap(true);
+    body->setObjectName(QStringLiteral("taxBody"));
+    layout->addWidget(body);
+
+    auto* wealthLabel = new QLabel(
+        QStringLiteral("Total kekayaan: M%1").arg(wealth),
+        shell
+    );
+    wealthLabel->setAlignment(Qt::AlignCenter);
+    wealthLabel->setObjectName(QStringLiteral("taxWealth"));
+    layout->addWidget(wealthLabel);
+
+    auto* flatButton = new QPushButton(
+        QStringLiteral("BAYAR TETAP - M%1").arg(flatAmount),
+        shell
+    );
+    flatButton->setObjectName(QStringLiteral("taxPrimaryButton"));
+    flatButton->setCursor(Qt::PointingHandCursor);
+    flatButton->setMinimumHeight(48);
+    layout->addWidget(flatButton);
+
+    auto* percentButton = new QPushButton(
+        QStringLiteral("BAYAR %1% DARI KEKAYAAN - M%2")
+            .arg(percentage)
+            .arg(percentageAmount),
+        shell
+    );
+    percentButton->setObjectName(QStringLiteral("taxSecondaryButton"));
+    percentButton->setCursor(Qt::PointingHandCursor);
+    percentButton->setMinimumHeight(48);
+    layout->addWidget(percentButton);
+
+    auto* hint = new QLabel(QStringLiteral("Pilihan ini menentukan pajak yang langsung dibayarkan ke Bank."), shell);
+    hint->setAlignment(Qt::AlignCenter);
+    hint->setWordWrap(true);
+    hint->setObjectName(QStringLiteral("taxHint"));
+    layout->addWidget(hint);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#taxShell {"
+        "  background: #fffef8;"
+        "  border: 2px solid #111;"
+        "  border-radius: 2px;"
+        "}"
+        "#taxTitle { color:#090909; font:900 16pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#taxBody { color:#17232d; font:800 10.5pt 'Trebuchet MS'; line-height:120%; }"
+        "#taxWealth { color:#2f8c2f; font:900 12pt 'Trebuchet MS'; }"
+        "#taxHint { color:#5d6670; font:700 8.8pt 'Trebuchet MS'; }"
+        "QPushButton { border-radius:4px; font:900 9.5pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#taxPrimaryButton { background:#111; color:white; border:none; }"
+        "#taxPrimaryButton:hover { background:#2a2a2a; }"
+        "#taxSecondaryButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#taxSecondaryButton:hover { background:#f4efe2; }"
+    ));
+
+    int selectedChoice = 1;
+    QObject::connect(flatButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedChoice = 1;
+        dialog.accept();
+    });
+    QObject::connect(percentButton, &QPushButton::clicked, &dialog, [&]() {
+        selectedChoice = 2;
+        dialog.accept();
+    });
+
+    dialog.resize(460, 340);
+    centerDialogOnParent(dialog, dialogParent);
+    animateDialogEntrance(dialog);
+    dialog.exec();
+    return selectedChoice;
+}
+
+int QtGameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
+{
+    return promptTileSelection(title, validTileIndices, false);
+}
+
+int QtGameIO::promptTileSelection(
+    const std::string& title,
+    const std::vector<int>& validTileIndices,
+    bool allowCancel
+)
+{
+    if (isTestMode()) {
+        return allowCancel ? -1 : (validTileIndices.empty() ? -1 : validTileIndices.front());
+    }
+
+    if (boardTileSelectionHandler) {
+        QVector<int> indices;
+        indices.reserve(static_cast<int>(validTileIndices.size()));
+        for (int index : validTileIndices) {
+            indices.append(index);
+        }
+        return boardTileSelectionHandler(toQString(title), indices, allowCancel);
+    }
+
+    return GameIO::promptTileSelection(title, validTileIndices, allowCancel);
 }
 
 int QtGameIO::promptSkillCardSelection(
@@ -619,11 +1211,11 @@ void QtGameIO::showError(
         return;
     }
 
-    QMessageBox::warning(
+    showNoticeCard(
         dialogParent,
         QStringLiteral("Terjadi Kesalahan"),
-        detail
-    );
+        detail,
+        QStringLiteral("OK"));
 }
 
 QStringList QtGameIO::takePendingMessages()

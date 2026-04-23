@@ -4,6 +4,7 @@
 #include "models/tiles/PropertyTile.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "core/TurnManager.hpp"
+#include "core/GameIO.hpp"
 #include "utils/OutputFormatter.hpp"
 #include "utils/exceptions/NimonspoliException.hpp"
 #include "core/BankruptcyHandler.hpp"
@@ -15,15 +16,28 @@ TaxTile::TaxTile(int index, const std::string& code, const std::string& name, Ta
 
 void TaxTile::onLanded(Player& player, GameContext& gameContext) {
     int choice = 1;
+    GameIO* io = gameContext.getIO();
 
     gameContext.showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
 
-    if (taxType == TaxType::PPH && gameContext.hasIO()) {
-        gameContext.showMessage("Pilih opsi pembayaran pajak:");
-        gameContext.showMessage("1. Bayar flat " + OutputFormatter::formatMoney(flatAmount));
-        gameContext.showMessage("2. Bayar " + std::to_string(percentage) + "% dari total kekayaan");
-        gameContext.showMessage("(Pilih sebelum menghitung kekayaan!)");
-        choice = gameContext.promptIntInRange("Pilihan (1/2): ", 1, 2);
+    if (taxType == TaxType::PPH && io != nullptr) {
+        if (io->usesRichGuiPresentation()) {
+            const int wealth = calculateWealth(player);
+            const int percentageAmount = (wealth * percentage) / 100;
+            choice = io->promptTaxPaymentOption(
+                player,
+                getName(),
+                flatAmount,
+                percentage,
+                wealth,
+                percentageAmount);
+        } else {
+            gameContext.showMessage("Pilih opsi pembayaran pajak:");
+            gameContext.showMessage("1. Bayar flat " + OutputFormatter::formatMoney(flatAmount));
+            gameContext.showMessage("2. Bayar " + std::to_string(percentage) + "% dari total kekayaan");
+            gameContext.showMessage("(Pilih sebelum menghitung kekayaan!)");
+            choice = gameContext.promptIntInRange("Pilihan (1/2): ", 1, 2);
+        }
     }
 
     int amountToPay = calculateTaxAmount(player, choice);
@@ -83,6 +97,12 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
     try {
         int beforeBalance = player.getBalance();
         player -= amountToPay;
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                player.getUsername() + " membayar pajak " +
+                    OutputFormatter::formatMoney(amountToPay) + " ke Bank.");
+        }
         gameContext.showMessage(
             "Uang kamu: " + OutputFormatter::formatMoney(beforeBalance) +
                 " -> " + OutputFormatter::formatMoney(player.getBalance()));
