@@ -144,20 +144,32 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
     }
 
     for (int i = 0; i < static_cast<int>(mortgaged.size()); ++i) {
+        int redeemCost = player.getDiscountedAmount(mortgaged[i]->getBuyPrice());
         io->showMessage(
             std::to_string(i + 1) + ". " + mortgaged[i]->getName()
                 + " (" + mortgaged[i]->getCode() + ") - Tebus M"
-                + std::to_string(mortgaged[i]->getBuyPrice()));
+                + std::to_string(redeemCost));
     }
 
     int choice = io->promptIntInRange("Pilih properti: ", 1, static_cast<int>(mortgaged.size()));
     PropertyTile* selected = mortgaged[choice - 1];
+    int originalCost = selected->getBuyPrice();
+    int redeemCost = player.getDiscountedAmount(originalCost);
+    if (!player.canAfford(redeemCost)) {
+        player -= redeemCost;
+    }
+    redeemCost = player.consumeDiscountedAmount(originalCost);
+    if (redeemCost != originalCost) {
+        io->showMessage(
+            "Diskon diterapkan dari M" + std::to_string(originalCost) +
+                " menjadi M" + std::to_string(redeemCost) + ".");
+    }
 
-    player -= selected->getBuyPrice();
+    player -= redeemCost;
     selected->redeem();
     io->showMessage(
         selected->getName() + " berhasil ditebus dengan M" +
-            std::to_string(selected->getBuyPrice()) + ".");
+            std::to_string(redeemCost) + ".");
     logAssetAction(context, player, "TEBUS", selected->getCode());
 }
 
@@ -193,10 +205,11 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
         int cost = buildable[i]->getBuildingLevel() == 4
             ? buildable[i]->getHotelCost()
             : buildable[i]->getHouseCost();
+        int costToPay = player.getDiscountedAmount(cost);
         io->showMessage(
             std::to_string(i + 1) + ". " + buildable[i]->getName()
                 + " (" + buildable[i]->getCode() + ") - Biaya M"
-                + std::to_string(cost));
+                + std::to_string(costToPay));
     }
 
     int choice = io->promptIntInRange("Pilih properti: ", 1, static_cast<int>(buildable.size()));
@@ -204,8 +217,18 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
     int cost = selected->getBuildingLevel() == 4
         ? selected->getHotelCost()
         : selected->getHouseCost();
+    int costToPay = player.getDiscountedAmount(cost);
+    if (!player.canAfford(costToPay)) {
+        player -= costToPay;
+    }
+    costToPay = player.consumeDiscountedAmount(cost);
+    if (costToPay != cost) {
+        io->showMessage(
+            "Diskon diterapkan dari M" + std::to_string(cost) +
+                " menjadi M" + std::to_string(costToPay) + ".");
+    }
 
-    player -= cost;
+    player -= costToPay;
     selected->build();
     io->showMessage(
         "Pembangunan berhasil di " + selected->getName() +

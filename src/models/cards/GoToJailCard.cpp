@@ -10,6 +10,16 @@ GoToJailCard::GoToJailCard()
     : ActionCard("Awkoakwoak Anda masuk Penjara.") {}
 
 void GoToJailCard::execute(Player& player, GameContext& gameContext) {
+    if (player.isShieldActive()) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari kartu masuk penjara.");
+        }
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " terlindungi ShieldCard dari GoToJailCard.");
+        return;
+    }
+
     if (gameContext.getIO() != nullptr) {
         gameContext.getIO()->showMessage("Bidak dipindahkan ke Penjara.");
     }

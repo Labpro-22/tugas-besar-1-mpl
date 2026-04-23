@@ -18,6 +18,16 @@ int MoveBackCard::getSteps() const {
 }
 
 void MoveBackCard::execute(Player& player, GameContext& gameContext) {
+    if (player.isShieldActive()) {
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari kartu mundur.");
+        }
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " terlindungi ShieldCard dari MoveBackCard.");
+        return;
+    }
+
     Board* board = gameContext.getBoard();
     if (board == nullptr || board->getTileCount() <= 0) {
         return;

@@ -115,15 +115,25 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     }
 
     int fine = getJailFine();
+    int fineToPay = player.consumeDiscountedAmount(fine);
+    if (fineToPay != fine) {
+        ui.showMessage(
+            "Diskon diterapkan dari M" + std::to_string(fine) +
+                " menjadi M" + std::to_string(fineToPay) + ".");
+    }
+
     bool finePaid = false;
-    if (fine > 0 && !player.canAfford(fine)) {
+    if (fineToPay > 0 && !player.canAfford(fineToPay)) {
         ui.showMessage("Uang tidak cukup untuk membayar denda. Aset akan dilikuidasi bila memungkinkan.");
         if (context != nullptr && context->getBankruptcyHandler() != nullptr) {
-            context->getBankruptcyHandler()->handleBankruptcy(player, nullptr, fine, *context);
+            context->getBankruptcyHandler()->handleBankruptcy(player, nullptr, fineToPay, *context);
             finePaid = !player.isBankrupt();
+        } else {
+            player -= fineToPay;
+            finePaid = true;
         }
     } else {
-        player -= fine;
+        player -= fineToPay;
         finePaid = true;
     }
 
@@ -139,14 +149,14 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     player.setStatus(PlayerStatus::ACTIVE);
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
-    ui.showMessage("Denda M" + std::to_string(fine) + " dibayar. Kamu bebas dari penjara.");
+    ui.showMessage("Denda M" + std::to_string(fineToPay) + " dibayar. Kamu bebas dari penjara.");
 
     if (logger != nullptr) {
         logger->log(
             turnManager.getCurrentTurn(),
             player.getUsername(),
             "PENJARA",
-            "Membayar denda M" + std::to_string(fine) + " untuk keluar dari penjara.");
+            "Membayar denda M" + std::to_string(fineToPay) + " untuk keluar dari penjara.");
     }
 
     return CommandResult();
