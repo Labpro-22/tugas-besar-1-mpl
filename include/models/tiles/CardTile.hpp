@@ -11,6 +11,5 @@ public:
     CardTile(int index, const std::string& code, const std::string& name, CardType cardType);
 
     void onLanded(Player& player, GameContext& gameContext) override;
-    std::string getDisplayLabel() const override;
     CardType getCardType() const;
 };

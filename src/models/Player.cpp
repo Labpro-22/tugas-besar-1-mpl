@@ -8,6 +8,10 @@
 #include "models/tiles/StreetTile.hpp"
 #include "models/cards/SkillCard.hpp"
 
+namespace {
+    const int DEFAULT_BOARD_TILE_COUNT = 40;
+}
+
 Player::Player()
     : username(""),
       balance(0),
@@ -69,11 +73,11 @@ bool Player::operator>(const Player& other) const {
 // Navigasi Move
 bool Player::moveTo(int newIndex) {
     bool passedGo = false;
-    if (newIndex >= 40) {
+    if (newIndex >= DEFAULT_BOARD_TILE_COUNT) {
         passedGo = true;
-        newIndex = newIndex % 40;
+        newIndex = newIndex % DEFAULT_BOARD_TILE_COUNT;
     } else if (newIndex < 0) {
-        newIndex = ((newIndex % 40) + 40) % 40;
+        newIndex = ((newIndex % DEFAULT_BOARD_TILE_COUNT) + DEFAULT_BOARD_TILE_COUNT) % DEFAULT_BOARD_TILE_COUNT;
     } else if (newIndex == 0 && position != 0) {
         passedGo = true;
     }

@@ -41,6 +41,10 @@ std::string SaveManager::getResolvedDataPath(const std::string& filename) const 
     return resolveDataPath(filename);
 }
 
+bool SaveManager::fileExists(const std::string& filename) const {
+    return std::filesystem::exists(resolveDataPath(filename));
+}
+
 std::string SaveManager::statusToString(PlayerStatus status) const {
     if (status == PlayerStatus::JAILED) {
         return "JAILED";

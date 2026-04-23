@@ -11,6 +11,7 @@
 #include "models/Player.hpp"
 #include "models/state/LogEntry.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "utils/OutputFormatter.hpp"
 
 void GameIO::showPawnStep(const Player&, int)
 {
@@ -33,14 +34,24 @@ bool GameIO::confirmPropertyPurchase(const Player& player, const PropertyTile& p
         return false;
     }
 
-    std::string prompt = "Apakah kamu ingin membeli properti ini seharga M" +
-        std::to_string(finalPrice);
+    std::string prompt = "Apakah kamu ingin membeli properti ini seharga " +
+        OutputFormatter::formatMoney(finalPrice);
     if (finalPrice != originalPrice) {
-        prompt += " (setelah diskon dari M" + std::to_string(originalPrice) + ")";
+        prompt += " (setelah diskon dari " + OutputFormatter::formatMoney(originalPrice) + ")";
     }
     prompt += "?";
 
     return confirmYN(prompt);
+}
+
+int GameIO::promptAuctionBid(const std::string&, int, int)
+{
+    return -1;
+}
+
+std::string GameIO::promptText(const std::string&)
+{
+    return "";
 }
 
 void GameIO::showActionCard(CardType, const ActionCard& card)
@@ -66,13 +77,13 @@ int GameIO::promptSkillCardSelection(
     if (allowCancel) {
         showMessage("0. Batal");
         return promptIntInRange(
-            "Pilih kartu (0-" + std::to_string(cards.size()) + "): ",
+            "Pilih kartu yang ingin digunakan (0-" + std::to_string(cards.size()) + "): ",
             0,
             static_cast<int>(cards.size()));
     }
 
     return promptIntInRange(
-        "Pilih kartu (1-" + std::to_string(cards.size()) + "): ",
+        "Pilih nomor kartu yang ingin dibuang (1-" + std::to_string(cards.size()) + "): ",
         1,
         static_cast<int>(cards.size()));
 }

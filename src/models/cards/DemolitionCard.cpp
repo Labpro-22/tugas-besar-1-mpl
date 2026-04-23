@@ -3,7 +3,6 @@
 #include <vector>
 
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
@@ -18,8 +17,7 @@ std::string DemolitionCard::getTypeName() const {
 
 void DemolitionCard::use(Player& player, GameContext& gameContext) {
     TurnManager* turnManager = gameContext.getTurnManager();
-    GameIO* io = gameContext.getIO();
-    if (turnManager == nullptr || io == nullptr) {
+    if (turnManager == nullptr || !gameContext.hasIO()) {
         return;
     }
 
@@ -53,16 +51,16 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
             "tidak ada properti lawan yang dapat dihancurkan.");
     }
 
-    io->showMessage("Pilih properti lawan yang ingin dihancurkan:");
+    gameContext.showMessage("Pilih properti lawan yang ingin dihancurkan:");
     for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
-        io->showMessage(
+        gameContext.showMessage(
             std::to_string(i + 1) + ". "
                 + targetOwners[i]->getUsername()
                 + " - " + targetProperties[i]->getName()
                 + " (" + targetProperties[i]->getCode() + ")");
     }
 
-    int choice = io->promptIntInRange(
+    int choice = gameContext.promptIntInRange(
         "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
         1,
         static_cast<int>(targetProperties.size()));
@@ -74,7 +72,7 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     targetProperty->setFestivalState(1, 0);
     targetProperty->returnToBank();
 
-    io->showMessage(
+    gameContext.showMessage(
         targetProperty->getName()
             + " (" + targetProperty->getCode() + ") milik "
             + owner->getUsername()

@@ -5,7 +5,11 @@
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "utils/OutputFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
+#include <algorithm>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -20,6 +24,144 @@ namespace {
         PropertyTile* property;
         int value;
     };
+
+    std::string propertyStateLabel(const PropertyTile& property) {
+        std::string status = property.getStatus() == PropertyStatus::MORTGAGED ? "MORTGAGED [M]" : "OWNED";
+        if (property.getPropertyType() != PropertyType::STREET) {
+            return status;
+        }
+
+        int level = property.getBuildingLevel();
+        if (level == 5) {
+            return status + " (Hotel)";
+        }
+        if (level > 0) {
+            return status + " (" + std::to_string(level) + " rumah)";
+        }
+        return status;
+    }
+
+    std::string liquidationActionLabel(LiquidationAction action) {
+        return action == LiquidationAction::SELL ? "Jual" : "Gadai";
+    }
+
+    std::vector<LiquidationOption> buildEstimatedLiquidationOptions(Player& player) {
+        std::vector<LiquidationOption> estimates;
+        for (PropertyTile* property : player.getProperties()) {
+            if (property == nullptr || property->getStatus() != PropertyStatus::OWNED) {
+                continue;
+            }
+
+            int sellValue = property->getSellValueToBank();
+            int mortgageValue = property->getMortgageValue();
+            if (sellValue <= 0 && mortgageValue <= 0) {
+                continue;
+            }
+
+            if (sellValue >= mortgageValue) {
+                estimates.push_back({LiquidationAction::SELL, property, sellValue});
+            } else {
+                estimates.push_back({LiquidationAction::MORTGAGE, property, mortgageValue});
+            }
+        }
+        return estimates;
+    }
+
+    void showLiquidationEstimate(Player& player, int amount, GameContext& context) {
+        GameIO* io = context.getIO();
+        if (io == nullptr) {
+            return;
+        }
+
+        int balance = player.getBalance();
+        io->showMessage("Uang kamu       : " + OutputFormatter::formatMoney(balance));
+        io->showMessage("Total kewajiban : " + OutputFormatter::formatMoney(amount));
+        if (amount > balance) {
+            io->showMessage("Kekurangan      : " + OutputFormatter::formatMoney(amount - balance));
+        }
+        io->showMessage("");
+        io->showMessage("Estimasi dana maksimum dari likuidasi:");
+
+        std::vector<LiquidationOption> estimates = buildEstimatedLiquidationOptions(player);
+        if (estimates.empty()) {
+            io->showMessage("  Tidak ada aset yang dapat dilikuidasi.");
+            return;
+        }
+
+        if (static_cast<int>(estimates.size()) <= 4) {
+            int totalPotential = 0;
+            for (const LiquidationOption& option : estimates) {
+                std::ostringstream line;
+                line << "  " << std::left << std::setw(5) << liquidationActionLabel(option.action)
+                     << std::setw(18) << (option.property->getName() + " (" + option.property->getCode() + ")")
+                     << "[" << OutputFormatter::formatPropertyCategory(*option.property) << "]"
+                     << "   -> " << OutputFormatter::formatMoney(option.value);
+                io->showMessage(line.str());
+                totalPotential += option.value;
+            }
+            io->showMessage("  Total potensi        -> " + OutputFormatter::formatMoney(totalPotential));
+            return;
+        }
+
+        int totalPotential = player.getLiquidationMax() - balance;
+        io->showMessage("  Jual semua properti + bangunan -> " + OutputFormatter::formatMoney(totalPotential));
+        io->showMessage("Total aset + uang tunai          : " + OutputFormatter::formatMoney(player.getLiquidationMax()));
+    }
+
+    void showLiquidationPanel(Player& player, int amount, const std::vector<LiquidationOption>& options, GameContext& context) {
+        GameIO* io = context.getIO();
+        if (io == nullptr) {
+            return;
+        }
+
+        io->showMessage("=== Panel Likuidasi ===");
+        io->showMessage(
+            "Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()) +
+            "  |  Kewajiban: " + OutputFormatter::formatMoney(amount)
+        );
+        io->showMessage("");
+        io->showMessage("[Jual ke Bank]");
+        for (int i = 0; i < static_cast<int>(options.size()); ++i) {
+            if (options[i].action != LiquidationAction::SELL) {
+                continue;
+            }
+            std::ostringstream line;
+            line << (i + 1) << ". " << std::left << std::setw(18)
+                 << (options[i].property->getName() + " (" + options[i].property->getCode() + ")")
+                 << "[" << OutputFormatter::formatPropertyCategory(*options[i].property) << "]  Harga Jual: "
+                 << OutputFormatter::formatMoney(options[i].value);
+            io->showMessage(line.str());
+        }
+        io->showMessage("");
+        io->showMessage("[Gadaikan]");
+        for (int i = 0; i < static_cast<int>(options.size()); ++i) {
+            if (options[i].action != LiquidationAction::MORTGAGE) {
+                continue;
+            }
+            std::ostringstream line;
+            line << (i + 1) << ". " << std::left << std::setw(18)
+                 << (options[i].property->getName() + " (" + options[i].property->getCode() + ")")
+                 << "[" << OutputFormatter::formatPropertyCategory(*options[i].property) << "]  Nilai Gadai: "
+                 << OutputFormatter::formatMoney(options[i].value);
+            io->showMessage(line.str());
+        }
+    }
+
+    std::vector<std::string> describePlayerAssets(const Player& player) {
+        std::vector<std::string> lines;
+        for (PropertyTile* prop : player.getProperties()) {
+            if (prop == nullptr) {
+                continue;
+            }
+            std::ostringstream line;
+            line << "  - " << std::left << std::setw(18)
+                 << (prop->getName() + " (" + prop->getCode() + ")")
+                 << "[" << OutputFormatter::formatPropertyCategory(*prop) << "]  "
+                 << propertyStateLabel(*prop);
+            lines.push_back(line.str());
+        }
+        return lines;
+    }
 
     int getCurrentTurn(GameContext& context) {
         TurnManager* turnManager = context.getTurnManager();
@@ -68,8 +210,8 @@ namespace {
             player.getUsername() + " menjual " + code + " ke Bank dan menerima M" + std::to_string(received));
         if (context.getIO() != nullptr) {
             context.getIO()->showMessage(
-                player.getUsername() + " menjual " + code + " ke Bank dan menerima M" +
-                std::to_string(received) + ".");
+                property->getName() + " terjual ke Bank. Kamu menerima " + OutputFormatter::formatMoney(received) + ".");
+            context.getIO()->showMessage("Uang kamu sekarang: " + OutputFormatter::formatMoney(player.getBalance()));
         }
     }
 
@@ -87,21 +229,60 @@ namespace {
             " dan menerima M" + std::to_string(received));
         if (context.getIO() != nullptr) {
             context.getIO()->showMessage(
-                player.getUsername() + " menggadaikan " + property->getCode() +
-                " dan menerima M" + std::to_string(received) + ".");
+                property->getName() + " berhasil digadaikan. Kamu menerima " + OutputFormatter::formatMoney(received) + ".");
+            context.getIO()->showMessage("Uang kamu sekarang: " + OutputFormatter::formatMoney(player.getBalance()));
         }
     }
 }
 
 void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context) {
+    GameIO* io = context.getIO();
     int totalAvailable = calculateLiquidationMax(player);
-    
+
+    if (io != nullptr) {
+        io->showMessage("");
+        showLiquidationEstimate(player, amount, context);
+        io->showMessage("");
+    }
+
     if (totalAvailable < amount) {
         std::vector<PropertyTile*> assets = player.getProperties();
+        std::vector<std::string> assetDescriptions = describePlayerAssets(player);
+        if (io != nullptr) {
+            io->showMessage("Tidak cukup untuk menutup kewajiban " + OutputFormatter::formatMoney(amount) + ".");
+            io->showMessage("");
+            io->showMessage(player.getUsername() + " dinyatakan BANGKRUT!");
+            io->showMessage("Kreditor: " + std::string(creditor == nullptr ? "Bank" : creditor->getUsername()));
+            io->showMessage("");
+        }
         if (creditor) {
+            if (io != nullptr) {
+                io->showMessage("Pengalihan aset ke " + creditor->getUsername() + ":");
+                io->showMessage("  - Uang tunai sisa  : " + OutputFormatter::formatMoney(player.getBalance()));
+                for (const std::string& line : assetDescriptions) {
+                    io->showMessage(line);
+                }
+                io->showMessage("");
+            }
             creditor->setBalance(creditor->getBalance() + player.getBalance());
             transferAssetsToPlayer(player, *creditor);
+            if (io != nullptr) {
+                io->showMessage(creditor->getUsername() + " menerima semua aset " + player.getUsername() + ".");
+            }
         } else {
+            if (io != nullptr) {
+                io->showMessage("Uang sisa " + OutputFormatter::formatMoney(player.getBalance()) + " diserahkan ke Bank.");
+                io->showMessage("Seluruh properti dikembalikan ke status BANK.");
+                io->showMessage("Bangunan dihancurkan - stok dikembalikan ke Bank.");
+                io->showMessage("");
+                io->showMessage("Properti akan dilelang satu per satu:");
+                for (PropertyTile* property : assets) {
+                    if (property != nullptr) {
+                        io->showMessage("  -> Lelang: " + property->getName() + " (" + property->getCode() + ") ...");
+                    }
+                }
+                io->showMessage("");
+            }
             transferAssetsToBank(player, context.getAuctionManager());
         }
         player.setBalance(0);
@@ -109,7 +290,20 @@ void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
         if (creditor == nullptr) {
             auctionBankruptAssets(assets, context);
         }
+        if (io != nullptr && context.getTurnManager() != nullptr) {
+            io->showMessage(player.getUsername() + " telah keluar dari permainan.");
+            io->showMessage(
+                "Permainan berlanjut dengan " +
+                std::to_string(context.getTurnManager()->getActivePlayers().size()) +
+                " pemain tersisa."
+            );
+        }
     } else {
+        if (io != nullptr) {
+            io->showMessage("Dana likuidasi dapat menutup kewajiban.");
+            io->showMessage("Kamu wajib melikuidasi aset untuk membayar.");
+            io->showMessage("");
+        }
         liquidateAssets(player, amount, context);
         if (player.getBalance() < amount) {
             std::vector<PropertyTile*> assets = player.getProperties();
@@ -125,6 +319,17 @@ void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
                 auctionBankruptAssets(assets, context);
             }
             return;
+        }
+        if (io != nullptr && creditor != nullptr) {
+            io->showMessage("");
+            io->showMessage("Kewajiban " + OutputFormatter::formatMoney(amount) + " terpenuhi. Membayar ke " + creditor->getUsername() + "...");
+            io->showMessage(
+                "Uang kamu : " + OutputFormatter::formatMoney(player.getBalance()) + " -> " + OutputFormatter::formatMoney(player.getBalance() - amount)
+            );
+            io->showMessage(
+                "Uang " + creditor->getUsername() + ": " + OutputFormatter::formatMoney(creditor->getBalance()) +
+                " -> " + OutputFormatter::formatMoney(creditor->getBalance() + amount)
+            );
         }
         player.setBalance(player.getBalance() - amount);
         if (creditor) {
@@ -165,24 +370,19 @@ bool BankruptcyHandler::liquidateAssets(Player& player, int amount, GameContext&
             continue;
         }
 
-        io->showMessage(
-            "Saldo M" + std::to_string(player.getBalance()) +
-            " belum cukup untuk membayar M" + std::to_string(amount) + ".");
-        io->showMessage("Pilih aset untuk dilikuidasi:");
-        for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-            std::string actionLabel = options[i].action == LiquidationAction::SELL
-                ? "Jual ke Bank"
-                : "Gadai";
-            io->showMessage(
-                std::to_string(i + 1) + ". " + actionLabel + " " +
-                options[i].property->getName() + " (" + options[i].property->getCode() +
-                ") - M" + std::to_string(options[i].value));
-        }
+        showLiquidationPanel(player, amount, options, context);
 
         int choice = io->promptIntInRange(
-            "Pilih opsi likuidasi (1-" + std::to_string(options.size()) + "): ",
-            1,
+            "Pilih aksi (0 jika sudah cukup): ",
+            0,
             static_cast<int>(options.size()));
+        if (choice == 0) {
+            if (player.getBalance() >= amount) {
+                return true;
+            }
+            io->showMessage("Dana belum cukup untuk menutup kewajiban.");
+            continue;
+        }
 
         LiquidationOption selected = options[choice - 1];
         if (selected.action == LiquidationAction::SELL) {
@@ -222,8 +422,8 @@ void BankruptcyHandler::auctionBankruptAssets(
 
         if (io != nullptr) {
             io->showMessage(
-                "=== Lelang aset bangkrut: " + property->getName() +
-                " (" + property->getCode() + ") ===");
+                "Properti " + property->getName() + " (" + property->getCode() + ") akan dilelang!");
+            io->showMessage("");
         }
 
         while (!auction->isFinished(totalPlayers)) {
@@ -238,14 +438,10 @@ void BankruptcyHandler::auctionBankruptAssets(
 
                 int amount = 0;
                 if (io != nullptr) {
-                    int displayedHighestBid = auction->getHighestBidder() == nullptr
-                        ? 0
-                        : auction->getHighestBid();
-                    amount = io->promptInt(
-                        bidder->getUsername() +
-                        " saldo M" + std::to_string(bidder->getBalance()) +
-                        ", bid tertinggi M" + std::to_string(displayedHighestBid) +
-                        ". Masukkan bid (-1 untuk pass): ");
+                    amount = io->promptAuctionBid(
+                        bidder->getUsername(),
+                        auction->getHighestBid(),
+                        bidder->getBalance());
                 }
 
                 if (amount < 0) {
@@ -256,6 +452,12 @@ void BankruptcyHandler::auctionBankruptAssets(
                 try {
                     if (!auction->processBid(bidder, amount) && io != nullptr) {
                         io->showMessage("Bid harus lebih besar dari bid tertinggi.");
+                    } else if (io != nullptr) {
+                        io->showMessage(
+                            "Penawaran tertinggi: " + OutputFormatter::formatMoney(auction->getHighestBid()) +
+                            " (" + bidder->getUsername() + ")"
+                        );
+                        io->showMessage("");
                     }
                 } catch (const std::exception& e) {
                     if (io != nullptr) {
@@ -275,17 +477,21 @@ void BankruptcyHandler::auctionBankruptAssets(
                     io->showMessage(
                         "Belum ada pemain yang melakukan bid. " +
                         forcedBidder->getUsername() + " wajib melakukan bid awal.");
-                    amount = io->promptIntInRange(
-                        forcedBidder->getUsername() +
-                        " saldo M" + std::to_string(forcedBidder->getBalance()) +
-                        ". Masukkan bid awal (0-" +
-                        std::to_string(forcedBidder->getBalance()) + "): ",
-                        0,
+                    amount = io->promptAuctionBid(
+                        forcedBidder->getUsername(),
+                        auction->getHighestBid(),
                         forcedBidder->getBalance());
                 }
 
                 try {
                     auction->processBid(forcedBidder, amount);
+                    if (io != nullptr) {
+                        io->showMessage(
+                            "Penawaran tertinggi: " + OutputFormatter::formatMoney(auction->getHighestBid()) +
+                            " (" + forcedBidder->getUsername() + ")"
+                        );
+                        io->showMessage("");
+                    }
                 } catch (const std::exception& e) {
                     if (io != nullptr) {
                         io->showError(e, context.getLogger(), getCurrentTurn(context), forcedBidder->getUsername());
@@ -303,13 +509,19 @@ void BankruptcyHandler::auctionBankruptAssets(
                 winner->getUsername() + " memenangkan aset bangkrut " + property->getCode() +
                 " seharga M" + std::to_string(winningBid));
             if (io != nullptr) {
+                io->showMessage("Lelang selesai!");
+                io->showMessage("Pemenang: " + winner->getUsername());
+                io->showMessage("Harga akhir: " + OutputFormatter::formatMoney(winningBid));
+                io->showMessage("");
                 io->showMessage(
-                    winner->getUsername() + " memenangkan " + property->getName() +
-                    " seharga M" + std::to_string(winningBid) + ".");
+                    "Properti " + property->getName() + " (" + property->getCode() +
+                    ") kini dimiliki " + winner->getUsername() + "."
+                );
             }
         } else {
             context.logEvent("LELANG", property->getCode() + " tidak terjual pada lelang aset bangkrut.");
             if (io != nullptr) {
+                io->showMessage("Lelang selesai!");
                 io->showMessage(property->getName() + " tidak terjual.");
             }
         }
@@ -345,9 +557,6 @@ void BankruptcyHandler::transferAssetsToBank(Player& player, AuctionManager* auc
 
 void BankruptcyHandler::declareBankrupt(Player& player, GameContext& context) {
     player.setStatus(PlayerStatus::BANKRUPT);
-    if (context.getIO() != nullptr) {
-        context.getIO()->showMessage(player.getUsername() + " dinyatakan BANGKRUT!");
-    }
     context.logEvent("BANGKRUT", player.getUsername() + " dinyatakan bangkrut.");
     if (context.getTurnManager() != nullptr) {
         context.getTurnManager()->removePlayer(&player);

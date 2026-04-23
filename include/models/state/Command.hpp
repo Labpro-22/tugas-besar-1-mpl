@@ -17,5 +17,7 @@ public:
     const std::vector<std::string>& getArgs() const;
     std::string getArg(int index) const;
     int getArgCount() const;
+    bool isKnown() const;
     bool isValid() const;
+    std::string getUsage() const;
 };

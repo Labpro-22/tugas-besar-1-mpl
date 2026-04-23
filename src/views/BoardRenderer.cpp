@@ -104,8 +104,8 @@ namespace {
                 && turnManager.getCurrentPlayer()->getUsername() == player.getUsername();
 
             result += isCurrentPlayer
-                ? "*" + std::to_string(i + 1) + "*"
-                : "(" + std::to_string(i + 1) + ")";
+                ? "(" + std::to_string(i + 1) + ")"
+                : std::to_string(i + 1);
         }
 
         return result;
@@ -198,7 +198,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << " *             : Hotel\n";
     std::cout << " NN KODE       : Nomor petak 1-40 dan kode petak\n";
     std::cout << " PN            : Properti milik pemain N\n";
-    std::cout << " (N), *N*      : Bidak pemain, *N* = giliran aktif\n";
+    std::cout << " N / (N)       : Bidak pemain, (N) = giliran aktif\n";
     std::cout << " IN:N / V:N    : Di penjara / hanya mampir penjara\n";
     std::cout << " [M]           : Properti digadaikan\n";
     std::cout << "\n";
@@ -227,6 +227,12 @@ void BoardRenderer::render(const Board& board,
             separator += std::string(CELL_WIDTH, '-') + "+";
         }
         return separator;
+    };
+
+    auto makeSideRowSeparator = [innerWidth = (CELL_WIDTH + 1) * 9 - 1]() -> std::string {
+        return "+" + std::string(CELL_WIDTH, '-') + "+"
+            + std::string(innerWidth, ' ') + "+"
+            + std::string(CELL_WIDTH, '-') + "+";
     };
 
     auto renderCell = [&](int tileIndex) -> std::pair<std::string, std::string> {
@@ -268,6 +274,7 @@ void BoardRenderer::render(const Board& board,
     }
 
     std::string separator = makeSeparator();
+    std::string sideRowSeparator = makeSideRowSeparator();
 
     std::cout << separator << "\n";
     std::cout << "|";
@@ -308,7 +315,7 @@ void BoardRenderer::render(const Board& board,
     std::vector<std::string> panelLines;
     panelLines.push_back(std::string(innerWidth, ' '));
     panelLines.push_back(centerText("=================================="));
-    panelLines.push_back(centerText("||        NIMONSPOLI            ||"));
+    panelLines.push_back(centerText("||          NIMONSPOLI          ||"));
     panelLines.push_back(centerText("=================================="));
     panelLines.push_back(std::string(innerWidth, ' '));
 
@@ -332,9 +339,9 @@ void BoardRenderer::render(const Board& board,
         std::cout << "|" << leftCell.first << "|" << panel << "|" << rightCell.first << "|\n";
         std::cout << "|" << leftCell.second << "|" << std::string(innerWidth, ' ')
                   << "|" << rightCell.second << "|\n";
-        std::cout << "+" << std::string(CELL_WIDTH, '-') << "+"
-                  << std::string(innerWidth + 1, ' ')
-                  << "+" << std::string(CELL_WIDTH, '-') << "+\n";
+        if (row < 8) {
+            std::cout << sideRowSeparator << "\n";
+        }
     }
 
     std::cout << separator << "\n";

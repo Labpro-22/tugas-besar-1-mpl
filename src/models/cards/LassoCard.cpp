@@ -4,7 +4,6 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/MovementService.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
@@ -21,7 +20,6 @@ std::string LassoCard::getTypeName() const {
 void LassoCard::use(Player& player, GameContext& gameContext) {
     Board* board = gameContext.getBoard();
     TurnManager* turnManager = gameContext.getTurnManager();
-    GameIO* io = gameContext.getIO();
 
     if (board == nullptr || turnManager == nullptr || board->getTileCount() <= 0) {
         return;
@@ -64,16 +62,12 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
 
     target->moveTo(destinationIndex);
 
-    if (io != nullptr) {
-        io->showMessage(target->getUsername() + " ditarik ke posisi " +
-                        player.getUsername() + ".");
-    }
+    gameContext.showMessage(target->getUsername() + " ditarik ke posisi " +
+                    player.getUsername() + ".");
 
     if (destinationTile != nullptr) {
         if (MovementService::shouldSkipGoLandingSalary(destinationTile)) {
-            if (io != nullptr) {
-                io->showMessage("Tarikan ke GO tidak memberikan gaji.");
-            }
+            gameContext.showMessage("Tarikan ke GO tidak memberikan gaji.");
             return;
         }
         destinationTile->onLanded(*target, gameContext);

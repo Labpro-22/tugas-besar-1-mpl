@@ -97,10 +97,6 @@ PropertyType StreetTile::getPropertyType() const {
     return PropertyType::STREET;
 }
 
-std::string StreetTile::getDisplayLabel() const {
-    return "[" + getCode() + "] " + getName();
-}
-
 int StreetTile::getHouseCost() const {
     return houseCost;
 }

@@ -200,3 +200,20 @@ public:
     explicit GameInitException(const std::string& detail)
         : NimonspoliException("Inisialisasi game gagal: " + detail) {}
 };
+
+class DeckEmptyException : public NimonspoliException {
+private:
+    std::string deckName;
+
+public:
+    explicit DeckEmptyException(const std::string& deckName)
+        : NimonspoliException(
+              deckName.empty()
+                  ? "Deck kartu kosong atau tidak dapat digunakan."
+                  : "Deck \"" + deckName + "\" kosong atau tidak dapat digunakan."),
+          deckName(deckName) {}
+
+    const std::string& getDeckName() const {
+        return deckName;
+    }
+};

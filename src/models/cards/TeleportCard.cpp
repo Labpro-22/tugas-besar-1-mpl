@@ -2,7 +2,6 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
@@ -25,12 +24,11 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     }
 
     int tileCount = board->getTileCount();
-    GameIO* io = gameContext.getIO();
-    if (io == nullptr) {
+    if (!gameContext.hasIO()) {
         return;
     }
 
-    int targetPosition = io->promptIntInRange(
+    int targetPosition = gameContext.promptIntInRange(
         "Pilih nomor petak tujuan teleport (1-" + std::to_string(tileCount) + "): ",
         1,
         tileCount);
@@ -51,7 +49,7 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
         targetIndex
     );
 
-    io->showMessage(
+    gameContext.showMessage(
         "Teleport berhasil! " + player.getUsername()
             + " berpindah ke " + targetTile->getName()
             + " (" + targetTile->getCode() + ").");

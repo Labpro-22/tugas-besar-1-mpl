@@ -2,7 +2,6 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
@@ -33,11 +32,9 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     bool passedGo = oldPosition + getValue() >= tileCount;
     player.moveTo(targetIndex);
 
-    if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "MoveCard digunakan! " + player.getUsername() +
-                " maju " + std::to_string(getValue()) + " petak.");
-    }
+    gameContext.showMessage(
+        "MoveCard digunakan! " + player.getUsername() +
+            " maju " + std::to_string(getValue()) + " petak.");
 
     if (passedGo) {
         MovementService::awardGoSalaryForForwardMovement(
@@ -51,11 +48,9 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
 
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile != nullptr) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Bidak mendarat di: " + targetTile->getName() +
-                    " (" + targetTile->getCode() + ").");
-        }
+        gameContext.showMessage(
+            "Bidak mendarat di: " + targetTile->getName() +
+                " (" + targetTile->getCode() + ").");
         targetTile->onLanded(player, gameContext);
     }
 }

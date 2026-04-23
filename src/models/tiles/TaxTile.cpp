@@ -1,10 +1,10 @@
 #include "models/tiles/TaxTile.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "core/TurnManager.hpp"
+#include "utils/OutputFormatter.hpp"
 #include "utils/exceptions/NimonspoliException.hpp"
 #include "core/BankruptcyHandler.hpp"
 
@@ -14,38 +14,58 @@ TaxTile::TaxTile(int index, const std::string& code, const std::string& name, Ta
     : ActionTile(index, code, name, TileCategory::DEFAULT), taxType(taxType), flatAmount(flatAmount), percentage(percentage) {}
 
 void TaxTile::onLanded(Player& player, GameContext& gameContext) {
-    GameIO* io = gameContext.getIO();
     int choice = 1;
 
-    if (io != nullptr) {
-        io->showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
-    }
+    gameContext.showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
 
-    if (taxType == TaxType::PPH && io != nullptr) {
-        io->showMessage("Pilih opsi pembayaran pajak:");
-        io->showMessage("1. Bayar flat M" + std::to_string(flatAmount));
-        io->showMessage("2. Bayar " + std::to_string(percentage) + "% dari total kekayaan");
-        io->showMessage("(Pilih sebelum menghitung kekayaan!)");
-        choice = io->promptIntInRange("Pilihan (1/2): ", 1, 2);
+    if (taxType == TaxType::PPH && gameContext.hasIO()) {
+        gameContext.showMessage("Pilih opsi pembayaran pajak:");
+        gameContext.showMessage("1. Bayar flat M" + std::to_string(flatAmount));
+        gameContext.showMessage("2. Bayar " + std::to_string(percentage) + "% dari total kekayaan");
+        gameContext.showMessage("(Pilih sebelum menghitung kekayaan!)");
+        choice = gameContext.promptIntInRange("Pilihan (1/2): ", 1, 2);
     }
 
     int amountToPay = calculateTaxAmount(player, choice);
-    if (taxType == TaxType::PPH && choice == 2 && io != nullptr) {
-        io->showMessage("Total kekayaan kamu: M" + std::to_string(calculateWealth(player)));
-        io->showMessage(
-            "Pajak " + std::to_string(percentage) + "%: M" + std::to_string(amountToPay));
-    } else if (io != nullptr) {
-        io->showMessage("Pajak yang harus dibayar: M" + std::to_string(amountToPay));
+    if (taxType == TaxType::PPH && choice == 2 && gameContext.hasIO()) {
+        int cashWealth = player.getBalance();
+        int propertyBuyWealth = 0;
+        int buildingWealth = 0;
+
+        for (PropertyTile* property : player.getProperties()) {
+            if (property == nullptr) {
+                continue;
+            }
+
+            propertyBuyWealth += property->getBuyPrice();
+
+            if (property->getPropertyType() == PropertyType::STREET) {
+                int level = property->getBuildingLevel();
+                if (level > 0 && level <= 4) {
+                    buildingWealth += level * property->getHouseCost();
+                } else if (level == 5) {
+                    buildingWealth += (4 * property->getHouseCost()) + property->getHotelCost();
+                }
+            }
+        }
+
+        gameContext.showMessage("");
+        gameContext.showMessage("Total kekayaan kamu:");
+        gameContext.showMessage("- Uang tunai          : " + OutputFormatter::formatMoney(cashWealth));
+        gameContext.showMessage("- Harga beli properti : " + OutputFormatter::formatMoney(propertyBuyWealth) + " (termasuk yang digadaikan)");
+        gameContext.showMessage("- Harga beli bangunan : " + OutputFormatter::formatMoney(buildingWealth));
+        gameContext.showMessage("Total                 : " + OutputFormatter::formatMoney(calculateWealth(player)));
+        gameContext.showMessage("Pajak " + std::to_string(percentage) + "%             : " + OutputFormatter::formatMoney(amountToPay));
+    } else if (taxType == TaxType::PBM && gameContext.hasIO()) {
+        gameContext.showMessage("Pajak sebesar " + OutputFormatter::formatMoney(amountToPay) + " langsung dipotong.");
     }
 
-    applyTax(player, gameContext, amountToPay);
+    applyTax(player, gameContext, amountToPay, choice);
 }
 
-void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay) const {
+void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay, int choice) const {
     if (player.isShieldActive()) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari pajak.");
-        }
+        gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari pajak.");
         gameContext.logEvent(
             "PAJAK",
             player.getUsername() + " terlindungi ShieldCard dari pajak.");
@@ -54,20 +74,18 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
 
     int originalAmount = amountToPay;
     amountToPay = player.consumeDiscountedAmount(amountToPay);
-    if (amountToPay != originalAmount && gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "Diskon diterapkan dari M" + std::to_string(originalAmount) +
-                " menjadi M" + std::to_string(amountToPay) + ".");
+    if (amountToPay != originalAmount) {
+        gameContext.showMessage(
+            "Diskon diterapkan dari " + OutputFormatter::formatMoney(originalAmount) +
+                " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
     }
 
     try {
         int beforeBalance = player.getBalance();
         player -= amountToPay;
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Uang kamu: M" + std::to_string(beforeBalance) +
-                    " -> M" + std::to_string(player.getBalance()));
-        }
+        gameContext.showMessage(
+            "Uang kamu: " + OutputFormatter::formatMoney(beforeBalance) +
+                " -> " + OutputFormatter::formatMoney(player.getBalance()));
         if (gameContext.getLogger() != nullptr) {
             int currentTurn = 0;
             if (gameContext.getTurnManager() != nullptr) {
@@ -77,11 +95,13 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
                 "Membayar pajak sebesar M" + std::to_string(amountToPay));
         }
     } catch (const InsufficientFundsException& e) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Kamu tidak mampu membayar pajak M" + std::to_string(amountToPay) + "!");
-            gameContext.getIO()->showMessage("Uang kamu saat ini: M" + std::to_string(player.getBalance()));
+        if (taxType == TaxType::PPH && choice == 1) {
+            gameContext.showMessage(
+                "Kamu tidak mampu membayar pajak flat " + OutputFormatter::formatMoney(amountToPay) + "!");
+        } else {
+            gameContext.showMessage("Kamu tidak mampu membayar pajak!");
         }
+        gameContext.showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
         if (gameContext.getBankruptcyHandler() != nullptr) {
             gameContext.getBankruptcyHandler()->handleBankruptcy(player, nullptr, amountToPay, gameContext);
         } else {
@@ -119,7 +139,6 @@ int TaxTile::calculateWealth(const Player& player) const {
     return total;
 }
 
-std::string TaxTile::getDisplayLabel() const { return getCode(); }
 TaxType TaxTile::getTaxType() const { return taxType; }
 int TaxTile::getFlatAmount() const { return flatAmount; }
 int TaxTile::getPercentage() const { return percentage; }

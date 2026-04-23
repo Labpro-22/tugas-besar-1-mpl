@@ -2,7 +2,6 @@
 
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 
@@ -30,8 +29,8 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         }
 
         int amountToPay = otherPlayer->consumeDiscountedAmount(amount);
-        if (amountToPay != amount && gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
+        if (amountToPay != amount) {
+            gameContext.showMessage(
                 "Diskon " + otherPlayer->getUsername() + " diterapkan dari M" +
                 std::to_string(amount) + " menjadi M" + std::to_string(amountToPay) + ".");
         }
@@ -49,10 +48,8 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
 
         *otherPlayer -= amountToPay;
         player += amountToPay;
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                otherPlayer->getUsername() + " memberi M" + std::to_string(amountToPay) +
-                    " kepada " + player.getUsername() + ".");
-        }
+        gameContext.showMessage(
+            otherPlayer->getUsername() + " memberi M" + std::to_string(amountToPay) +
+                " kepada " + player.getUsername() + ".");
     }
 }

@@ -8,11 +8,6 @@
 #include "utils/exceptions/NimonspoliException.hpp"
 
 class ExceptionHandler {
-private:
-    static bool startsWith(const std::string& text, const std::string& prefix) {
-        return text.rfind(prefix, 0) == 0;
-    }
-
 public:
     static std::string formatMessage(const std::exception& exception) {
         const NimonspoliException* gameException =
@@ -22,10 +17,6 @@ public:
         }
 
         const std::string rawMessage = exception.what();
-
-        if (startsWith(rawMessage, "CardDeck:")) {
-            return "Deck kartu kosong atau tidak dapat digunakan.";
-        }
 
         if (dynamic_cast<const std::out_of_range*>(&exception) != nullptr) {
             return rawMessage.empty()

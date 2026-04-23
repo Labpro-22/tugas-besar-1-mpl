@@ -31,5 +31,4 @@ public:
     virtual PropertyTile* asPropertyTile();
     virtual const PropertyTile* asPropertyTile() const;
     virtual int getJailFine() const;
-    virtual std::string getDisplayLabel() const = 0;
 };

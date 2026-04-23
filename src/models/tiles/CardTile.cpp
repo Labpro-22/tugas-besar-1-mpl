@@ -1,10 +1,10 @@
 #include "models/tiles/CardTile.hpp"
 
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
-#include "utils/CardDeck.hpp"
-#include "models/cards/ActionCard.hpp"
 #include "core/TurnManager.hpp"
+#include "models/cards/ActionCard.hpp"
+#include "utils/CardDeck.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 #include "utils/TransactionLogger.hpp"
 
 CardTile::CardTile() : ActionTile(), cardType(CardType::CHANCE) {}
@@ -13,12 +13,9 @@ CardTile::CardTile(int index, const std::string& code, const std::string& name, 
     : ActionTile(index, code, name, TileCategory::DEFAULT), cardType(cardType) {}
 
 void CardTile::onLanded(Player& player, GameContext& gameContext) {
-    GameIO* io = gameContext.getIO();
-    if (io != nullptr) {
-        std::string tileName = cardType == CardType::CHANCE ? "Petak Kesempatan" : "Petak Dana Umum";
-        io->showMessage("Kamu mendarat di " + tileName + "!");
-        io->showMessage("Mengambil kartu...");
-    }
+    std::string tileName = cardType == CardType::CHANCE ? "Petak Kesempatan" : "Petak Dana Umum";
+    gameContext.showMessage("Kamu mendarat di " + tileName + "!");
+    gameContext.showMessage("Mengambil kartu...");
 
     CardDeck<ActionCard>* deck = (cardType == CardType::CHANCE) 
                                  ? gameContext.getChanceDeck() 
@@ -28,20 +25,12 @@ void CardTile::onLanded(Player& player, GameContext& gameContext) {
             ActionCard* card = deck->draw();
             
             if (card) {
-                if (io != nullptr) {
-                    io->showActionCard(cardType, *card);
-                }
+                gameContext.showActionCard(cardType, *card);
                 card->execute(player, gameContext);
                 deck->discardCard(card); 
             }
-        } catch (const std::runtime_error& e) {
-            if (io != nullptr) {
-                int currentTurn = 0;
-                if (gameContext.getTurnManager() != nullptr) {
-                    currentTurn = gameContext.getTurnManager()->getCurrentTurn();
-                }
-                io->showError(e, gameContext.getLogger(), currentTurn, player.getUsername());
-            }
+        } catch (const DeckEmptyException& e) {
+            gameContext.showError(e, player.getUsername());
             if (gameContext.getLogger() != nullptr) {
                 int currentTurn = 0;
                 if (gameContext.getTurnManager() != nullptr) {
@@ -51,13 +40,9 @@ void CardTile::onLanded(Player& player, GameContext& gameContext) {
                     currentTurn,
                     player.getUsername(),
                     "ERROR",
-                    "Tumpukan kartu kosong!"
+                    e.getMessage()
                 );
             }
         }
     }
-}
-
-std::string CardTile::getDisplayLabel() const {
-    return getCode(); // "KSP" atau "DNU"
 }

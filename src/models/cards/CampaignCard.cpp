@@ -2,7 +2,6 @@
 
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 
@@ -19,10 +18,8 @@ int CampaignCard::getAmount() const {
 
 void CampaignCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "[SHIELD ACTIVE]: Efek ShieldCard melindungi kamu dari tagihan CampaignCard.");
-        }
+        gameContext.showMessage(
+            "[SHIELD ACTIVE]: Efek ShieldCard melindungi kamu dari tagihan CampaignCard.");
         gameContext.logEvent(
             "KARTU",
             player.getUsername() + " terlindungi ShieldCard dari CampaignCard.");
@@ -41,8 +38,8 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         }
 
         int amountToPay = player.consumeDiscountedAmount(amount);
-        if (amountToPay != amount && gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
+        if (amountToPay != amount) {
+            gameContext.showMessage(
                 "Diskon diterapkan dari M" + std::to_string(amount) +
                     " menjadi M" + std::to_string(amountToPay) + ".");
         }
@@ -63,10 +60,8 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
 
         player -= amountToPay;
         *otherPlayer += amountToPay;
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                player.getUsername() + " membayar M" + std::to_string(amountToPay) +
-                    " kepada " + otherPlayer->getUsername() + ".");
-        }
+        gameContext.showMessage(
+            player.getUsername() + " membayar M" + std::to_string(amountToPay) +
+                " kepada " + otherPlayer->getUsername() + ".");
     }
 }

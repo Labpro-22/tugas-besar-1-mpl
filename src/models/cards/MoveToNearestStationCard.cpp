@@ -2,7 +2,6 @@
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/RailroadTile.hpp"
@@ -36,10 +35,8 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
         );
     }
 
-    if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "Bidak dipindahkan ke stasiun terdekat: " + nearestRailroad->getName() +
-                " (" + nearestRailroad->getCode() + ").");
-    }
+    gameContext.showMessage(
+        "Bidak dipindahkan ke stasiun terdekat: " + nearestRailroad->getName() +
+            " (" + nearestRailroad->getCode() + ").");
     nearestRailroad->onLanded(player, gameContext);
 }

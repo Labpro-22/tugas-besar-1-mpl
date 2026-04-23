@@ -270,13 +270,15 @@ void GameEngine::runGameLoop() {
     std::vector<Player*> winners = determineWinner();
     ui.showSection("PERMAINAN SELESAI");
     if (context != nullptr) {
-        ui.showWinner(winners, *context);
+        ui.showWinner(winners, players, *context);
     }
 }
 
 void GameEngine::processTurn(Player& player) {
+    ui.showSection("TURN " + std::to_string(turnManager.getCurrentTurn()) + " - " + player.getUsername());
     TurnService::processTurn(player, board, skillDeck, *configData, ui, turnManager, logger);
-    ui.showTurnSummary(player, turnManager.getCurrentTurn());
+    ui.showMessage("");
+    ui.showTurnSummary(player);
 }
 
 bool GameEngine::checkGameEnd() const {

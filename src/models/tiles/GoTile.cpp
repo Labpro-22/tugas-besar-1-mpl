@@ -1,7 +1,6 @@
 #include "models/tiles/GoTile.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
-#include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "utils/TransactionLogger.hpp"
 
@@ -13,13 +12,11 @@ GoTile::GoTile(int index, const std::string &code, const std::string &name, int 
 void GoTile::onLanded(Player& player, GameContext& gameContext) {
     int beforeBalance = player.getBalance();
     awardSalary(player);
-    if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "Kamu mendarat di GO. Mendapatkan gaji M" + std::to_string(salary) + ".");
-        gameContext.getIO()->showMessage(
-            "Uang kamu: M" + std::to_string(beforeBalance) +
-                " -> M" + std::to_string(player.getBalance()));
-    }
+    gameContext.showMessage(
+        "Kamu mendarat di GO. Mendapatkan gaji M" + std::to_string(salary) + ".");
+    gameContext.showMessage(
+        "Uang kamu: M" + std::to_string(beforeBalance) +
+            " -> M" + std::to_string(player.getBalance()));
     if (gameContext.getLogger() != nullptr) {
         int currentTurn = 0;
         if (gameContext.getTurnManager() != nullptr) {
@@ -39,10 +36,6 @@ void GoTile::onPassed(Player& player, GameContext&) {
 
 void GoTile::awardSalary(Player &player) {
     player += salary;
-}
-
-std::string GoTile::getDisplayLabel() const {
-    return getCode(); // Buat "GO"
 }
 
 int GoTile::getSalary() const {

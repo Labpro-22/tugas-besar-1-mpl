@@ -4,8 +4,9 @@
 #include <string>
 #include <algorithm>
 #include <random>
-#include <stdexcept>
 #include <utility>
+
+#include "utils/exceptions/NimonspoliException.hpp"
 
 template <typename T>
 class CardDeck {
@@ -57,7 +58,7 @@ public:
     T* draw() {
         if (deck.empty()) {
             if (discard.empty()) {
-                throw std::runtime_error("CardDeck: no cards available in deck or discard.");
+                throw DeckEmptyException("kartu");
             }
             reshuffle();
         }

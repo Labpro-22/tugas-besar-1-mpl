@@ -29,6 +29,8 @@ public:
     bool confirmYN(const std::string& message) override;
     int promptInt(const std::string& prompt) override;
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
+    std::string promptText(const std::string& prompt) override;
+    int promptAuctionBid(const std::string& playerName, int highestBid, int balance) override;
     Command promptPlayerCommand(const std::string& username);
     void showMessage(const std::string& message) override;
     void showError(
@@ -44,7 +46,7 @@ public:
     );
     void showHelp(const Player& player) override;
     void showSection(const std::string& title);
-    void showTurnSummary(const Player& player, int turn);
+    void showTurnSummary(const Player& player);
     void showDiceLanding(
         int die1,
         int die2,
@@ -53,10 +55,12 @@ public:
         const std::string& tileName,
         const std::string& tileCode
     ) override;
-    void showWinner(const std::vector<Player*>& winners, GameContext& context);
+    void showWinner(
+        const std::vector<Player*>& winners,
+        const std::vector<Player>& players,
+        GameContext& context
+    );
 
-    void showLog(const std::vector<LogEntry>& entries);
-    void showLog(const std::vector<LogEntry>& entries, int n);
     void showLogEntries(const std::vector<LogEntry>& entries) override;
     void renderBoard(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager) override;
     void showPropertyDeed(const PropertyTile* property) override;
