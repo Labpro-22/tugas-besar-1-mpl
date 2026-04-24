@@ -6,6 +6,22 @@
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "utils/TextFormatter.hpp"
+#include "utils/TransactionLogger.hpp"
+
+namespace {
+    void logBirthdayPayment(GameContext& gameContext, const Player& payer, const Player& recipient, int amount) {
+        TransactionLogger* logger = gameContext.getLogger();
+        TurnManager* turnManager = gameContext.getTurnManager();
+        if (logger != nullptr && turnManager != nullptr) {
+            logger->log(
+                turnManager->getCurrentTurn(),
+                payer.getUsername(),
+                "KARTU",
+                payer.getUsername() + " membayar BirthdayCard " +
+                    TextFormatter::formatMoney(amount) + " kepada " + recipient.getUsername() + ".");
+        }
+    }
+}
 
 BirthdayCard::BirthdayCard()
     : BirthdayCard(100) {}
@@ -13,10 +29,6 @@ BirthdayCard::BirthdayCard()
 BirthdayCard::BirthdayCard(int amount)
     : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan " + TextFormatter::formatMoney(amount) + " dari setiap pemain."),
       amount(amount) {}
-
-int BirthdayCard::getAmount() const {
-    return amount;
-}
 
 void BirthdayCard::execute(Player& player, GameContext& gameContext) {
     TurnManager* turnManager = gameContext.getTurnManager();
@@ -65,5 +77,6 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         gameContext.showMessage(
             otherPlayer->getUsername() + " memberi " + TextFormatter::formatMoney(amountToPay) +
                 " kepada " + player.getUsername() + ".");
+        logBirthdayPayment(gameContext, *otherPlayer, player, amountToPay);
     }
 }

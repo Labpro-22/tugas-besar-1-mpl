@@ -72,6 +72,10 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
         "Teleport berhasil! " + player.getUsername()
             + " berpindah ke " + targetTile->getName()
             + " (" + targetTile->getCode() + ").");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan TeleportCard ke " +
+            targetTile->getName() + " (" + targetTile->getCode() + ").");
 
     targetTile->onLanded(player, gameContext);
 }

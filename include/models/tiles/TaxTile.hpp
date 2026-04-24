@@ -1,5 +1,6 @@
 #pragma once
 
+#include "models/Enums.hpp"
 #include "ActionTile.hpp"
 
 class TaxTile : public ActionTile {
@@ -23,10 +24,5 @@ public:
     );
 
     void onLanded(Player& player, GameContext& gameContext) override;
-    
-    // Getters untuk data inquiry (untuk GameEngine handling output)
-    TaxType getTaxType() const;
-    int getFlatAmount() const;
-    int getPercentage() const;
     int calculateTaxAmount(const Player& player, int choice = 1) const;
 };

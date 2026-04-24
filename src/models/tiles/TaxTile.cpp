@@ -12,7 +12,7 @@
 TaxTile::TaxTile() : ActionTile(), taxType(TaxType::PPH), flatAmount(0), percentage(0) {}
 
 TaxTile::TaxTile(int index, const std::string& code, const std::string& name, TaxType taxType, int flatAmount, int percentage)
-    : ActionTile(index, code, name, TileCategory::DEFAULT), taxType(taxType), flatAmount(flatAmount), percentage(percentage) {}
+    : ActionTile(index, code, name), taxType(taxType), flatAmount(flatAmount), percentage(percentage) {}
 
 void TaxTile::onLanded(Player& player, GameContext& gameContext) {
     int choice = 1;
@@ -127,6 +127,18 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
             if (!settled && gameContext.getIO() != nullptr) {
                 gameContext.getIO()->showMessage("Pembayaran pajak dibatalkan. Pajak belum dibayar.");
             }
+            if (settled && !player.isBankrupt() && gameContext.getLogger() != nullptr) {
+                int currentTurn = 0;
+                if (gameContext.getTurnManager() != nullptr) {
+                    currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+                }
+                gameContext.getLogger()->log(
+                    currentTurn,
+                    player.getUsername(),
+                    "PAJAK",
+                    "Membayar pajak sebesar " + TextFormatter::formatMoney(amountToPay) +
+                        " setelah likuidasi.");
+            }
         } else {
             throw;
         }
@@ -161,7 +173,3 @@ int TaxTile::calculateWealth(const Player& player) const {
     }
     return total;
 }
-
-TaxType TaxTile::getTaxType() const { return taxType; }
-int TaxTile::getFlatAmount() const { return flatAmount; }
-int TaxTile::getPercentage() const { return percentage; }

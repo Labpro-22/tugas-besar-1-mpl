@@ -2,10 +2,10 @@
 
 #include "models/Player.hpp"
 
-Tile::Tile() : index(0), code(""), name(""), category(TileCategory::DEFAULT) {}
+Tile::Tile() : index(0), code(""), name("") {}
 
-Tile::Tile(int index, const std::string& code, const std::string& name, TileCategory category) :
-    index(index), code(code), name(name), category(category) {}
+Tile::Tile(int index, const std::string& code, const std::string& name) :
+    index(index), code(code), name(name) {}
 
 int Tile::getIndex() const {
     return index;
@@ -17,10 +17,6 @@ const std::string& Tile::getCode() const {
 
 const std::string& Tile::getName() const {
     return name;
-}
-
-TileCategory Tile::getCategory() const {
-    return category;
 }
 
 void Tile::onPassed(Player&, GameContext&) {}

@@ -1,5 +1,6 @@
 #include "models/cards/LassoCard.hpp"
 
+#include <string>
 #include <vector>
 
 #include "core/Board.hpp"
@@ -69,6 +70,10 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
     }
     gameContext.showMessage(target->getUsername() + " ditarik ke posisi " +
                     player.getUsername() + ".");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan LassoCard menarik " +
+            target->getUsername() + " ke posisi " + std::to_string(destinationIndex + 1) + ".");
 
     if (destinationTile != nullptr) {
         if (MovementService::shouldSkipGoLandingSalary(destinationTile)) {

@@ -6,7 +6,7 @@
 JailTile::JailTile() : ActionTile(), jailFine(0) {}
 
 JailTile::JailTile(int index, const std::string& code, const std::string& name, int jailFine)
-    : ActionTile(index, code, name, TileCategory::DEFAULT), jailFine(jailFine) {}
+    : ActionTile(index, code, name), jailFine(jailFine) {}
 
 void JailTile::onLanded(Player& player, GameContext& gameContext) {
     if (player.getStatus() == PlayerStatus::ACTIVE) {

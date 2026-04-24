@@ -10,6 +10,5 @@ public:
     DoctorFeeCard();
     explicit DoctorFeeCard(int amount);
 
-    int getAmount() const;
     void execute(Player& player, GameContext& gameContext) override;
 };

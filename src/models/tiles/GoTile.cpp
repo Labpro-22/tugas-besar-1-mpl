@@ -8,7 +8,7 @@
 GoTile::GoTile() : ActionTile(), salary(0) {}
 
 GoTile::GoTile(int index, const std::string &code, const std::string &name, int salary)
-    : ActionTile(index, code, name, TileCategory::DEFAULT), salary(salary) {}
+    : ActionTile(index, code, name), salary(salary) {}
 
 void GoTile::onLanded(Player& player, GameContext& gameContext) {
     int beforeBalance = player.getBalance();

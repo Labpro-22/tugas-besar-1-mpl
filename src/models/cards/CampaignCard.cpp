@@ -14,10 +14,6 @@ CampaignCard::CampaignCard(int amount)
     : ActionCard("Anda mau nyaleg. Bayar " + TextFormatter::formatMoney(amount) + " kepada setiap pemain."),
       amount(amount) {}
 
-int CampaignCard::getAmount() const {
-    return amount;
-}
-
 void CampaignCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
         gameContext.showMessage(
@@ -96,5 +92,10 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         gameContext.showMessage(
             player.getUsername() + " membayar " + TextFormatter::formatMoney(amountToPay) +
                 " kepada " + otherPlayer->getUsername() + ".");
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " membayar CampaignCard " +
+                TextFormatter::formatMoney(amountToPay) + " kepada " +
+                otherPlayer->getUsername() + ".");
     }
 }

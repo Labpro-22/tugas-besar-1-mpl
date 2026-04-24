@@ -15,16 +15,16 @@ DoctorFeeCard::DoctorFeeCard(int amount)
     : ActionCard("Biaya dokter. Bayar " + TextFormatter::formatMoney(amount) + "."),
       amount(amount) {}
 
-int DoctorFeeCard::getAmount() const {
-    return amount;
-}
-
 void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda!");
         gameContext.showMessage(
             "Tagihan " + TextFormatter::formatMoney(amount) +
                 " dibatalkan. Uang Anda tetap: " + TextFormatter::formatMoney(player.getBalance()) + ".");
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " terlindungi ShieldCard dari DoctorFeeCard " +
+                TextFormatter::formatMoney(amount) + ".");
         return;
     }
 
@@ -50,6 +50,10 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
         gameContext.showMessage(
             "Uang kamu: " + TextFormatter::formatMoney(beforeBalance) +
                 " -> " + TextFormatter::formatMoney(player.getBalance()) + ".");
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " membayar DoctorFeeCard " +
+                TextFormatter::formatMoney(amountToPay) + " ke Bank.");
         return;
     }
 

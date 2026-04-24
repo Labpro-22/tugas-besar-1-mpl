@@ -8,6 +8,7 @@
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
 #include "utils/TextFormatter.hpp"
+#include "utils/TransactionLogger.hpp"
 
 #include <algorithm>
 #include <iomanip>
@@ -161,6 +162,18 @@ namespace {
     int getCurrentTurn(GameContext& context) {
         TurnManager* turnManager = context.getTurnManager();
         return turnManager == nullptr ? 0 : turnManager->getCurrentTurn();
+    }
+
+    void logWithUsername(
+        GameContext& context,
+        const std::string& username,
+        const std::string& actionType,
+        const std::string& detail
+    ) {
+        TransactionLogger* logger = context.getLogger();
+        if (logger != nullptr) {
+            logger->log(getCurrentTurn(context), username, actionType, detail);
+        }
     }
 
     std::vector<LiquidationOption> buildLiquidationOptions(Player& player) {
@@ -354,6 +367,12 @@ bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
             }
             creditor->setBalance(creditor->getBalance() + player.getBalance());
             transferAssetsToPlayer(player, *creditor);
+            logWithUsername(
+                context,
+                player.getUsername(),
+                "BANGKRUT",
+                "Aset dan uang tunai " + TextFormatter::formatMoney(player.getBalance()) +
+                    " dialihkan ke " + creditor->getUsername() + ".");
             if (io != nullptr) {
                 io->showMessage(creditor->getUsername() + " menerima semua aset " + player.getUsername() + ".");
             }
@@ -372,6 +391,11 @@ bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
                 io->showMessage("");
             }
             transferAssetsToBank(player, context.getAuctionManager());
+            logWithUsername(
+                context,
+                player.getUsername(),
+                "BANGKRUT",
+                "Aset dikembalikan ke Bank dan bangunan dihancurkan.");
         }
         player.setBalance(0);
         declareBankrupt(player, context);
@@ -400,8 +424,18 @@ bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
         if (creditor) {
             creditor->setBalance(creditor->getBalance() + player.getBalance());
             transferAssetsToPlayer(player, *creditor);
+            logWithUsername(
+                context,
+                player.getUsername(),
+                "BANGKRUT",
+                "Sisa uang dan aset dialihkan ke " + creditor->getUsername() + ".");
         } else {
             transferAssetsToBank(player, context.getAuctionManager());
+            logWithUsername(
+                context,
+                player.getUsername(),
+                "BANGKRUT",
+                "Sisa aset dikembalikan ke Bank.");
         }
         player.setBalance(0);
         declareBankrupt(player, context);
@@ -426,6 +460,12 @@ bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
     if (creditor) {
         creditor->setBalance(creditor->getBalance() + amount);
     }
+    logWithUsername(
+        context,
+        player.getUsername(),
+        "PEMBAYARAN",
+        "Membayar " + TextFormatter::formatMoney(amount) +
+            (creditor == nullptr ? " ke Bank setelah likuidasi." : " kepada " + creditor->getUsername() + " setelah likuidasi."));
     if (context.getIO() != nullptr) {
         context.getIO()->showPaymentNotification(
             "PAYMENT",
@@ -511,6 +551,11 @@ void BankruptcyHandler::auctionBankruptAssets(
 
                     if (amount < 0) {
                         auction->processPass(bidder);
+                        logWithUsername(
+                            context,
+                            bidder->getUsername(),
+                            "LELANG",
+                            "Pass lelang aset bangkrut " + property->getName() + " (" + property->getCode() + ")");
                         bidResolved = true;
                         continue;
                     }
@@ -529,6 +574,12 @@ void BankruptcyHandler::auctionBankruptAssets(
                                 );
                                 io->showMessage("");
                             }
+                            logWithUsername(
+                                context,
+                                bidder->getUsername(),
+                                "LELANG",
+                                "Bid " + TextFormatter::formatMoney(amount) + " untuk aset bangkrut " +
+                                    property->getName() + " (" + property->getCode() + ")");
                             bidResolved = true;
                         }
                     } catch (const std::exception& e) {
@@ -554,6 +605,12 @@ void BankruptcyHandler::auctionBankruptAssets(
 
                 try {
                     auction->processBid(forcedBidder, 0);
+                    logWithUsername(
+                        context,
+                        forcedBidder->getUsername(),
+                        "LELANG",
+                        "Bid otomatis " + TextFormatter::formatMoney(0) + " untuk aset bangkrut " +
+                            property->getName() + " (" + property->getCode() + ")");
                     if (io != nullptr) {
                         io->showMessage(
                             "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
@@ -573,7 +630,9 @@ void BankruptcyHandler::auctionBankruptAssets(
         int winningBid = auction->getHighestBid();
         auction->finalizeAuction();
         if (winner != nullptr) {
-            context.logEvent(
+            logWithUsername(
+                context,
+                winner->getUsername(),
                 "LELANG",
                 winner->getUsername() + " memenangkan aset bangkrut " + property->getCode() +
                 " seharga " + TextFormatter::formatMoney(winningBid));
@@ -596,7 +655,7 @@ void BankruptcyHandler::auctionBankruptAssets(
                 );
             }
         } else {
-            context.logEvent("LELANG", property->getCode() + " tidak terjual pada lelang aset bangkrut.");
+            logWithUsername(context, "SYSTEM", "LELANG", property->getCode() + " tidak terjual pada lelang aset bangkrut.");
             if (io != nullptr) {
                 io->showMessage("Lelang selesai!");
                 io->showAuctionNotification(
@@ -637,7 +696,7 @@ void BankruptcyHandler::transferAssetsToBank(Player& player, AuctionManager* auc
 
 void BankruptcyHandler::declareBankrupt(Player& player, GameContext& context) {
     player.setStatus(PlayerStatus::BANKRUPT);
-    context.logEvent("BANGKRUT", player.getUsername() + " dinyatakan bangkrut.");
+    logWithUsername(context, player.getUsername(), "BANGKRUT", player.getUsername() + " dinyatakan bangkrut.");
     if (context.getTurnManager() != nullptr) {
         context.getTurnManager()->removePlayer(&player);
     }

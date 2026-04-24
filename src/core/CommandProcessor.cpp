@@ -239,7 +239,6 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
     player.setHasRolledThisTurn(false);
-    expireTemporarySkillEffects(player, ui, "sebelum giliran tambahan");
     ui.showMessage("Double! Kamu bebas dari penjara.");
     ui.showMessage("Silakan lempar dadu lagi untuk melanjutkan giliran.");
     ui.renderBoard(board, players, turnManager);
@@ -321,7 +320,6 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
         player.isActive() &&
         player.getConsecutiveDoubles() > 0 &&
         player.getConsecutiveDoubles() < 3) {
-        expireTemporarySkillEffects(player, ui, "sebelum giliran tambahan");
         ui.showMessage("DOUBLE! Kamu mendapat giliran tambahan.");
         if (logger != nullptr) {
             logger->log(
@@ -530,6 +528,13 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         }
 
         try {
+            if (logger != nullptr) {
+                logger->log(
+                    turnManager.getCurrentTurn(),
+                    player.getUsername(),
+                    "SAVE",
+                    "Menyimpan permainan ke " + resolvedPath);
+            }
             saveManager.saveGame(filename, createGameState());
         } catch (const SaveLoadException&) {
             ui.showMessage("Gagal menyimpan file! Pastikan direktori dapat ditulis.");

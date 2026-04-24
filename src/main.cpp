@@ -5,7 +5,6 @@
 #include "core/GameEngine.hpp"
 #include "models/state/Command.hpp"
 #include "models/state/GameState.hpp"
-#include "models/state/PlayerState.hpp"
 #include "models/config/ConfigData.hpp"
 #include "utils/ConfigLoader.hpp"
 #include "utils/SaveManager.hpp"
@@ -14,12 +13,59 @@
 #include "utils/exceptions/NimonspoliException.hpp"
 #include "views/GameUI.hpp"
 
+namespace {
+    void runCliGameLoop(GameEngine& engine, GameUI& ui, TransactionLogger& logger) {
+        std::string displayedPlayer;
+        int displayedTurn = 0;
+
+        while (!engine.isGameEnded()) {
+            Player* currentPlayer = engine.getCurrentPlayer();
+            if (currentPlayer == nullptr) {
+                break;
+            }
+
+            if (displayedTurn != engine.getCurrentTurn() ||
+                displayedPlayer != currentPlayer->getUsername()) {
+                displayedTurn = engine.getCurrentTurn();
+                displayedPlayer = currentPlayer->getUsername();
+                ui.showSection(
+                    "TURN " + std::to_string(displayedTurn) + " - " + displayedPlayer);
+                ui.showTurnSummary(*currentPlayer);
+            }
+
+            Command command = ui.promptPlayerCommand(currentPlayer->getUsername());
+            if (command.getKeyword() == "KELUAR") {
+                return;
+            }
+
+            try {
+                engine.executeCommand(command);
+            } catch (const std::exception& e) {
+                const Player* activePlayer = engine.getCurrentPlayer();
+                ui.showError(
+                    e,
+                    &logger,
+                    engine.getCurrentTurn(),
+                    activePlayer == nullptr ? "SYSTEM" : activePlayer->getUsername());
+            } catch (...) {
+                ui.showUnknownError(&logger, engine.getCurrentTurn(), "SYSTEM");
+            }
+        }
+
+        ui.showSection("PERMAINAN SELESAI");
+        ui.showWinner(
+            engine.determineWinner(),
+            engine.getPlayers(),
+            engine.isMaxTurnReached());
+    }
+}
+
 int main() {
     try {
         TransactionLogger logger;
         ConfigData config = ConfigLoader("config").loadAll();
-        GameEngine engine(&logger);
         GameUI ui;
+        GameEngine engine(ui, &logger);
 
         int choice = ui.showMainMenu();
 
@@ -27,9 +73,9 @@ int main() {
             ui.showMessage("\nMemulai game baru...");
             int playerCount = ui.promptPlayerCount();
             std::vector<std::string> playerNames = ui.promptPlayerNames(playerCount);
-            engine.initialize(config, playerNames);
+            engine.startNewGame(config, playerNames);
             ui.showMessage("\n\nGame baru berhasil diinisialisasi.");
-            engine.runGameLoop();
+            runCliGameLoop(engine, ui, logger);
         } else if (choice == 2) {
             Command loadCommand = ui.promptLoadCommand();
             const std::string& keyword = loadCommand.getKeyword();
@@ -58,17 +104,12 @@ int main() {
                     return 0;
                 }
 
-                std::vector<std::string> playerNames;
-                for (const PlayerState& playerState : gameState.getPlayerStates()) {
-                    playerNames.push_back(playerState.getUsername());
-                }
-                engine.initialize(config, playerNames);
-                engine.loadGame(gameState);
+                engine.loadGame(config, gameState);
                 ui.showMessage(
                     "Permainan berhasil dimuat. Melanjutkan giliran " +
                     gameState.getActivePlayerUsername() + "..."
                 );
-                engine.runGameLoop();
+                runCliGameLoop(engine, ui, logger);
             }
         } else {
             ui.showMessage("Pilihan tidak valid.");

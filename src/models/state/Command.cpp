@@ -169,14 +169,6 @@ const std::string& Command::getKeyword() const {
     return keyword;
 }
 
-std::vector<std::string>& Command::getArgs() {
-    return args;
-}
-
-const std::vector<std::string>& Command::getArgs() const {
-    return args;
-}
-
 std::string Command::getArg(int index) const {
     if (index < 0 || index >= static_cast<int>(args.size())) {
         throw std::out_of_range("Command::getArg index di luar batas.");

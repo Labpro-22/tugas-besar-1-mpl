@@ -107,10 +107,6 @@ void AuctionManager::reset() {
     auctionOrder.clear();
 }
 
-PropertyTile* AuctionManager::getProperty() const {
-    return property;
-}
-
 int AuctionManager::getHighestBid() const {
     return highestBid;
 }

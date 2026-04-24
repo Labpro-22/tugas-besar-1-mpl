@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "core/CoreGameSession.hpp"
+#include "core/GameEngine.hpp"
 #include "core/QtGameIO.hpp"
 #include "models/config/ConfigData.hpp"
 #include "models/state/GameState.hpp"
@@ -68,7 +68,7 @@ private:
 
     TransactionLogger logger;
     QtGameIO io;
-    CoreGameSession coreSession;
+    GameEngine coreSession;
     ConfigData configData;
     bool configLoaded = false;
 };

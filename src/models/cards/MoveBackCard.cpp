@@ -16,10 +16,6 @@ MoveBackCard::MoveBackCard(int steps)
     : ActionCard("Mundur " + std::to_string(steps) + " petak."),
       steps(steps) {}
 
-int MoveBackCard::getSteps() const {
-    return steps;
-}
-
 void MoveBackCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari kartu mundur.");
@@ -45,6 +41,11 @@ void MoveBackCard::execute(Player& player, GameContext& gameContext) {
         }
         gameContext.showMessage(
             "Bidak dipindahkan ke " + targetTile->getName() +
+                " (" + targetTile->getCode() + ").");
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " terkena MoveBackCard mundur " +
+                std::to_string(steps) + " petak ke " + targetTile->getName() +
                 " (" + targetTile->getCode() + ").");
         if (MovementService::shouldSkipGoLandingSalary(targetTile)) {
             gameContext.showMessage("Pergerakan mundur ke GO tidak memberikan gaji.");

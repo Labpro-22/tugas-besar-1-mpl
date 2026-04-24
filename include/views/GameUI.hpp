@@ -97,12 +97,14 @@ public:
         const std::vector<Player>& players,
         GameContext& context
     );
+    void showWinner(
+        const std::vector<Player*>& winners,
+        const std::vector<Player>& players,
+        bool maxTurnReached
+    );
 
     void showLogEntries(const std::vector<LogEntry>& entries) override;
     void renderBoard(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager) override;
     void showPropertyDeed(const PropertyTile* property) override;
     void showPlayerProperties(const Player& player) override;
-
-    BoardRenderer& getBoardRenderer();
-    PropertyCardRenderer& getPropertyCardRenderer();
 };

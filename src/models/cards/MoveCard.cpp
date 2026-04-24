@@ -10,8 +10,8 @@
 MoveCard::MoveCard()
     : SkillCard() {}
 
-MoveCard::MoveCard(int value, int remainingDuration)
-    : SkillCard(value, remainingDuration) {}
+MoveCard::MoveCard(int value)
+    : SkillCard(value) {}
 
 std::string MoveCard::getTypeName() const {
     return "MoveCard";
@@ -39,6 +39,10 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     gameContext.showMessage(
         "MoveCard digunakan! " + player.getUsername() +
             " maju " + std::to_string(getValue()) + " petak.");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan MoveCard maju " +
+            std::to_string(getValue()) + " petak.");
 
     if (passedGo) {
         MovementService::awardGoSalaryForForwardMovement(

@@ -300,6 +300,12 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
                         "Bangunan " + street->getName() + " terjual. Kamu menerima " +
                         TextFormatter::formatMoney(received) + "."
                     );
+                    logAssetAction(
+                        context,
+                        player,
+                        "JUAL_BANGUNAN",
+                        "Menjual bangunan di " + street->getName() + " (" + street->getCode() +
+                            "), menerima " + TextFormatter::formatMoney(received));
                 }
             }
 

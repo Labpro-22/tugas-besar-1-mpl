@@ -12,7 +12,7 @@ PropertyTile::PropertyTile(int index,
                            const std::string& name,
                            int buyPrice,
                            int mortgageValue)
-    : Tile(index, code, name, TileCategory::PROPERTY),
+    : Tile(index, code, name),
       owner(nullptr),
       status(PropertyStatus::BANK),
       mortgageValue(mortgageValue),

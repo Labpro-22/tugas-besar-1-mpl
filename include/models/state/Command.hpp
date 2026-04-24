@@ -13,8 +13,6 @@ public:
     Command(const std::string& keyword, const std::vector<std::string>& args);
 
     const std::string& getKeyword() const;
-    std::vector<std::string>& getArgs();
-    const std::vector<std::string>& getArgs() const;
     std::string getArg(int index) const;
     int getArgCount() const;
     bool isKnown() const;

@@ -16,7 +16,7 @@
 FestivalTile::FestivalTile() : ActionTile() {}
 
 FestivalTile::FestivalTile(int index, const std::string& code, const std::string& name)
-    : ActionTile(index, code, name, TileCategory::DEFAULT) {}
+    : ActionTile(index, code, name) {}
 
 void FestivalTile::onLanded(Player& player, GameContext& gameContext) {
     gameContext.showMessage("Kamu mendarat di petak Festival!");

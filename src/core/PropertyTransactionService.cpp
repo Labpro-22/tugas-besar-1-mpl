@@ -22,6 +22,13 @@ namespace {
         return turnManager == nullptr ? 0 : turnManager->getCurrentTurn();
     }
 
+    void logAuctionEvent(const GameContext& context, const std::string& username, const std::string& detail) {
+        TransactionLogger* logger = context.getLogger();
+        if (logger != nullptr) {
+            logger->log(getCurrentTurn(context), username, "LELANG", detail);
+        }
+    }
+
     std::string getRentConditionLabel(const PropertyTile& tile) {
         const StreetTile* street = tile.asStreetTile();
         if (street != nullptr) {
@@ -110,7 +117,8 @@ void PropertyTransactionService::handlePropertyLanded(
             context.logEvent(
                 "BELI",
                 tile.getName() + " (" + tile.getCode() + ") kini milik " +
-                    player.getUsername() + " (otomatis)");
+                    player.getUsername() + " (otomatis, harga " +
+                    TextFormatter::formatMoney(finalPrice) + ")");
             return;
         } else if (io != nullptr) {
             io->showMessage("Uang tidak cukup. Properti ini akan masuk ke sistem lelang...");
@@ -170,6 +178,10 @@ void PropertyTransactionService::handlePropertyLanded(
 
                     if (amount < 0) {
                         auction->processPass(bidder);
+                        logAuctionEvent(
+                            context,
+                            bidder->getUsername(),
+                            "Pass lelang " + tile.getName() + " (" + tile.getCode() + ")");
                         bidResolved = true;
                         continue;
                     }
@@ -188,6 +200,11 @@ void PropertyTransactionService::handlePropertyLanded(
                                 );
                                 io->showMessage("");
                             }
+                            logAuctionEvent(
+                                context,
+                                bidder->getUsername(),
+                                "Bid " + TextFormatter::formatMoney(amount) + " untuk " +
+                                    tile.getName() + " (" + tile.getCode() + ")");
                             bidResolved = true;
                         }
                     } catch (const std::exception& e) {
@@ -213,6 +230,11 @@ void PropertyTransactionService::handlePropertyLanded(
 
                 try {
                     auction->processBid(forcedBidder, 0);
+                    logAuctionEvent(
+                        context,
+                        forcedBidder->getUsername(),
+                        "Bid otomatis " + TextFormatter::formatMoney(0) + " untuk " +
+                            tile.getName() + " (" + tile.getCode() + ")");
                     if (io != nullptr) {
                         io->showMessage(
                             "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
@@ -251,8 +273,9 @@ void PropertyTransactionService::handlePropertyLanded(
                     ") kini dimiliki " + winner->getUsername() + "."
                 );
             }
-            context.logEvent(
-                "LELANG",
+            logAuctionEvent(
+                context,
+                winner->getUsername(),
                 "Menang lelang " + tile.getName() + " (" + tile.getCode() +
                     ") seharga " + TextFormatter::formatMoney(winningBid));
         } else {
@@ -262,7 +285,7 @@ void PropertyTransactionService::handlePropertyLanded(
                     "Lelang selesai. " + tile.getName() + " tidak terjual.");
                 io->showMessage("Lelang selesai! " + tile.getName() + " tidak terjual.");
             }
-            context.logEvent("LELANG", tile.getName() + " tidak terjual.");
+            logAuctionEvent(context, "SYSTEM", tile.getName() + " tidak terjual.");
         }
 
         return;
@@ -358,6 +381,14 @@ void PropertyTransactionService::handleRentPayment(
             const bool settled = bankruptcyHandler->handleBankruptcy(player, owner, rentAmount, context);
             if (!settled && io != nullptr) {
                 io->showMessage("Likuidasi dibatalkan. Pembayaran sewa belum dilakukan.");
+            }
+            if (settled && !player.isBankrupt() && context.getLogger() != nullptr) {
+                context.getLogger()->log(
+                    getCurrentTurn(context),
+                    player.getUsername(),
+                    "SEWA",
+                    "Bayar sewa " + TextFormatter::formatMoney(rentAmount) + " ke " +
+                        owner->getUsername() + " (" + tile.getCode() + ") setelah likuidasi.");
             }
         } else {
             player -= rentAmount;

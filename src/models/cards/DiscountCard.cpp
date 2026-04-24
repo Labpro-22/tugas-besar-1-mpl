@@ -4,10 +4,10 @@
 #include "models/Player.hpp"
 
 DiscountCard::DiscountCard()
-    : SkillCard(0, 1) {}
+    : SkillCard(0) {}
 
-DiscountCard::DiscountCard(int value, int remainingDuration)
-    : SkillCard(value, remainingDuration) {}
+DiscountCard::DiscountCard(int value)
+    : SkillCard(value) {}
 
 std::string DiscountCard::getTypeName() const {
     return "DiscountCard";
@@ -15,7 +15,6 @@ std::string DiscountCard::getTypeName() const {
 
 void DiscountCard::use(Player& player, GameContext& gameContext) {
     player.setDiscountPercent(getValue());
-    setRemainingDuration(1);
     gameContext.showMessage(
         "DiscountCard diaktifkan! Semua pembayaran selama giliran ini mendapat diskon " +
             std::to_string(getValue()) + "%.");

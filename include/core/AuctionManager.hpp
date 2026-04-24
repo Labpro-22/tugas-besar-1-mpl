@@ -25,7 +25,6 @@ public:
 
     void reset();
 
-    PropertyTile* getProperty() const;
     int getHighestBid() const;
     Player* getHighestBidder() const;
     const std::vector<Player*>& getAuctionOrder() const;

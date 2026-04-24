@@ -10,7 +10,7 @@
 CardTile::CardTile() : ActionTile(), cardType(CardType::CHANCE) {}
 
 CardTile::CardTile(int index, const std::string& code, const std::string& name, CardType cardType)
-    : ActionTile(index, code, name, TileCategory::DEFAULT), cardType(cardType) {}
+    : ActionTile(index, code, name), cardType(cardType) {}
 
 void CardTile::onLanded(Player& player, GameContext& gameContext) {
     std::string tileName = cardType == CardType::CHANCE ? "Petak Kesempatan" : "Petak Dana Umum";
@@ -25,6 +25,18 @@ void CardTile::onLanded(Player& player, GameContext& gameContext) {
             ActionCard* card = deck->draw();
             
             if (card) {
+                if (gameContext.getLogger() != nullptr) {
+                    int currentTurn = 0;
+                    if (gameContext.getTurnManager() != nullptr) {
+                        currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+                    }
+                    gameContext.getLogger()->log(
+                        currentTurn,
+                        player.getUsername(),
+                        "KARTU",
+                        "Mengambil kartu " + tileName + ": " + card->getText()
+                    );
+                }
                 gameContext.showActionCard(cardType, *card);
                 card->execute(player, gameContext);
                 deck->discardCard(card); 

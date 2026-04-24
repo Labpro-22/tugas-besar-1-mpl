@@ -9,7 +9,7 @@
 GoToJailTile::GoToJailTile() : ActionTile() {}
 
 GoToJailTile::GoToJailTile(int index, const std::string& code, const std::string& name)
-    : ActionTile(index, code, name, TileCategory::DEFAULT) {}
+    : ActionTile(index, code, name) {}
 
 void GoToJailTile::onLanded(Player& player, GameContext& gameContext) {
     gameContext.showMessage("Kamu mendarat di Petak Pergi ke Penjara!");

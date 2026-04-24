@@ -5,7 +5,7 @@
 class DiscountCard : public SkillCard {
 public:
     DiscountCard();
-    DiscountCard(int value, int remainingDuration);
+    explicit DiscountCard(int value);
 
     std::string getTypeName() const override;
     void use(Player& player, GameContext& gameContext) override;

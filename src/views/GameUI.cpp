@@ -491,6 +491,14 @@ void GameUI::showWinner(
 ) {
     TurnManager* turnManager = context.getTurnManager();
     bool maxTurnReached = turnManager != nullptr && turnManager->isMaxTurnReached();
+    showWinner(winners, players, maxTurnReached);
+}
+
+void GameUI::showWinner(
+    const std::vector<Player*>& winners,
+    const std::vector<Player>& players,
+    bool maxTurnReached
+) {
     printLines(CliOutputFormatter::formatWinnerSummary(winners, players, maxTurnReached));
 }
 
@@ -508,12 +516,4 @@ void GameUI::showPropertyDeed(const PropertyTile* property) {
 
 void GameUI::showPlayerProperties(const Player& player) {
     propRenderer.renderPlayerProperties(player);
-}
-
-BoardRenderer& GameUI::getBoardRenderer() {
-    return boardRenderer;
-}
-
-PropertyCardRenderer& GameUI::getPropertyCardRenderer() {
-    return propRenderer;
 }

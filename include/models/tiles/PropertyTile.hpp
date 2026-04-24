@@ -1,5 +1,6 @@
 #pragma once
 
+#include "models/Enums.hpp"
 #include "Tile.hpp"
 
 class RailroadTile;

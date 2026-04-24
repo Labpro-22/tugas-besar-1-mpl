@@ -42,5 +42,9 @@ void MoveToNearestStationCard::execute(Player& player, GameContext& gameContext)
     gameContext.showMessage(
         "Bidak dipindahkan ke stasiun terdekat: " + nearestRailroad->getName() +
             " (" + nearestRailroad->getCode() + ").");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " terkena kartu stasiun terdekat ke " +
+            nearestRailroad->getName() + " (" + nearestRailroad->getCode() + ").");
     nearestRailroad->onLanded(player, gameContext);
 }
