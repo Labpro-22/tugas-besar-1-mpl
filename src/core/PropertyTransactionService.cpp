@@ -320,7 +320,7 @@ void PropertyTransactionService::handleRentPayment(
 
     if (player.isShieldActive()) {
         if (io != nullptr) {
-            io->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari tagihan sewa.");
+            io->showMessage("[SHIELD ACTIVE]: Alhamdulillah, ShieldCard melindungimu dari tagihan sewa!");
         }
         context.logEvent(
             "SEWA",

@@ -141,7 +141,7 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
 
     bool finePaid = false;
     if (fineToPay > 0 && !player.canAfford(fineToPay)) {
-        ui.showMessage("Uang tidak cukup untuk membayar denda. Aset akan dilikuidasi bila memungkinkan.");
+        ui.showMessage("Yahhhh.... uang kamu tidak cukup untuk membayar denda. Aset akan dilikuidasi bila memungkinkan.");
         if (context != nullptr && context->getBankruptcyHandler() != nullptr) {
             finePaid = context->getBankruptcyHandler()->handleBankruptcy(player, nullptr, fineToPay, *context) && !player.isBankrupt();
         } else {
@@ -193,7 +193,7 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     }
 
     if (player.getJailTurns() > 3) {
-        throw InvalidCommandException(keyword, "giliran ke-4 di penjara wajib keluar dengan BAYAR_DENDA");
+        throw InvalidCommandException(keyword, "Sipir penjara udah bosan lihat kamu, kamu wajib BAYAR_DENDA untuk keluar dari penjara.");
     }
 
     if (keyword == "ATUR_DADU") {
@@ -226,9 +226,9 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     }
 
     if (!dice.isDouble()) {
-        ui.showMessage("Belum double. Kamu tetap di penjara dan giliran berakhir.");
+        ui.showMessage("Yahhhh.... busuk kali hoki u. Kamu masih berada di penjara dan giliran berakhir.");
         if (player.getJailTurns() >= 3) {
-            ui.showMessage("Percobaan sudah 3 kali. Giliran berikutnya wajib BAYAR_DENDA.");
+            ui.showMessage("Percobaan sudah 3 kali. Kamu harus BAYAR_DENDA yaaa...");
         }
         expireTemporarySkillEffects(player, ui, "saat giliran berakhir");
         ui.renderBoard(board, players, turnManager);
@@ -239,7 +239,7 @@ CommandResult CommandProcessor::processJailDiceAttempt(const Command& command, P
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
     player.setHasRolledThisTurn(false);
-    ui.showMessage("Double! Kamu bebas dari penjara.");
+    ui.showMessage("GACORRR DOUBLEEE! Kamu bebas dari penjara.");
     ui.showMessage("Silakan lempar dadu lagi untuk melanjutkan giliran.");
     ui.renderBoard(board, players, turnManager);
     return CommandResult(false, false);
@@ -277,7 +277,8 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
             Tile* jailTile = board.getTile("PEN");
             applyJailState(player, jailTile);
             expireTemporarySkillEffects(player, ui, "saat giliran berakhir");
-            ui.showMessage("Kamu mendapat double tiga kali berturut-turut!");
+            ui.showMessage("Kamu mendapat tiga kali double berturut-turut!");
+            ui.showMessage("Kamu nggak bisa hoki selamanya, Bung!");
             ui.showMessage("Bidak langsung dipindahkan ke Penjara dan giliran berakhir.");
             if (logger != nullptr) {
                 logger->log(
@@ -320,7 +321,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
         player.isActive() &&
         player.getConsecutiveDoubles() > 0 &&
         player.getConsecutiveDoubles() < 3) {
-        ui.showMessage("DOUBLE! Kamu mendapat giliran tambahan.");
+        ui.showMessage("BOOMMMM DOUBLEEEE! Kamu mendapat giliran tambahan.");
         if (logger != nullptr) {
             logger->log(
                 turnManager.getCurrentTurn(),
@@ -339,7 +340,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
 void CommandProcessor::processSkillCommand(Player& player) {
     if (player.hasUsedSkillThisTurn()) {
         ui.showMessage("Kamu sudah menggunakan kartu kemampuan pada giliran ini!");
-        ui.showMessage("Penggunaan kartu dibatasi maksimal 1 kali dalam 1 giliran.");
+        ui.showMessage("Penggunaan kartu dibatasi maksimal 1 kali dalam 1 giliran. Jangan maruk yaa...");
         return;
     }
 
@@ -542,7 +543,7 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         }
 
         if (existedBefore) {
-            ui.showMessage("File berhasil ditimpa.");
+            ui.showMessage("File berhasil ditimpa. Calon tukang timpa kamu, Bung :D");
         } else if (resolvedPath.find(filename) != std::string::npos) {
             ui.showMessage("Permainan berhasil disimpan ke: " + filename);
         } else {

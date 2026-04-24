@@ -226,7 +226,8 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
         if (selectedTileIndex < 0) {
             return;
         }
-        selected = dynamic_cast<PropertyTile*>(board->getTile(selectedTileIndex));
+        Tile* tile = board->getTile(selectedTileIndex);
+        selected = tile == nullptr ? nullptr : tile->asPropertyTile();
     } else {
         io->showMessage("=== Properti yang Dapat Digadaikan ===");
         for (int i = 0; i < static_cast<int>(available.size()); ++i) {
@@ -365,7 +366,8 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
         if (selectedTileIndex < 0) {
             return;
         }
-        selected = dynamic_cast<PropertyTile*>(board->getTile(selectedTileIndex));
+        Tile* tile = board->getTile(selectedTileIndex);
+        selected = tile == nullptr ? nullptr : tile->asPropertyTile();
     } else {
         io->showMessage("=== Properti yang Sedang Digadaikan ===");
         for (int i = 0; i < static_cast<int>(mortgaged.size()); ++i) {
@@ -476,7 +478,9 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
             return;
         }
 
-        selected = dynamic_cast<StreetTile*>(board->getTile(selectedTileIndex));
+        Tile* tile = board->getTile(selectedTileIndex);
+        PropertyTile* property = tile == nullptr ? nullptr : tile->asPropertyTile();
+        selected = property == nullptr ? nullptr : property->asStreetTile();
         if (selected != nullptr) {
             selectedGroup = selected->getColorGroup();
         }

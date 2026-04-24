@@ -11,13 +11,13 @@ CampaignCard::CampaignCard()
     : CampaignCard(200) {}
 
 CampaignCard::CampaignCard(int amount)
-    : ActionCard("Anda mau nyaleg. Bayar " + TextFormatter::formatMoney(amount) + " kepada setiap pemain."),
+    : ActionCard("Anda mau nyaleg. Bayar " + TextFormatter::formatMoney(amount) + " kepada setiap pemain untuk kampanye."),
       amount(amount) {}
 
 void CampaignCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
         gameContext.showMessage(
-            "[SHIELD ACTIVE]: Efek ShieldCard melindungi kamu dari tagihan CampaignCard.");
+            "[SHIELD ACTIVE]: Alhamdulillah, kamu berhasil melakukan kampanye gratis dengan ShieldCard!");
         gameContext.logEvent(
             "KARTU",
             player.getUsername() + " terlindungi ShieldCard dari CampaignCard.");

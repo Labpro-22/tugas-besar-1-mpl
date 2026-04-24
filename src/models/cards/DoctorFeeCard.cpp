@@ -12,12 +12,12 @@ DoctorFeeCard::DoctorFeeCard()
     : DoctorFeeCard(700) {}
 
 DoctorFeeCard::DoctorFeeCard(int amount)
-    : ActionCard("Biaya dokter. Bayar " + TextFormatter::formatMoney(amount) + "."),
+    : ActionCard("Kamu sakit keras dan harus berobat! Bayar " + TextFormatter::formatMoney(amount) + " untuk Biaya Dokter."),
       amount(amount) {}
 
 void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
-        gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda!");
+        gameContext.showMessage("[SHIELD ACTIVE]: Alhamdulillah, kamu dapat berobat gratis dengan ShieldCard!");
         gameContext.showMessage(
             "Tagihan " + TextFormatter::formatMoney(amount) +
                 " dibatalkan. Uang Anda tetap: " + TextFormatter::formatMoney(player.getBalance()) + ".");

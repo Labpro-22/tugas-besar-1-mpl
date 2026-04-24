@@ -262,6 +262,8 @@ namespace CliOutputFormatter {
 
     std::vector<std::string> formatMainMenu() {
         return {
+            "",
+            "",
             makeBorder(MENU_INNER_WIDTH, '-'),
             makeRow(centerText("NIMONSPOLI", MENU_INNER_WIDTH), MENU_INNER_WIDTH),
             makeBorder(MENU_INNER_WIDTH, '-'),
@@ -515,7 +517,7 @@ namespace CliOutputFormatter {
         lines.push_back("=== Properti Milik: " + player.getUsername() + " ===");
         if (ownedProperties.empty()) {
             lines.push_back("");
-            lines.push_back("Kamu belum memiliki properti apapun.");
+            lines.push_back("Ehhh kok kosong? OHHH ternyata kamu belum memiliki properti apapun, hehe");
             return lines;
         }
 

@@ -113,9 +113,9 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     targetProperty->setFestivalState(1, 0);
 
     gameContext.showMessage(
-        "Semua bangunan di " + targetProperty->getName()
+        "BOOOMMMM!!! Semua bangunan di " + targetProperty->getName()
             + " (" + targetProperty->getCode() + ") milik "
-            + owner->getUsername() + " telah dihancurkan. "
+            + owner->getUsername() + " sudah rata dengan tanah. "
             + "Status kepemilikan tetap milik " + owner->getUsername() + ".");
     gameContext.logEvent(
         "KARTU",

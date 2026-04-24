@@ -27,7 +27,7 @@ BirthdayCard::BirthdayCard()
     : BirthdayCard(100) {}
 
 BirthdayCard::BirthdayCard(int amount)
-    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan " + TextFormatter::formatMoney(amount) + " dari setiap pemain."),
+    : ActionCard("SELAMAT ULANG TAHUNNN!!!. Dapatkan " + TextFormatter::formatMoney(amount) + " dari setiap pemain."),
       amount(amount) {}
 
 void BirthdayCard::execute(Player& player, GameContext& gameContext) {

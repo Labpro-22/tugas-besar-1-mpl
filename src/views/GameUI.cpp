@@ -150,7 +150,7 @@ int GameUI::promptAuctionBidInput(
             }
 
             if (amount > balance) {
-                std::cout << "Bid melebihi saldo pemain.\n";
+                std::cout << "Hey hey cek dompet yaa kalo BID, BID melebihi saldo pemain.\n";
                 continue;
             }
 
@@ -180,7 +180,7 @@ int GameUI::showMainMenu() {
             return choice;
         }
 
-        std::cout << "Input tidak valid. Masukkan 1 untuk Game Baru atau 2 untuk Muat Game." << std::endl;
+        std::cout << "Inputnya salah yaa... Ketik 1 untuk mulai Game Baru atau 2 untuk melanjutkan permainan" << std::endl;
     }
 }
 
@@ -192,7 +192,7 @@ Command GameUI::promptLoadCommand() {
         if (!command.getKeyword().empty()) {
             return command;
         }
-        std::cout << "Input tidak boleh kosong. Masukkan command yang valid." << std::endl;
+        std::cout << "Ada yang bisa aku bantu? Kalo bingung ketik HELP yaa~" << std::endl;
     }
 }
 
@@ -226,7 +226,7 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
             name = trimWhitespace(name);
 
             if (name.empty()) {
-                std::cout << "Username tidak boleh kosong." << std::endl;
+                std::cout << "Usernamenya nggak boleh kosong yaa..." << std::endl;
                 continue;
             }
 
@@ -246,7 +246,7 @@ std::vector<std::string> GameUI::promptPlayerNames(int n) {
             }
 
             if (isDuplicateName(names, name)) {
-                std::cout << "Username sudah digunakan. Masukkan username yang berbeda." << std::endl;
+                std::cout << "Username sudah digunakan oleh pemain lain. Masukkan username yang berbeda." << std::endl;
                 continue;
             }
 
@@ -398,7 +398,7 @@ int GameUI::promptTileSelection(
 
 Command GameUI::promptPlayerCommand(const std::string& username) {
     std::cout << "\n";
-    std::cout << "Bingung? ketik HELP ea...\n";
+    std::cout << "Butuh bantuan? Ketik HELP yaa~\n";
     while (true) {
         std::cout << "> [" << username << "]: ";
         Command command = readCommand();
@@ -455,7 +455,7 @@ void GameUI::showStreetPurchasePreview(
     showMessage("Uang kamu saat ini: " + TextFormatter::formatMoney(player.getBalance()));
     if (finalPrice != originalPrice) {
         showMessage(
-            "Diskon aktif. Harga beli menjadi " + TextFormatter::formatMoney(finalPrice) +
+            "Selamat!!! Diskon kamu aktif. Harga beli menjadi " + TextFormatter::formatMoney(finalPrice) +
             " dari " + TextFormatter::formatMoney(originalPrice) + "."
         );
     }

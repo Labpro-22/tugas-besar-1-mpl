@@ -69,7 +69,7 @@ void TeleportCard::use(Player& player, GameContext& gameContext) {
     io->showPawnStep(player, targetIndex);
 
     gameContext.showMessage(
-        "Teleport berhasil! " + player.getUsername()
+        "Whooosh! Teleport berhasil! " + player.getUsername()
             + " berpindah ke " + targetTile->getName()
             + " (" + targetTile->getCode() + ").");
     gameContext.logEvent(

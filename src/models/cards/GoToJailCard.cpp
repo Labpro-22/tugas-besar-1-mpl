@@ -4,7 +4,6 @@
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
 #include "models/Player.hpp"
-#include "models/tiles/JailTile.hpp"
 #include "models/tiles/Tile.hpp"
 
 GoToJailCard::GoToJailCard()
@@ -12,7 +11,7 @@ GoToJailCard::GoToJailCard()
 
 void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
-        gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari kartu masuk penjara.");
+        gameContext.showMessage("[SHIELD ACTIVE]: Alhamdulillah, ShieldCard melindungimu dari masuk Penjara!");
         gameContext.logEvent(
             "KARTU",
             player.getUsername() + " terlindungi ShieldCard dari GoToJailCard.");
@@ -23,10 +22,10 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
 
     Board* board = gameContext.getBoard();
     Tile* jailTileBase = board == nullptr ? nullptr : board->getTile("PEN");
-    if (const JailTile* jailTile = dynamic_cast<const JailTile*>(jailTileBase)) {
-        jailTile->applyJailStatus(player);
+    if (jailTileBase != nullptr) {
+        jailTileBase->applyJailStatus(player);
         if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showPawnStep(player, jailTile->getIndex());
+            gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
         }
         return;
     }
