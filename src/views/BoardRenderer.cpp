@@ -15,6 +15,7 @@
 #include "models/tiles/StreetTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "models/tiles/UtilityTile.hpp"
+#include "utils/OutputFormatter.hpp"
 
 namespace {
 
@@ -35,6 +36,7 @@ namespace {
     const int CELL_WIDTH = 10;
     const int SIDE_SIZE = 11;
     const int JAIL_INDEX = 10;
+    const int LEGEND_WIDTH = 38;
 
     void initColorMap(std::map<ColorGroup, std::string>& colorMap) {
         if (!colorMap.empty()) {
@@ -78,6 +80,14 @@ namespace {
         return text + std::string(width - text.size(), ' ');
     }
 
+    std::string makeLegendBorder() {
+        return "+" + std::string(LEGEND_WIDTH, '-') + "+";
+    }
+
+    std::string makeLegendRow(const std::string& text) {
+        return "|" + padToWidth(text, LEGEND_WIDTH) + "|";
+    }
+
     std::string buildPawnIndicators(int tileIndex,
                                     const std::vector<Player>& players,
                                     const TurnManager& turnManager) {
@@ -104,8 +114,8 @@ namespace {
                 && turnManager.getCurrentPlayer()->getUsername() == player.getUsername();
 
             result += isCurrentPlayer
-                ? "*" + std::to_string(i + 1) + "*"
-                : "(" + std::to_string(i + 1) + ")";
+                ? "(" + std::to_string(i + 1) + ")"
+                : std::to_string(i + 1);
         }
 
         return result;
@@ -175,9 +185,9 @@ std::string BoardRenderer::colorize(const std::string& text, const std::string& 
 
 void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << "\n";
-    std::cout << "+--------------------------------------+\n";
-    std::cout << "| LEGENDA KEPEMILIKAN & STATUS         |\n";
-    std::cout << "+--------------------------------------+\n";
+    std::cout << makeLegendBorder() << "\n";
+    std::cout << makeLegendRow(" LEGENDA KEPEMILIKAN & STATUS") << "\n";
+    std::cout << makeLegendBorder() << "\n";
 
     for (int i = 0; i < static_cast<int>(players.size()); ++i) {
         const Player& player = players[i];
@@ -190,7 +200,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
         }
 
         std::cout << " P" << (i + 1) << " : " << player.getUsername()
-                  << " (M" << player.getBalance() << ") " << status << "\n";
+                  << " (" << OutputFormatter::formatMoney(player.getBalance()) << ") " << status << "\n";
     }
 
     std::cout << "\n";
@@ -198,7 +208,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << " *             : Hotel\n";
     std::cout << " NN KODE       : Nomor petak 1-40 dan kode petak\n";
     std::cout << " PN            : Properti milik pemain N\n";
-    std::cout << " (N), *N*      : Bidak pemain, *N* = giliran aktif\n";
+    std::cout << " N / (N)       : Bidak pemain, (N) = giliran aktif\n";
     std::cout << " IN:N / V:N    : Di penjara / hanya mampir penjara\n";
     std::cout << " [M]           : Properti digadaikan\n";
     std::cout << "\n";
@@ -213,7 +223,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
               << " " << colorize("[BT]=Biru Tua ", ANSI::BIRU_TUA) << "\n";
     std::cout << " " << colorize("[DF]=Aksi      ", ANSI::DEFAULT_BG)
               << " " << colorize("[AB]=Utilitas ", ANSI::UTILITAS) << "\n";
-    std::cout << "+--------------------------------------+\n";
+    std::cout << makeLegendBorder() << "\n";
 }
 
 void BoardRenderer::render(const Board& board,
@@ -227,6 +237,12 @@ void BoardRenderer::render(const Board& board,
             separator += std::string(CELL_WIDTH, '-') + "+";
         }
         return separator;
+    };
+
+    auto makeSideRowSeparator = [innerWidth = (CELL_WIDTH + 1) * 9 - 1]() -> std::string {
+        return "+" + std::string(CELL_WIDTH, '-') + "+"
+            + std::string(innerWidth, ' ') + "+"
+            + std::string(CELL_WIDTH, '-') + "+";
     };
 
     auto renderCell = [&](int tileIndex) -> std::pair<std::string, std::string> {
@@ -268,6 +284,7 @@ void BoardRenderer::render(const Board& board,
     }
 
     std::string separator = makeSeparator();
+    std::string sideRowSeparator = makeSideRowSeparator();
 
     std::cout << separator << "\n";
     std::cout << "|";
@@ -308,7 +325,7 @@ void BoardRenderer::render(const Board& board,
     std::vector<std::string> panelLines;
     panelLines.push_back(std::string(innerWidth, ' '));
     panelLines.push_back(centerText("=================================="));
-    panelLines.push_back(centerText("||        NIMONSPOLI            ||"));
+    panelLines.push_back(centerText("||          NIMONSPOLI          ||"));
     panelLines.push_back(centerText("=================================="));
     panelLines.push_back(std::string(innerWidth, ' '));
 
@@ -332,9 +349,9 @@ void BoardRenderer::render(const Board& board,
         std::cout << "|" << leftCell.first << "|" << panel << "|" << rightCell.first << "|\n";
         std::cout << "|" << leftCell.second << "|" << std::string(innerWidth, ' ')
                   << "|" << rightCell.second << "|\n";
-        std::cout << "+" << std::string(CELL_WIDTH, '-') << "+"
-                  << std::string(innerWidth + 1, ' ')
-                  << "+" << std::string(CELL_WIDTH, '-') << "+\n";
+        if (row < 8) {
+            std::cout << sideRowSeparator << "\n";
+        }
     }
 
     std::cout << separator << "\n";

@@ -22,8 +22,31 @@
 #include "models/tiles/TaxTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "models/tiles/UtilityTile.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 
 namespace {
+    int determineBoardTileCount(const ConfigData& configData) {
+        int maxTileId = 0;
+
+        for (const PropertyConfig& config : configData.getPropertyConfigs()) {
+            if (config.getId() > maxTileId) {
+                maxTileId = config.getId();
+            }
+        }
+
+        for (const ActionTileConfig& config : configData.getActionTileConfigs()) {
+            if (config.getId() > maxTileId) {
+                maxTileId = config.getId();
+            }
+        }
+
+        if (maxTileId <= 0) {
+            throw ConfigException("", "tidak ada konfigurasi petak pada papan.");
+        }
+
+        return maxTileId;
+    }
+
     Tile* createPropertyTile(
         const PropertyConfig& config,
         const std::map<int, int>& railroadRents,
@@ -121,39 +144,42 @@ namespace {
             }
         }
 
-        throw std::runtime_error(
-            "Konfigurasi petak aksi tidak dikenali: " + code + " (" + tileType + ")");
+        throw ConfigException(
+            "aksi.txt",
+            "konfigurasi petak aksi tidak dikenali: " + code + " (" + tileType + ")");
     }
 }
 
 void BoardFactory::build(Board& board, const ConfigData& configData) {
-    std::vector<const PropertyConfig*> propertyById(41, nullptr);
+    const int boardTileCount = determineBoardTileCount(configData);
+
+    std::vector<const PropertyConfig*> propertyById(boardTileCount + 1, nullptr);
     for (const PropertyConfig& config : configData.getPropertyConfigs()) {
-        if (config.getId() >= 1 && config.getId() <= 40) {
+        if (config.getId() >= 1 && config.getId() <= boardTileCount) {
             if (propertyById[config.getId()] != nullptr) {
-                throw std::runtime_error(
-                    "Duplikasi konfigurasi properti pada petak "
-                    + std::to_string(config.getId()));
+                throw ConfigException(
+                    "property.txt",
+                    "duplikasi konfigurasi properti pada petak " + std::to_string(config.getId()));
             }
             propertyById[config.getId()] = &config;
         }
     }
 
-    std::vector<const ActionTileConfig*> actionTileById(41, nullptr);
+    std::vector<const ActionTileConfig*> actionTileById(boardTileCount + 1, nullptr);
     for (const ActionTileConfig& config : configData.getActionTileConfigs()) {
-        if (config.getId() >= 1 && config.getId() <= 40) {
+        if (config.getId() >= 1 && config.getId() <= boardTileCount) {
             if (actionTileById[config.getId()] != nullptr) {
-                throw std::runtime_error(
-                    "Duplikasi konfigurasi petak aksi pada petak "
-                    + std::to_string(config.getId()));
+                throw ConfigException(
+                    "aksi.txt",
+                    "duplikasi konfigurasi petak aksi pada petak " + std::to_string(config.getId()));
             }
             actionTileById[config.getId()] = &config;
         }
     }
 
     std::vector<Tile*> boardTiles;
-    boardTiles.reserve(40);
-    for (int index = 0; index < 40; ++index) {
+    boardTiles.reserve(boardTileCount);
+    for (int index = 0; index < boardTileCount; ++index) {
         int tileId = index + 1;
 
         const ActionTileConfig* actionConfig = actionTileById[tileId];
@@ -164,8 +190,9 @@ void BoardFactory::build(Board& board, const ConfigData& configData) {
 
         const PropertyConfig* propertyConfig = propertyById[tileId];
         if (propertyConfig == nullptr) {
-            throw std::runtime_error(
-                "Konfigurasi petak tidak ditemukan untuk indeks " + std::to_string(tileId));
+            throw ConfigException(
+                "",
+                "konfigurasi petak tidak ditemukan untuk indeks " + std::to_string(tileId));
         }
 
         boardTiles.push_back(createPropertyTile(

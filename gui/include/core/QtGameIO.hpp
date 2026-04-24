@@ -40,6 +40,7 @@ public:
     void showActionCard(CardType cardType, const ActionCard& card) override;
     void showPaymentNotification(const std::string& title, const std::string& detail) override;
     void showAuctionNotification(const std::string& title, const std::string& detail) override;
+    bool usesRichGuiPresentation() const override;
     int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
     int promptTaxPaymentOption(
         const Player& player,

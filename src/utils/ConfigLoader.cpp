@@ -6,6 +6,7 @@
 #include "models/config/PropertyConfig.hpp"
 #include "models/config/SpecialConfig.hpp"
 #include "models/config/TaxConfig.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 
 #include <array>
 #include <fstream>
@@ -53,7 +54,7 @@ std::vector<PropertyConfig>
 ConfigLoader::parsePropertyFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
     std::vector<PropertyConfig> result;
     std::string line;
@@ -97,7 +98,7 @@ std::vector<ActionTileConfig>
 ConfigLoader::parseActionTileFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
 
     std::vector<ActionTileConfig> result;
@@ -130,7 +131,7 @@ std::map<int, int>
 ConfigLoader::parseRailroadFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
  
     std::map<int, int> result;
@@ -154,7 +155,7 @@ std::map<int,int>
 ConfigLoader::parseUtilityFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
     std::map<int, int> result;
     std::string line;
@@ -174,7 +175,7 @@ ConfigLoader::parseUtilityFile(const std::string& path) const {
 TaxConfig ConfigLoader::parseTaxFile(const std::string& path) const{
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
  
     int pphFlat = 0, pphPct = 0, pbmFlat = 0;
@@ -193,7 +194,7 @@ TaxConfig ConfigLoader::parseTaxFile(const std::string& path) const{
 SpecialConfig ConfigLoader::parseSpecialFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
  
     int goSalary = 0, jailFine = 0;
@@ -212,7 +213,7 @@ SpecialConfig ConfigLoader::parseSpecialFile(const std::string& path) const {
 MiscConfig ConfigLoader::parseMiscFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("ConfigLoader: cannot open '" + path + "'");
+        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
     }
  
     int maxTurn = 0, initialBalance = 0;

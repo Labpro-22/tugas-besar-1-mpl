@@ -66,15 +66,13 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
 
     if (io != nullptr) {
         io->showPawnStep(*target, destinationIndex);
-        io->showMessage(target->getUsername() + " ditarik ke posisi " +
-                        player.getUsername() + ".");
     }
+    gameContext.showMessage(target->getUsername() + " ditarik ke posisi " +
+                    player.getUsername() + ".");
 
     if (destinationTile != nullptr) {
         if (MovementService::shouldSkipGoLandingSalary(destinationTile)) {
-            if (io != nullptr) {
-                io->showMessage("Tarikan ke GO tidak memberikan gaji.");
-            }
+            gameContext.showMessage("Tarikan ke GO tidak memberikan gaji.");
             return;
         }
         destinationTile->onLanded(*target, gameContext);

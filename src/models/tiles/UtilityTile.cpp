@@ -17,11 +17,11 @@ void UtilityTile::onLanded(Player& player, GameContext& gameContext) {
             io->showPropertyNotice(player, *this);
         }
         transferTo(player);
-        if (io != nullptr) {
-            io->showMessage("Kamu mendarat di " + getName() + "!");
-            io->showMessage("Belum ada yang menginjaknya duluan, " + getName() + " kini menjadi milikmu!");
-        }
-        gameContext.logEvent("UTILITY", player.getUsername() + " mendapatkan " + getName() + " secara otomatis.");
+        gameContext.showMessage("Kamu mendarat di " + getName() + "!");
+        gameContext.showMessage("Belum ada yang menginjaknya duluan, " + getName() + " kini menjadi milikmu!");
+        gameContext.logEvent(
+            "UTILITY",
+            getName() + " kini milik " + player.getUsername() + " (otomatis)");
     } else {
         gameContext.triggerRentEvent(player, *this);
     }
@@ -44,8 +44,4 @@ int UtilityTile::getSellValueToBank() const {
 
 PropertyType UtilityTile::getPropertyType() const {
     return PropertyType::UTILITY;
-}
-
-std::string UtilityTile::getDisplayLabel() const {
-    return "[UTILITY] " + getName();
 }

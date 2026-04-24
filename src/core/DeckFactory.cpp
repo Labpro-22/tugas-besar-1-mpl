@@ -141,7 +141,9 @@ std::string DeckFactory::describeSkillCard(const SkillCard* card) {
 
     const std::string typeName = card->getTypeName();
     if (typeName == "MoveCard") return "Maju " + std::to_string(card->getValue()) + " petak";
-    if (typeName == "DiscountCard") return "Diskon pembayaran " + std::to_string(card->getValue()) + "%";
+    if (typeName == "DiscountCard") {
+        return "Diskon " + std::to_string(card->getValue()) + "% selama 1 turn";
+    }
     if (typeName == "ShieldCard") return "Kebal tagihan atau sanksi selama 1 turn";
     if (typeName == "TeleportCard") return "Pindah ke petak manapun";
     if (typeName == "LassoCard") return "Menarik lawan terdekat di depan";

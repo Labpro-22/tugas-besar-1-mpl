@@ -35,10 +35,10 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
 
     if (gameContext.getIO() != nullptr) {
         gameContext.getIO()->showPawnStep(player, targetIndex);
-        gameContext.getIO()->showMessage(
-            "MoveCard digunakan! " + player.getUsername() +
-                " maju " + std::to_string(getValue()) + " petak.");
     }
+    gameContext.showMessage(
+        "MoveCard digunakan! " + player.getUsername() +
+            " maju " + std::to_string(getValue()) + " petak.");
 
     if (passedGo) {
         MovementService::awardGoSalaryForForwardMovement(
@@ -52,11 +52,9 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
 
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile != nullptr) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Bidak mendarat di: " + targetTile->getName() +
-                    " (" + targetTile->getCode() + ").");
-        }
+        gameContext.showMessage(
+            "Bidak mendarat di: " + targetTile->getName() +
+                " (" + targetTile->getCode() + ").");
         targetTile->onLanded(player, gameContext);
     }
 }

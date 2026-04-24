@@ -8,6 +8,10 @@
 #include "models/tiles/StreetTile.hpp"
 #include "models/cards/SkillCard.hpp"
 
+namespace {
+    const int DEFAULT_BOARD_TILE_COUNT = 40;
+}
+
 Player::Player()
     : username(""),
       balance(0),
@@ -69,11 +73,11 @@ bool Player::operator>(const Player& other) const {
 // Navigasi Move
 bool Player::moveTo(int newIndex) {
     bool passedGo = false;
-    if (newIndex >= 40) {
+    if (newIndex >= DEFAULT_BOARD_TILE_COUNT) {
         passedGo = true;
-        newIndex = newIndex % 40;
+        newIndex = newIndex % DEFAULT_BOARD_TILE_COUNT;
     } else if (newIndex < 0) {
-        newIndex = ((newIndex % 40) + 40) % 40;
+        newIndex = ((newIndex % DEFAULT_BOARD_TILE_COUNT) + DEFAULT_BOARD_TILE_COUNT) % DEFAULT_BOARD_TILE_COUNT;
     } else if (newIndex == 0 && position != 0) {
         passedGo = true;
     }
@@ -146,11 +150,9 @@ int Player::getDiscountedAmount(int amount) const {
 }
 
 int Player::consumeDiscountedAmount(int amount) {
-    int discountedAmount = getDiscountedAmount(amount);
-    if (amount > 0 && discountPercent > 0) {
-        discountPercent = 0;
-    }
-    return discountedAmount;
+    // DiscountCard berlaku selama giliran aktif, jadi nilainya baru di-reset
+    // saat turn berikutnya dimulai melalui resetTurnState().
+    return getDiscountedAmount(amount);
 }
 
 bool Player::canAfford(int amount) const {
@@ -169,9 +171,13 @@ bool Player::isBankrupt() const {
     return status == PlayerStatus::BANKRUPT;
 }
 
-void Player::resetTurnState() {
+void Player::clearTemporarySkillEffects() {
     shieldActive = false;
     discountPercent = 0;
+}
+
+void Player::resetTurnState() {
+    clearTemporarySkillEffects();
     usedSkillThisTurn = false;
     rolledThisTurn = false;
     actionTakenThisTurn = false;

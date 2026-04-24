@@ -21,6 +21,7 @@ class PropertyCardWidget;
 class PropertyPortfolioWidget;
 class QDialog;
 class QFrame;
+class QScrollArea;
 class QStackedWidget;
 class QToolButton;
 class QVBoxLayout;
@@ -61,7 +62,11 @@ class GameWindow : public QWidget
 public:
     explicit GameWindow(QWidget* parent = nullptr);
 
+protected:
+    void resizeEvent(QResizeEvent* event) override;
+
 private:
+    void updateResponsiveLayout();
     void buildRootPages();
     QWidget* buildGamePage();
     void configureConnections();
@@ -120,12 +125,14 @@ private:
 
     BoardWidget* boardWidget = nullptr;
     QWidget* sidebarPanel = nullptr;
+    QFrame* boardShell = nullptr;
     QLabel* playerAvatarLabel = nullptr;
     QLabel* playerNameLabel = nullptr;
     QLabel* playerMoneyLabel = nullptr;
     QToolButton* playerSwitchButton = nullptr;
     PropertyPortfolioWidget* portfolioWidget = nullptr;
     QFrame* historyHeaderFrame = nullptr;
+    QScrollArea* historyScroll = nullptr;
     QLabel* houseCountLabel = nullptr;
     QLabel* hotelCountLabel = nullptr;
     QToolButton* rollButton = nullptr;

@@ -769,6 +769,11 @@ void QtGameIO::showAuctionNotification(const std::string& title, const std::stri
     showNoticeCard(dialogParent, toQString(title), toQString(detail), QStringLiteral("CONTINUE"));
 }
 
+bool QtGameIO::usesRichGuiPresentation() const
+{
+    return true;
+}
+
 int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid)
 {
     if (isTestMode()) {

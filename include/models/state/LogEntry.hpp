@@ -22,5 +22,4 @@ public:
     const std::string& getUsername() const;
     const std::string& getActionType() const;
     const std::string& getDetail() const;
-    std::string toString() const;
 };

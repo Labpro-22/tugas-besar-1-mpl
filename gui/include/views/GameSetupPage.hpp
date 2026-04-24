@@ -24,9 +24,11 @@ signals:
 
 protected:
     void paintEvent(QPaintEvent* event) override;
+    void resizeEvent(QResizeEvent* event) override;
 
 private:
     void applyPlayerCount(int count);
+    void updateResponsiveLayout();
 
     QButtonGroup* countGroup = nullptr;
     QPushButton* twoPlayersButton = nullptr;
@@ -34,4 +36,5 @@ private:
     QPushButton* fourPlayersButton = nullptr;
     QList<QWidget*> playerCards;
     QList<QLineEdit*> playerInputs;
+    QWidget* setupCard = nullptr;
 };

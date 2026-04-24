@@ -9,7 +9,7 @@ private:
     int percentage;
 
     int calculateWealth(const Player& player) const;
-    void applyTax(Player& player, GameContext& gameContext, int amountToPay) const;
+    void applyTax(Player& player, GameContext& gameContext, int amountToPay, int choice) const;
 
 public:
     TaxTile();
@@ -23,7 +23,6 @@ public:
     );
 
     void onLanded(Player& player, GameContext& gameContext) override;
-    std::string getDisplayLabel() const override;
     
     // Getters untuk data inquiry (untuk GameEngine handling output)
     TaxType getTaxType() const;

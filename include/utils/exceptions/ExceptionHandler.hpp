@@ -8,29 +8,6 @@
 #include "utils/exceptions/NimonspoliException.hpp"
 
 class ExceptionHandler {
-private:
-    static bool startsWith(const std::string& text, const std::string& prefix) {
-        return text.rfind(prefix, 0) == 0;
-    }
-
-    static std::string extractQuotedValue(
-        const std::string& text,
-        const std::string& prefix
-    ) {
-        if (!startsWith(text, prefix)) {
-            return "";
-        }
-
-        const std::size_t begin = prefix.size();
-        const std::size_t end = text.find('\'', begin);
-
-        if (end == std::string::npos) {
-            return "";
-        }
-
-        return text.substr(begin, end - begin);
-    }
-
 public:
     static std::string formatMessage(const std::exception& exception) {
         const NimonspoliException* gameException =
@@ -41,45 +18,15 @@ public:
 
         const std::string rawMessage = exception.what();
 
-        if (startsWith(rawMessage, "SaveManager: cannot open '")) {
-            const std::string filename =
-                extractQuotedValue(rawMessage, "SaveManager: cannot open '");
-
-            if (rawMessage.find("for reading") != std::string::npos) {
-                return "File \"" + filename + "\" tidak ditemukan.";
-            }
-
-            if (rawMessage.find("for writing") != std::string::npos) {
-                return "Gagal menyimpan file! Pastikan direktori dapat ditulis.";
-            }
+        if (dynamic_cast<const std::out_of_range*>(&exception) != nullptr) {
+            return rawMessage.empty()
+                ? "Nilai berada di luar rentang yang diizinkan."
+                : rawMessage;
         }
 
-        if (startsWith(rawMessage, "SaveManager:")) {
-            return "Gagal memuat file! File rusak atau format tidak dikenali.";
-        }
-
-        if (startsWith(rawMessage, "ConfigLoader: cannot open '")) {
-            const std::string filename =
-                extractQuotedValue(rawMessage, "ConfigLoader: cannot open '");
-            return "Gagal membuka file konfigurasi: " + filename;
-        }
-
-        if (startsWith(rawMessage, "ConfigLoader:")) {
-            return "Gagal membaca file konfigurasi. Pastikan format file valid.";
-        }
-
-        if (startsWith(rawMessage, "CardDeck:")) {
-            return "Deck kartu kosong atau tidak dapat digunakan.";
-        }
-
-        if (rawMessage.find("Board belum terbangun") != std::string::npos) {
-            return "Papan permainan belum siap. Pastikan game berhasil diinisialisasi.";
-        }
-
-        if (rawMessage.find("Konfigurasi petak") != std::string::npos ||
-            rawMessage.find("Konfigurasi properti") != std::string::npos ||
-            rawMessage.find("ConfigData") != std::string::npos) {
-            return "Konfigurasi permainan tidak valid: " + rawMessage;
+        if (dynamic_cast<const std::runtime_error*>(&exception) != nullptr &&
+            rawMessage.find("Input dihentikan") != std::string::npos) {
+            return rawMessage;
         }
 
         if (!rawMessage.empty()) {

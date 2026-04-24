@@ -11,6 +11,7 @@
 #include "utils/SaveManager.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "utils/exceptions/ExceptionHandler.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 #include "views/GameUI.hpp"
 
 int main() {
@@ -27,7 +28,7 @@ int main() {
             int playerCount = ui.promptPlayerCount();
             std::vector<std::string> playerNames = ui.promptPlayerNames(playerCount);
             engine.initialize(config, playerNames);
-            ui.showMessage("Game baru berhasil diinisialisasi.");
+            ui.showMessage("\n\nGame baru berhasil diinisialisasi.");
             engine.runGameLoop();
         } else if (choice == 2) {
             Command loadCommand = ui.promptLoadCommand();
@@ -35,19 +36,38 @@ int main() {
 
             if (keyword != "MUAT") {
                 ui.showMessage("Load game hanya dapat dimulai dengan command MUAT <filename>.");
-            } else if (loadCommand.getArgCount() != 1) {
-                ui.showMessage("Format MUAT belum lengkap. Gunakan: MUAT <filename>");
+            } else if (!loadCommand.isValid()) {
+                ui.showMessage("Format MUAT belum lengkap. Gunakan: " + loadCommand.getUsage());
             } else {
                 const std::string filename = loadCommand.getArg(0);
+                SaveManager saveManager;
+                if (!saveManager.fileExists(filename)) {
+                    ui.showMessage("File \"" + filename + "\" tidak ditemukan.");
+                    return 0;
+                }
+
                 ui.showMessage("Memuat permainan...");
-                GameState gameState = SaveManager().loadGame(filename);
+                GameState gameState;
+                try {
+                    gameState = saveManager.loadGame(filename);
+                } catch (const ParseException&) {
+                    ui.showMessage("Gagal memuat file! File rusak atau format tidak dikenali.");
+                    return 0;
+                } catch (const SaveLoadException&) {
+                    ui.showMessage("Gagal memuat file! File rusak atau format tidak dikenali.");
+                    return 0;
+                }
+
                 std::vector<std::string> playerNames;
                 for (const PlayerState& playerState : gameState.getPlayerStates()) {
                     playerNames.push_back(playerState.getUsername());
                 }
                 engine.initialize(config, playerNames);
                 engine.loadGame(gameState);
-                ui.showMessage("Game berhasil dimuat.");
+                ui.showMessage(
+                    "Permainan berhasil dimuat. Melanjutkan giliran " +
+                    gameState.getActivePlayerUsername() + "..."
+                );
                 engine.runGameLoop();
             }
         } else {

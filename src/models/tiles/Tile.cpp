@@ -25,6 +25,13 @@ TileCategory Tile::getCategory() const {
 
 void Tile::onPassed(Player&, GameContext&) {}
 
+void Tile::applyJailStatus(Player& player) const {
+    player.setPosition(getIndex());
+    player.setStatus(PlayerStatus::JAILED);
+    player.setJailTurns(0);
+    player.setConsecutiveDoubles(0);
+}
+
 PropertyTile* Tile::asPropertyTile() {
     return nullptr;
 }

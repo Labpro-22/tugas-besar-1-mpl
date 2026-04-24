@@ -1,15 +1,18 @@
 #include "models/cards/DoctorFeeCard.hpp"
 
+#include <string>
+
 #include "core/BankruptcyHandler.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
 #include "models/Player.hpp"
+#include "utils/OutputFormatter.hpp"
 
 DoctorFeeCard::DoctorFeeCard()
     : DoctorFeeCard(700) {}
 
 DoctorFeeCard::DoctorFeeCard(int amount)
-    : ActionCard("Biaya dokter. Anda harus bayar M700."),
+    : ActionCard("Biaya dokter. Bayar " + OutputFormatter::formatMoney(amount) + "."),
       amount(amount) {}
 
 int DoctorFeeCard::getAmount() const {
@@ -18,20 +21,18 @@ int DoctorFeeCard::getAmount() const {
 
 void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda!");
-            gameContext.getIO()->showMessage(
-                "Tagihan M" + std::to_string(amount) +
-                    " dibatalkan. Uang Anda tetap: M" + std::to_string(player.getBalance()) + ".");
-        }
+        gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda!");
+        gameContext.showMessage(
+            "Tagihan " + OutputFormatter::formatMoney(amount) +
+                " dibatalkan. Uang Anda tetap: " + OutputFormatter::formatMoney(player.getBalance()) + ".");
         return;
     }
 
     int amountToPay = player.consumeDiscountedAmount(amount);
-    if (amountToPay != amount && gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "Diskon diterapkan dari M" + std::to_string(amount) +
-                " menjadi M" + std::to_string(amountToPay) + ".");
+    if (amountToPay != amount) {
+        gameContext.showMessage(
+            "Diskon diterapkan dari " + OutputFormatter::formatMoney(amount) +
+                " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
     }
 
     if (player.canAfford(amountToPay)) {
@@ -40,23 +41,21 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
-                player.getUsername() + " membayar biaya dokter M" +
-                    std::to_string(amountToPay) + " ke Bank.");
-            gameContext.getIO()->showMessage(
-                "Kamu membayar M" + std::to_string(amountToPay) +
-                    " ke Bank. Sisa Uang = M" + std::to_string(player.getBalance()) + ".");
-            gameContext.getIO()->showMessage(
-                "Uang kamu: M" + std::to_string(beforeBalance) +
-                    " -> M" + std::to_string(player.getBalance()));
+                player.getUsername() + " membayar biaya dokter " +
+                    OutputFormatter::formatMoney(amountToPay) + " ke Bank.");
         }
+        gameContext.showMessage(
+            "Kamu membayar " + OutputFormatter::formatMoney(amountToPay) +
+                " ke Bank. Sisa Uang = " + OutputFormatter::formatMoney(player.getBalance()) + ".");
+        gameContext.showMessage(
+            "Uang kamu: " + OutputFormatter::formatMoney(beforeBalance) +
+                " -> " + OutputFormatter::formatMoney(player.getBalance()) + ".");
         return;
     }
 
-    if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "Kamu tidak mampu membayar biaya dokter! (M" + std::to_string(amountToPay) + ")");
-        gameContext.getIO()->showMessage("Uang kamu saat ini: M" + std::to_string(player.getBalance()));
-    }
+    gameContext.showMessage(
+        "Kamu tidak mampu membayar biaya dokter! (" + OutputFormatter::formatMoney(amountToPay) + ")");
+    gameContext.showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
 
     BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
     if (bankruptcyHandler != nullptr) {

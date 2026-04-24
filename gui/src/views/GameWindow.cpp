@@ -21,6 +21,7 @@
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRegularExpression>
+#include <QResizeEvent>
 #include <QScrollArea>
 #include <QSet>
 #include <QSpinBox>
@@ -462,7 +463,8 @@ GameWindow::GameWindow(QWidget* parent)
       session(this)
 {
     setObjectName(QStringLiteral("gameWindow"));
-    setMinimumSize(1260, 820);
+    resize(1240, 800);
+    setMinimumSize(960, 640);
 
     accentColorByPlayer.insert(QStringLiteral("Player 1"), QColor(28, 97, 214));
     accentColorByPlayer.insert(QStringLiteral("Player 2"), QColor(216, 40, 40));
@@ -583,7 +585,7 @@ QWidget* GameWindow::buildGamePage()
     rootLayout->setContentsMargins(18, 18, 18, 18);
     rootLayout->setSpacing(16);
 
-    auto* boardShell = new QFrame(page);
+    boardShell = new QFrame(page);
     boardShell->setObjectName(QStringLiteral("boardShell"));
     auto* boardLayout = new QVBoxLayout(boardShell);
     boardLayout->setContentsMargins(18, 18, 18, 18);
@@ -736,7 +738,7 @@ QWidget* GameWindow::buildGamePage()
     historyHeaderLayout->addWidget(historyFilter);
     historySectionLayout->addWidget(historyHeaderFrame, 0);
 
-    auto* historyScroll = new QScrollArea(historySection);
+    historyScroll = new QScrollArea(historySection);
     historyScroll->setObjectName(QStringLiteral("historyScroll"));
     historyScroll->setWidgetResizable(true);
     historyScroll->setFrameShape(QFrame::NoFrame);
@@ -761,6 +763,7 @@ QWidget* GameWindow::buildGamePage()
     propertyCardWidget = new PropertyCardWidget(propertyCardDialog);
     dialogLayout->addWidget(propertyCardWidget);
 
+    updateResponsiveLayout();
     return page;
 }
 
@@ -2264,4 +2267,47 @@ QString GameWindow::saveDirectoryPath() const
     SaveManager saveManager;
     const QString resolved = QString::fromStdString(saveManager.getResolvedDataPath("placeholder.txt"));
     return QFileInfo(resolved).absolutePath();
+}
+
+void GameWindow::resizeEvent(QResizeEvent* event)
+{
+    QWidget::resizeEvent(event);
+    updateResponsiveLayout();
+}
+
+void GameWindow::updateResponsiveLayout()
+{
+    if (sidebarPanel != nullptr) {
+        const int sidebarWidth = std::clamp(width() / 4, 280, 360);
+        sidebarPanel->setMinimumWidth(sidebarWidth);
+        sidebarPanel->setMaximumWidth(sidebarWidth + 18);
+    }
+
+    if (playerAvatarLabel != nullptr) {
+        const int avatarSize = std::clamp(height() / 11, 48, 64);
+        playerAvatarLabel->setFixedSize(avatarSize, avatarSize);
+    }
+
+    if (portfolioWidget != nullptr) {
+        portfolioWidget->setMinimumHeight(std::clamp(height() / 4, 150, 210));
+        portfolioWidget->setMaximumHeight(std::clamp(height() / 3, 180, 240));
+    }
+
+    if (historyScroll != nullptr) {
+        historyScroll->setMinimumHeight(std::clamp(height() / 4, 150, 220));
+    }
+
+    const int actionHeight = std::clamp(height() / 11, 56, 76);
+    const int actionIcon = std::clamp(actionHeight / 3, 18, 28);
+    const QList<QToolButton*> actionButtons = {
+        rollButton, setDiceButton, useSkillButton, payFineButton,
+        buildButton, mortgageButton, redeemButton, saveButton
+    };
+    for (QToolButton* button : actionButtons) {
+        if (button == nullptr) {
+            continue;
+        }
+        button->setMinimumHeight(actionHeight);
+        button->setIconSize(QSize(actionIcon, actionIcon));
+    }
 }

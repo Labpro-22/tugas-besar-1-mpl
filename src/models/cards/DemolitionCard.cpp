@@ -53,24 +53,40 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
             "tidak ada properti lawan yang dapat dihancurkan.");
     }
 
-    std::vector<int> validTileIndices;
-    validTileIndices.reserve(targetProperties.size());
-    for (PropertyTile* property : targetProperties) {
-        if (property != nullptr) {
-            validTileIndices.push_back(property->getIndex());
-        }
-    }
-
-    int selectedTileIndex = io->promptTileSelection(
-        "Pilih properti lawan yang ingin dihancurkan langsung dari board.",
-        validTileIndices);
-
     int choice = -1;
-    for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
-        if (targetProperties[i] != nullptr && targetProperties[i]->getIndex() == selectedTileIndex) {
-            choice = i;
-            break;
+    if (io->usesRichGuiPresentation()) {
+        std::vector<int> validTileIndices;
+        validTileIndices.reserve(targetProperties.size());
+        for (PropertyTile* property : targetProperties) {
+            if (property != nullptr) {
+                validTileIndices.push_back(property->getIndex());
+            }
         }
+
+        const int selectedTileIndex = io->promptTileSelection(
+            "Pilih properti lawan yang ingin dihancurkan langsung dari board.",
+            validTileIndices);
+
+        for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+            if (targetProperties[i] != nullptr && targetProperties[i]->getIndex() == selectedTileIndex) {
+                choice = i;
+                break;
+            }
+        }
+    } else {
+        gameContext.showMessage("Pilih properti lawan yang ingin dihancurkan:");
+        for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+            gameContext.showMessage(
+                std::to_string(i + 1) + ". "
+                    + targetOwners[i]->getUsername()
+                    + " - " + targetProperties[i]->getName()
+                    + " (" + targetProperties[i]->getCode() + ")");
+        }
+
+        choice = gameContext.promptIntInRange(
+            "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
+            1,
+            static_cast<int>(targetProperties.size())) - 1;
     }
 
     if (choice < 0) {
@@ -84,7 +100,7 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     targetProperty->setFestivalState(1, 0);
     targetProperty->returnToBank();
 
-    io->showMessage(
+    gameContext.showMessage(
         targetProperty->getName()
             + " (" + targetProperty->getCode() + ") milik "
             + owner->getUsername()

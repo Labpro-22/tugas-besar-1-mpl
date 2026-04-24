@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <algorithm>
 
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
@@ -9,6 +10,7 @@
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
+#include "utils/OutputFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 
 FestivalTile::FestivalTile() : ActionTile() {}
@@ -17,42 +19,62 @@ FestivalTile::FestivalTile(int index, const std::string& code, const std::string
     : ActionTile(index, code, name, TileCategory::DEFAULT) {}
 
 void FestivalTile::onLanded(Player& player, GameContext& gameContext) {
-    GameIO* io = gameContext.getIO();
-    if (io != nullptr) {
-        io->showMessage("Kamu mendarat di petak Festival!");
-    }
+    gameContext.showMessage("Kamu mendarat di petak Festival!");
 
     std::vector<StreetTile*> streets;
     getPlayerStreets(player, streets);
     if (streets.empty()) {
-        if (io != nullptr) {
-            io->showMessage("Kamu belum memiliki lahan yang dapat diberi efek festival.");
-        }
+        gameContext.showMessage("Kamu belum memiliki lahan yang dapat diberi efek festival.");
         return;
     }
 
-    if (io == nullptr) {
+    if (!gameContext.hasIO()) {
         applyFestivalEffect(streets.front(), player, gameContext);
         return;
     }
 
-    std::vector<int> validTileIndices;
-    validTileIndices.reserve(streets.size());
-    for (StreetTile* street : streets) {
-        if (street != nullptr) {
-            validTileIndices.push_back(street->getIndex());
+    std::sort(streets.begin(), streets.end(), [](const StreetTile* lhs, const StreetTile* rhs) {
+        return lhs->getIndex() < rhs->getIndex();
+    });
+
+    GameIO* io = gameContext.getIO();
+    if (io->usesRichGuiPresentation()) {
+        std::vector<int> validTileIndices;
+        validTileIndices.reserve(streets.size());
+        for (StreetTile* street : streets) {
+            if (street != nullptr) {
+                validTileIndices.push_back(street->getIndex());
+            }
         }
+
+        int selectedTileIndex = io->promptTileSelection(
+            "Pilih lahan yang akan mendapat efek festival langsung dari board.",
+            validTileIndices);
+
+        for (StreetTile* street : streets) {
+            if (street != nullptr && street->getIndex() == selectedTileIndex) {
+                applyFestivalEffect(street, player, gameContext);
+                return;
+            }
+        }
+        return;
     }
 
-    int selectedTileIndex = io->promptTileSelection(
-        "Pilih lahan yang akan mendapat efek festival langsung dari board.",
-        validTileIndices);
-
+    gameContext.showMessage("");
+    gameContext.showMessage("Daftar properti milikmu:");
     for (StreetTile* street : streets) {
-        if (street != nullptr && street->getIndex() == selectedTileIndex) {
-            applyFestivalEffect(street, player, gameContext);
-            return;
+        gameContext.showMessage("- " + street->getCode() + " (" + street->getName() + ")");
+    }
+
+    while (io != nullptr) {
+        std::string code = io->promptText("\nMasukkan kode properti: ");
+        for (StreetTile* street : streets) {
+            if (street != nullptr && street->getCode() == code) {
+                applyFestivalEffect(street, player, gameContext);
+                return;
+            }
         }
+        gameContext.showMessage("-> Kode properti tidak valid!");
     }
 }
 
@@ -71,12 +93,30 @@ void FestivalTile::applyFestivalEffect(StreetTile* selectedStreet, Player& playe
         return;
     }
 
+    int previousMultiplier = selectedStreet->getFestivalMultiplier();
+    int previousDuration = selectedStreet->getFestivalDuration();
+    int previousRent = selectedStreet->calculateRent(0, gameContext);
+
     selectedStreet->applyFestival();
-    if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            selectedStreet->getName() + " (" + selectedStreet->getCode() +
-                "): sewa dikalikan " + std::to_string(selectedStreet->getFestivalMultiplier()) +
-                ", durasi " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran.");
+    int currentRent = selectedStreet->calculateRent(0, gameContext);
+
+    gameContext.showMessage("");
+    if (previousDuration <= 0) {
+        gameContext.showMessage("Efek festival aktif!");
+        gameContext.showMessage("");
+        gameContext.showMessage("Sewa awal: " + OutputFormatter::formatMoney(previousRent));
+        gameContext.showMessage("Sewa sekarang: " + OutputFormatter::formatMoney(currentRent));
+        gameContext.showMessage("Durasi: " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
+    } else if (previousMultiplier < 8) {
+        gameContext.showMessage("Efek diperkuat!");
+        gameContext.showMessage("");
+        gameContext.showMessage("Sewa sebelumnya: " + OutputFormatter::formatMoney(previousRent));
+        gameContext.showMessage("Sewa sekarang: " + OutputFormatter::formatMoney(currentRent));
+        gameContext.showMessage("Durasi di-reset menjadi: " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
+    } else {
+        gameContext.showMessage("Efek sudah maksimum (harga sewa sudah digandakan tiga kali)");
+        gameContext.showMessage("");
+        gameContext.showMessage("Durasi di-reset menjadi: " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
     }
 
     if (gameContext.getLogger() != nullptr && gameContext.getTurnManager() != nullptr) {
@@ -85,10 +125,8 @@ void FestivalTile::applyFestivalEffect(StreetTile* selectedStreet, Player& playe
             currentTurn,
             player.getUsername(),
             "FESTIVAL",
-            "Mengaktifkan festival pada " + selectedStreet->getName());
+            selectedStreet->getName() + " (" + selectedStreet->getCode() + "): sewa " +
+            OutputFormatter::formatMoney(previousRent) + " -> " + OutputFormatter::formatMoney(currentRent) +
+            ", durasi " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
     }
-}
-
-std::string FestivalTile::getDisplayLabel() const {
-    return getCode();
 }

@@ -5,12 +5,13 @@
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
+#include "utils/OutputFormatter.hpp"
 
 CampaignCard::CampaignCard()
     : CampaignCard(200) {}
 
 CampaignCard::CampaignCard(int amount)
-    : ActionCard("Anda mau nyaleg. Bayar M200 kepada setiap pemain."),
+    : ActionCard("Anda mau nyaleg. Bayar " + OutputFormatter::formatMoney(amount) + " kepada setiap pemain."),
       amount(amount) {}
 
 int CampaignCard::getAmount() const {
@@ -19,10 +20,8 @@ int CampaignCard::getAmount() const {
 
 void CampaignCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "[SHIELD ACTIVE]: Efek ShieldCard melindungi kamu dari tagihan CampaignCard.");
-        }
+        gameContext.showMessage(
+            "[SHIELD ACTIVE]: Efek ShieldCard melindungi kamu dari tagihan CampaignCard.");
         gameContext.logEvent(
             "KARTU",
             player.getUsername() + " terlindungi ShieldCard dari CampaignCard.");
@@ -36,15 +35,15 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
 
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt()) {
             continue;
         }
 
         int amountToPay = player.consumeDiscountedAmount(amount);
-        if (amountToPay != amount && gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Diskon diterapkan dari M" + std::to_string(amount) +
-                    " menjadi M" + std::to_string(amountToPay) + ".");
+        if (amountToPay != amount) {
+            gameContext.showMessage(
+                "Diskon diterapkan dari " + OutputFormatter::formatMoney(amount) +
+                    " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
         }
 
         if (!player.canAfford(amountToPay)) {
@@ -74,11 +73,12 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
-                player.getUsername() + " membayar M" + std::to_string(amountToPay) +
-                    " kepada " + otherPlayer->getUsername() + ".");
-            gameContext.getIO()->showMessage(
-                player.getUsername() + " membayar M" + std::to_string(amountToPay) +
-                    " kepada " + otherPlayer->getUsername() + ".");
+                player.getUsername() + " membayar " +
+                    OutputFormatter::formatMoney(amountToPay) + " kepada " +
+                    otherPlayer->getUsername() + ".");
         }
+        gameContext.showMessage(
+            player.getUsername() + " membayar " + OutputFormatter::formatMoney(amountToPay) +
+                " kepada " + otherPlayer->getUsername() + ".");
     }
 }

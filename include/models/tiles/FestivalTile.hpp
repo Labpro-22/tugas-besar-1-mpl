@@ -11,10 +11,8 @@ public:
     FestivalTile(int index, const std::string& code, const std::string& name);
 
     void onLanded(Player& player, GameContext& gameContext) override;
-    std::string getDisplayLabel() const override;
     
     // Getters untuk data inquiry (untuk GameEngine handling output & input)
     void getPlayerStreets(const Player& player, std::vector<StreetTile*>& outStreets) const;
     void applyFestivalEffect(StreetTile* selectedStreet, Player& player, GameContext& gameContext) const;
 };
-

@@ -49,11 +49,13 @@ namespace {
             std::size_t parsed = 0;
             int level = std::stoi(value, &parsed);
             if (parsed != value.size() || level < 0 || level > 5) {
-                throw std::runtime_error("invalid building level");
+                throw ParseException("", "building level", "level bangunan harus berada pada rentang 0..5");
             }
             return level;
+        } catch (const ParseException&) {
+            throw;
         } catch (const std::exception&) {
-            throw std::runtime_error("SaveManager: invalid building level '" + value + "'");
+            throw ParseException("", "building level", "level bangunan tidak valid '" + value + "'");
         }
     }
 
@@ -85,7 +87,7 @@ void GameEngine::initialize(const ConfigData& configData, const std::vector<std:
     this->configData = &configData;
 
     if (playerNames.size() < 2 || playerNames.size() > 4) {
-        throw std::runtime_error("Jumlah pemain harus berada pada rentang 2 sampai 4.");
+        throw GameInitException("jumlah pemain harus berada pada rentang 2 sampai 4.");
     }
 
     players.clear();
@@ -98,7 +100,7 @@ void GameEngine::initialize(const ConfigData& configData, const std::vector<std:
 
 void GameEngine::startNewGame() {
     if (configData == nullptr) {
-        throw std::runtime_error("GameEngine belum diinisialisasi dengan ConfigData.");
+        throw GameInitException("GameEngine belum diinisialisasi dengan ConfigData.");
     }
 
     for (Player& player : players) {
@@ -144,7 +146,7 @@ void GameEngine::startNewGame() {
 
 void GameEngine::loadGame(const GameState& gameState) {
     if (configData == nullptr) {
-        throw std::runtime_error("ConfigData harus tersedia sebelum load game.");
+        throw GameInitException("ConfigData harus tersedia sebelum load game.");
     }
 
     BoardFactory::build(board, *configData);
@@ -268,13 +270,15 @@ void GameEngine::runGameLoop() {
     std::vector<Player*> winners = determineWinner();
     ui.showSection("PERMAINAN SELESAI");
     if (context != nullptr) {
-        ui.showWinner(winners, *context);
+        ui.showWinner(winners, players, *context);
     }
 }
 
 void GameEngine::processTurn(Player& player) {
+    ui.showSection("TURN " + std::to_string(turnManager.getCurrentTurn()) + " - " + player.getUsername());
     TurnService::processTurn(player, board, skillDeck, *configData, ui, turnManager, logger);
-    ui.showTurnSummary(player, turnManager.getCurrentTurn());
+    ui.showMessage("");
+    ui.showTurnSummary(player);
 }
 
 bool GameEngine::checkGameEnd() const {

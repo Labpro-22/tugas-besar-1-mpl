@@ -69,11 +69,10 @@ void TurnService::processTurn(
             std::vector<SkillCard*> hand = player.getHand();
             std::vector<SkillCard*> discardOptions = hand;
             discardOptions.push_back(card);
-            io.showMessage("PERINGATAN: Kamu sudah memiliki 3 kartu di tangan (Maksimal 3)!");
-            io.showMessage("Kamu diwajibkan membuang 1 kartu.");
+            io.showMessage("PERINGATAN: Kamu sudah memiliki 3 kartu di tangan (Maksimal 3)! Kamu diwajibkan membuang 1 kartu.");
 
             int discardChoice = io.promptSkillCardSelection(
-                "Pilih kartu kemampuan yang ingin dibuang",
+                "Daftar Kartu Kemampuan Anda:",
                 discardOptions,
                 false
             );
