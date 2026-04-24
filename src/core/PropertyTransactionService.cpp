@@ -346,7 +346,10 @@ void PropertyTransactionService::handleRentPayment(
         }
         BankruptcyHandler* bankruptcyHandler = context.getBankruptcyHandler();
         if (bankruptcyHandler != nullptr) {
-            bankruptcyHandler->handleBankruptcy(player, owner, rentAmount, context);
+            const bool settled = bankruptcyHandler->handleBankruptcy(player, owner, rentAmount, context);
+            if (!settled && io != nullptr) {
+                io->showMessage("Likuidasi dibatalkan. Pembayaran sewa belum dilakukan.");
+            }
         } else {
             player -= rentAmount;
             *owner += rentAmount;

@@ -142,8 +142,7 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     if (fineToPay > 0 && !player.canAfford(fineToPay)) {
         ui.showMessage("Uang tidak cukup untuk membayar denda. Aset akan dilikuidasi bila memungkinkan.");
         if (context != nullptr && context->getBankruptcyHandler() != nullptr) {
-            context->getBankruptcyHandler()->handleBankruptcy(player, nullptr, fineToPay, *context);
-            finePaid = !player.isBankrupt();
+            finePaid = context->getBankruptcyHandler()->handleBankruptcy(player, nullptr, fineToPay, *context) && !player.isBankrupt();
         } else {
             player -= fineToPay;
             finePaid = true;

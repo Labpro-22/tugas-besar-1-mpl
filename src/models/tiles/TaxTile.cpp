@@ -123,7 +123,10 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
         }
         gameContext.showMessage("Uang kamu saat ini: " + TextFormatter::formatMoney(player.getBalance()));
         if (gameContext.getBankruptcyHandler() != nullptr) {
-            gameContext.getBankruptcyHandler()->handleBankruptcy(player, nullptr, amountToPay, gameContext);
+            const bool settled = gameContext.getBankruptcyHandler()->handleBankruptcy(player, nullptr, amountToPay, gameContext);
+            if (!settled && gameContext.getIO() != nullptr) {
+                gameContext.getIO()->showMessage("Pembayaran pajak dibatalkan. Pajak belum dibayar.");
+            }
         } else {
             throw;
         }

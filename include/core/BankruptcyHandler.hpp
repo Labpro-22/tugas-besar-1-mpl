@@ -11,7 +11,7 @@ class BankruptcyHandler {
 public:
     BankruptcyHandler() = default;
 
-    void handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context);
+    bool handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context);
     int calculateLiquidationMax(Player& player) const;
     bool liquidateAssets(Player& player, int amount, GameContext& context);
     void auctionBankruptAssets(const std::vector<PropertyTile*>& assets, GameContext& context);

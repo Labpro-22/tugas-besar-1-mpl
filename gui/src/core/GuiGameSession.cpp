@@ -127,6 +127,16 @@ void GuiGameSession::setBoardTileSelectionHandler(std::function<int(const QStrin
     io.setBoardTileSelectionHandler(std::move(handler));
 }
 
+void GuiGameSession::setLiquidationPlanHandler(std::function<bool(
+    const Player&,
+    int,
+    const std::vector<LiquidationCandidate>&,
+    std::vector<LiquidationDecision>&
+)> handler)
+{
+    io.setLiquidationPlanHandler(std::move(handler));
+}
+
 void GuiGameSession::setTurnChangedHandler(std::function<void()> handler)
 {
     turnChangedHandler = std::move(handler);
@@ -347,8 +357,8 @@ std::vector<Player*> GuiGameSession::determineWinner() const
     }
 
     std::sort(candidates.begin(), candidates.end(), [](const Player* left, const Player* right) {
-        if (left->getTotalWealth() != right->getTotalWealth()) {
-            return left->getTotalWealth() > right->getTotalWealth();
+        if (left->getBalance() != right->getBalance()) {
+            return left->getBalance() > right->getBalance();
         }
         if (left->getProperties().size() != right->getProperties().size()) {
             return left->getProperties().size() > right->getProperties().size();
@@ -365,7 +375,7 @@ std::vector<Player*> GuiGameSession::determineWinner() const
     for (std::size_t index = 1; index < candidates.size(); ++index) {
         const Player* best = winners.front();
         const Player* current = candidates[index];
-        if (best->getTotalWealth() == current->getTotalWealth() &&
+        if (best->getBalance() == current->getBalance() &&
             best->getProperties().size() == current->getProperties().size() &&
             best->getHand().size() == current->getHand().size()) {
             winners.push_back(candidates[index]);

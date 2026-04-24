@@ -97,6 +97,12 @@ private:
     void setSelectedProperty(int propertyId, bool showPreview = false);
     void showPropertyCard(int propertyId);
     void showPropertyNotice(const Player& player, const PropertyTile& property);
+    bool promptLiquidationPlan(
+        const Player& player,
+        int targetAmount,
+        const std::vector<LiquidationCandidate>& candidates,
+        std::vector<LiquidationDecision>& decisions
+    );
     int promptBoardTileSelection(const QString& title, const QVector<int>& validTileIndices, bool allowCancel);
     bool promptPropertyPurchase(const Player& player, const PropertyTile& property);
     void applyPendingMessages(const QString& fallback = QString());

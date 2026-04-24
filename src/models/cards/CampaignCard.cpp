@@ -49,7 +49,15 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         if (!player.canAfford(amountToPay)) {
             BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
             if (bankruptcyHandler != nullptr) {
-                bankruptcyHandler->handleBankruptcy(player, otherPlayer, amountToPay, gameContext);
+                const bool settled = bankruptcyHandler->handleBankruptcy(player, otherPlayer, amountToPay, gameContext);
+                if (!settled) {
+                    if (gameContext.getIO() != nullptr) {
+                        gameContext.getIO()->showMessage(
+                            "Likuidasi dibatalkan. Pembayaran CampaignCard kepada " +
+                            otherPlayer->getUsername() + " tidak jadi dilakukan.");
+                    }
+                    return;
+                }
             } else {
                 player -= amountToPay;
                 *otherPlayer += amountToPay;

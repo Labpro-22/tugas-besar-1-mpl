@@ -38,6 +38,12 @@ public:
     void setPropertyPurchaseHandler(std::function<bool(const Player&, const PropertyTile&)> handler);
     void setPropertyNoticeHandler(std::function<void(const Player&, const PropertyTile&)> handler);
     void setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler);
+    void setLiquidationPlanHandler(std::function<bool(
+        const Player&,
+        int,
+        const std::vector<LiquidationCandidate>&,
+        std::vector<LiquidationDecision>&
+    )> handler);
     void setTurnChangedHandler(std::function<void()> handler);
     bool startNewGame(const std::vector<std::string>& playerNames, QString* errorMessage = nullptr);
     bool loadGame(const std::string& filename, QString* errorMessage = nullptr);

@@ -25,6 +25,12 @@ public:
     void setPropertyPurchaseHandler(std::function<bool(const Player&, const PropertyTile&)> handler);
     void setPropertyNoticeHandler(std::function<void(const Player&, const PropertyTile&)> handler);
     void setBoardTileSelectionHandler(std::function<int(const QString&, const QVector<int>&, bool)> handler);
+    void setLiquidationPlanHandler(std::function<bool(
+        const Player&,
+        int,
+        const std::vector<LiquidationCandidate>&,
+        std::vector<LiquidationDecision>&
+    )> handler);
 
     int promptInt(const std::string& prompt) override;
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
@@ -52,6 +58,12 @@ public:
         int percentage,
         int wealth,
         int percentageAmount
+    ) override;
+    bool promptLiquidationPlan(
+        const Player& player,
+        int targetAmount,
+        const std::vector<LiquidationCandidate>& candidates,
+        std::vector<LiquidationDecision>& decisions
     ) override;
     int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices) override;
     int promptTileSelection(
@@ -83,4 +95,5 @@ private:
     std::function<bool(const Player&, const PropertyTile&)> propertyPurchaseHandler;
     std::function<void(const Player&, const PropertyTile&)> propertyNoticeHandler;
     std::function<int(const QString&, const QVector<int>&, bool)> boardTileSelectionHandler;
+    std::function<bool(const Player&, int, const std::vector<LiquidationCandidate>&, std::vector<LiquidationDecision>&)> liquidationPlanHandler;
 };
