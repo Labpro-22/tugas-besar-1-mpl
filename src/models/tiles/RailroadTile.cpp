@@ -47,7 +47,7 @@ const RailroadTile* RailroadTile::asRailroadTile() const {
 }
 
 int RailroadTile::getSellValueToBank() const {
-    return 0; 
+    return getMortgageValue();
 }
 
 PropertyType RailroadTile::getPropertyType() const {

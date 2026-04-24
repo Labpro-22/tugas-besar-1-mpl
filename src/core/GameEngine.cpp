@@ -113,6 +113,7 @@ void GameEngine::startNewGame() {
         player.setDiscountPercent(0);
         player.setUsedSkillThisTurn(false);
         player.setHasRolledThisTurn(false);
+        player.setActionTakenThisTurn(false);
         player.clearHand();
     }
 

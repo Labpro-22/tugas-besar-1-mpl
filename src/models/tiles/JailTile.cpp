@@ -1,6 +1,7 @@
 #include "models/tiles/JailTile.hpp"
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
+#include "utils/TextFormatter.hpp"
 
 JailTile::JailTile() : ActionTile(), jailFine(0) {}
 
@@ -26,11 +27,12 @@ void JailTile::applyJailStatus(Player& player) const {
 
 void JailTile::processJailTurn(Player& player, GameContext& gameContext) const {
     gameContext.showMessage(
-        player.getUsername() + " sedang berada di Penjara. Denda keluar: M" +
-            std::to_string(jailFine));
+        player.getUsername() + " sedang berada di Penjara. Denda keluar: " +
+            TextFormatter::formatMoney(jailFine));
     gameContext.logEvent(
         "PENJARA",
-        player.getUsername() + " sedang berada di Penjara. Denda keluar: M" + std::to_string(jailFine)
+        player.getUsername() + " sedang berada di Penjara. Denda keluar: " +
+            TextFormatter::formatMoney(jailFine)
     );
 }
 

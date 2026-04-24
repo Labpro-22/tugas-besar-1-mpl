@@ -16,7 +16,8 @@
 PropertyType ConfigLoader::stringToType(const std::string& s) {
     if (s == "STREET") return PropertyType::STREET;
     if (s == "RAILROAD") return PropertyType::RAILROAD;
-    return PropertyType::UTILITY;
+    if (s == "UTILITY") return PropertyType::UTILITY;
+    throw ConfigException("", "tipe properti tidak dikenal: " + s);
 }
 
 ColorGroup ConfigLoader::stringToColor(const std::string& s) {
@@ -29,7 +30,8 @@ ColorGroup ConfigLoader::stringToColor(const std::string& s) {
     if (s == "HIJAU") return ColorGroup::HIJAU;
     if (s == "BIRU_TUA") return ColorGroup::BIRU_TUA;
     if (s == "ABU_ABU") return ColorGroup::ABU_ABU;
-    return ColorGroup::DEFAULT;
+    if (s == "DEFAULT") return ColorGroup::DEFAULT;
+    throw ConfigException("", "warna properti tidak dikenal: " + s);
 }
 
 ConfigLoader::ConfigLoader(const std::string& configPath) : configPath(configPath) {
@@ -71,14 +73,18 @@ ConfigLoader::parsePropertyFile(const std::string& path) const {
         int hotelCost    = 0;
         std::array<int, 6> rentLevels = {0, 0, 0, 0, 0, 0};
  
-        ss >> id >> code >> name >> typeStr >> colorStr >> buyPrice >> mortgageVal;
- 
-        if (ss.fail()) continue;
+        if (!(ss >> id >> code >> name >> typeStr >> colorStr >> buyPrice >> mortgageVal)) {
+            throw ConfigException(path, "baris property tidak valid: " + line);
+        }
  
         if (typeStr == "STREET") {
-            ss >> houseCost >> hotelCost;
+            if (!(ss >> houseCost >> hotelCost)) {
+                throw ConfigException(path, "data biaya bangunan street tidak lengkap: " + code);
+            }
             for (int i = 0; i < 6; ++i) {
-                if (!(ss >> rentLevels[i])) break;
+                if (!(ss >> rentLevels[i])) {
+                    throw ConfigException(path, "tabel sewa street tidak lengkap: " + code);
+                }
             }
         }
  

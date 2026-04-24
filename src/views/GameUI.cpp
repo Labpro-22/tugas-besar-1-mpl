@@ -93,6 +93,7 @@ namespace {
             std::cout << line << std::endl;
         }
     }
+
 }
 
 Command GameUI::readCommand() {
@@ -113,6 +114,56 @@ Command GameUI::readCommand() {
     }
 
     return Command(keyword, args);
+}
+
+int GameUI::promptAuctionBidInput(
+    const std::string& playerName,
+    int balance,
+    int highestBid,
+    const std::string& highestBidderName
+) {
+    while (true) {
+        std::cout << "Giliran: " << playerName << "\n";
+        if (highestBid < 0) {
+            std::cout << "Bid tertinggi: belum ada\n";
+        } else if (highestBidderName.empty()) {
+            std::cout << "Bid tertinggi: " << TextFormatter::formatMoney(highestBid) << "\n";
+        } else {
+            std::cout << "Bid tertinggi: " << TextFormatter::formatMoney(highestBid)
+                      << " (" << highestBidderName << ")\n";
+        }
+        std::cout << "Aksi (PASS / BID <jumlah>)\n";
+        std::cout << "> ";
+
+        Command command = readCommand();
+        const std::string keyword = command.getKeyword();
+
+        if (keyword == "PASS" && command.getArgCount() == 0) {
+            return -1;
+        }
+
+        if (keyword == "BID" && command.getArgCount() == 1) {
+            int amount = 0;
+            if (!parseSingleInt(command.getArg(0), amount) || amount < 0) {
+                std::cout << "Format BID tidak valid. Gunakan BID <jumlah>.\n";
+                continue;
+            }
+
+            if (amount > balance) {
+                std::cout << "Bid melebihi saldo pemain.\n";
+                continue;
+            }
+
+            if (highestBid >= 0 && amount <= highestBid) {
+                std::cout << "Bid harus lebih besar dari penawaran tertinggi saat ini.\n";
+                continue;
+            }
+
+            return amount;
+        }
+
+        std::cout << "Input tidak valid. Gunakan PASS atau BID <jumlah>.\n";
+    }
 }
 
 int GameUI::showMainMenu() {
@@ -272,44 +323,25 @@ std::string GameUI::promptText(const std::string& prompt) {
 }
 
 int GameUI::promptAuctionBid(const std::string& playerName, int highestBid, int balance) {
-    while (true) {
-        std::cout << "Giliran: " << playerName << "\n";
-        std::cout << "Aksi (PASS / BID <jumlah>)\n";
-        std::cout << "> ";
-
-        Command command = readCommand();
-        const std::string keyword = command.getKeyword();
-
-        if (keyword == "PASS" && command.getArgCount() == 0) {
-            return -1;
-        }
-
-        if (keyword == "BID" && command.getArgCount() == 1) {
-            int amount = 0;
-            if (!parseSingleInt(command.getArg(0), amount) || amount < 0) {
-                std::cout << "Format BID tidak valid. Gunakan BID <jumlah>.\n";
-                continue;
-            }
-
-            if (amount > balance) {
-                std::cout << "Bid melebihi saldo pemain.\n";
-                continue;
-            }
-
-            if (highestBid >= 0 && amount <= highestBid) {
-                std::cout << "Bid harus lebih besar dari penawaran tertinggi saat ini.\n";
-                continue;
-            }
-
-            return amount;
-        }
-
-        std::cout << "Input tidak valid. Gunakan PASS atau BID <jumlah>.\n";
-    }
+    return promptAuctionBidInput(playerName, balance, highestBid, "");
 }
 
 int GameUI::promptAuctionBid(const PropertyTile&, const Player& bidder, int highestBid) {
     return promptAuctionBid(bidder.getUsername(), highestBid, bidder.getBalance());
+}
+
+int GameUI::promptAuctionBid(
+    const PropertyTile&,
+    const Player& bidder,
+    int highestBid,
+    const std::string& highestBidderName
+) {
+    return promptAuctionBidInput(
+        bidder.getUsername(),
+        bidder.getBalance(),
+        highestBid,
+        highestBidderName
+    );
 }
 
 int GameUI::promptTaxPaymentOption(

@@ -2,6 +2,7 @@
 #include "models/Player.hpp"
 #include "core/GameContext.hpp"
 #include "core/TurnManager.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 
 GoTile::GoTile() : ActionTile(), salary(0) {}
@@ -13,10 +14,10 @@ void GoTile::onLanded(Player& player, GameContext& gameContext) {
     int beforeBalance = player.getBalance();
     awardSalary(player);
     gameContext.showMessage(
-        "Kamu mendarat di GO. Mendapatkan gaji M" + std::to_string(salary) + ".");
+        "Kamu mendarat di GO. Mendapatkan gaji " + TextFormatter::formatMoney(salary) + ".");
     gameContext.showMessage(
-        "Uang kamu: M" + std::to_string(beforeBalance) +
-            " -> M" + std::to_string(player.getBalance()));
+        "Uang kamu: " + TextFormatter::formatMoney(beforeBalance) +
+            " -> " + TextFormatter::formatMoney(player.getBalance()));
     if (gameContext.getLogger() != nullptr) {
         int currentTurn = 0;
         if (gameContext.getTurnManager() != nullptr) {
@@ -26,7 +27,7 @@ void GoTile::onLanded(Player& player, GameContext& gameContext) {
             currentTurn,
             player.getUsername(),
             "GO",
-            "Mendarat di GO, mendapatkan gaji " + std::to_string(salary));
+            "Mendarat di GO, mendapatkan gaji " + TextFormatter::formatMoney(salary));
     }
 }
 

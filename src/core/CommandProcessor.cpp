@@ -20,6 +20,7 @@
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/SaveManager.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 #include "utils/exceptions/NimonspoliException.hpp"
 
@@ -134,8 +135,8 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     int fineToPay = player.consumeDiscountedAmount(fine);
     if (fineToPay != fine) {
         ui.showMessage(
-            "Diskon diterapkan dari M" + std::to_string(fine) +
-                " menjadi M" + std::to_string(fineToPay) + ".");
+            "Diskon diterapkan dari " + TextFormatter::formatMoney(fine) +
+                " menjadi " + TextFormatter::formatMoney(fineToPay) + ".");
     }
 
     bool finePaid = false;
@@ -166,16 +167,16 @@ CommandResult CommandProcessor::payJailFine(Player& player) {
     player.setConsecutiveDoubles(0);
     ui.showPaymentNotification(
         "PAYMENT",
-        player.getUsername() + " membayar denda M" + std::to_string(fineToPay) +
+        player.getUsername() + " membayar denda " + TextFormatter::formatMoney(fineToPay) +
             " untuk keluar dari penjara.");
-    ui.showMessage("Denda M" + std::to_string(fineToPay) + " dibayar. Kamu bebas dari penjara.");
+    ui.showMessage("Denda " + TextFormatter::formatMoney(fineToPay) + " dibayar. Kamu bebas dari penjara.");
 
     if (logger != nullptr) {
         logger->log(
             turnManager.getCurrentTurn(),
             player.getUsername(),
             "PENJARA",
-            "Membayar denda M" + std::to_string(fineToPay) + " untuk keluar dari penjara.");
+            "Membayar denda " + TextFormatter::formatMoney(fineToPay) + " untuk keluar dari penjara.");
     }
 
     return CommandResult();
@@ -346,6 +347,11 @@ void CommandProcessor::processSkillCommand(Player& player) {
 
     if (player.hasRolledThisTurn()) {
         ui.showMessage("Kartu kemampuan hanya bisa digunakan SEBELUM melempar dadu.");
+        return;
+    }
+
+    if (player.hasTakenActionThisTurn()) {
+        ui.showMessage("Kartu kemampuan hanya bisa digunakan di awal giliran sebelum menjalankan aksi apapun.");
         return;
     }
 

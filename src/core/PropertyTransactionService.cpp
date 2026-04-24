@@ -73,7 +73,7 @@ void PropertyTransactionService::handlePropertyLanded(
 
                 io->showPaymentNotification(
                     "PAYMENT",
-                    player.getUsername() + " membayar M" + std::to_string(finalPrice) +
+                    player.getUsername() + " membayar " + TextFormatter::formatMoney(finalPrice) +
                         " ke Bank untuk membeli " + tile.getName() + ".");
                 io->showMessage(tile.getName() + " kini menjadi milikmu!");
                 io->showMessage("Uang tersisa: " + TextFormatter::formatMoney(player.getBalance()));
@@ -97,7 +97,7 @@ void PropertyTransactionService::handlePropertyLanded(
                 if (finalPrice > 0) {
                     io->showPaymentNotification(
                         "PAYMENT",
-                        player.getUsername() + " membayar M" + std::to_string(finalPrice) +
+                        player.getUsername() + " membayar " + TextFormatter::formatMoney(finalPrice) +
                             " ke Bank untuk mendapatkan " + tile.getName() + ".");
                 }
             }
@@ -158,7 +158,12 @@ void PropertyTransactionService::handlePropertyLanded(
 
                 int amount = 0;
                 if (io != nullptr) {
-                    amount = io->promptAuctionBid(tile, *bidder, auction->getHighestBid());
+                    Player* highestBidder = auction->getHighestBidder();
+                    amount = io->promptAuctionBid(
+                        tile,
+                        *bidder,
+                        auction->getHighestBid(),
+                        highestBidder == nullptr ? "" : highestBidder->getUsername());
                 }
 
                 if (amount < 0) {
@@ -191,19 +196,14 @@ void PropertyTransactionService::handlePropertyLanded(
                     break;
                 }
 
-                int amount = 0;
                 if (io != nullptr) {
                     io->showMessage(
                         "Belum ada pemain yang melakukan bid. " +
-                        forcedBidder->getUsername() + " wajib melakukan bid awal.");
-                    amount = io->promptAuctionBid(tile, *forcedBidder, auction->getHighestBid());
-                    if (amount < 0) {
-                        amount = 0;
-                    }
+                        forcedBidder->getUsername() + " otomatis melakukan bid awal M0.");
                 }
 
                 try {
-                    auction->processBid(forcedBidder, amount);
+                    auction->processBid(forcedBidder, 0);
                     if (io != nullptr) {
                         io->showMessage(
                             "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
@@ -231,12 +231,12 @@ void PropertyTransactionService::handlePropertyLanded(
                 io->showMessage("");
                 io->showPaymentNotification(
                     "PAYMENT",
-                    winner->getUsername() + " membayar M" + std::to_string(winningBid) +
+                    winner->getUsername() + " membayar " + TextFormatter::formatMoney(winningBid) +
                         " ke Bank untuk memenangkan " + tile.getName() + ".");
                 io->showAuctionNotification(
                     "AUCTION",
                     winner->getUsername() + " memenangkan " + tile.getName() +
-                        " seharga M" + std::to_string(winningBid) + ".");
+                        " seharga " + TextFormatter::formatMoney(winningBid) + ".");
                 io->showMessage(
                     "Properti " + tile.getName() + " (" + tile.getCode() +
                     ") kini dimiliki " + winner->getUsername() + "."
@@ -365,7 +365,7 @@ void PropertyTransactionService::handleRentPayment(
     if (io != nullptr) {
         io->showPaymentNotification(
             "PAYMENT",
-            player.getUsername() + " membayar sewa M" + std::to_string(rentAmount) +
+            player.getUsername() + " membayar sewa " + TextFormatter::formatMoney(rentAmount) +
                 " kepada " + owner->getUsername() + ".");
         io->showMessage(
             payerBalanceLabel + "     : " + TextFormatter::formatMoney(playerBefore) +

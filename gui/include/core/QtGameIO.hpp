@@ -51,6 +51,12 @@ public:
     ) override;
     bool usesRichGuiPresentation() const override;
     int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
+    int promptAuctionBid(
+        const PropertyTile& property,
+        const Player& bidder,
+        int highestBid,
+        const std::string& highestBidderName
+    ) override;
     int promptTaxPaymentOption(
         const Player& player,
         const std::string& tileName,

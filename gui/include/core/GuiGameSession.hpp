@@ -7,31 +7,21 @@
 #include <string>
 #include <vector>
 
-#include "core/AuctionManager.hpp"
-#include "core/BankruptcyHandler.hpp"
-#include "core/Board.hpp"
-#include "core/CommandProcessor.hpp"
-#include "core/Dice.hpp"
-#include "core/GameContext.hpp"
+#include "core/CoreGameSession.hpp"
 #include "core/QtGameIO.hpp"
-#include "core/TurnManager.hpp"
-#include "models/Player.hpp"
-#include "models/cards/ActionCard.hpp"
-#include "models/cards/SkillCard.hpp"
 #include "models/config/ConfigData.hpp"
 #include "models/state/GameState.hpp"
-#include "utils/CardDeck.hpp"
 #include "utils/TransactionLogger.hpp"
 
-class QWidget;
 class Command;
+class Player;
 class PropertyTile;
+class QWidget;
 
 class GuiGameSession
 {
 public:
     explicit GuiGameSession(QWidget* dialogParent = nullptr);
-    ~GuiGameSession();
 
     bool loadConfig(QString* errorMessage = nullptr);
     void setMovementStepHandler(std::function<void(const Player&, int)> handler);
@@ -45,6 +35,7 @@ public:
         std::vector<LiquidationDecision>&
     )> handler);
     void setTurnChangedHandler(std::function<void()> handler);
+
     bool startNewGame(const std::vector<std::string>& playerNames, QString* errorMessage = nullptr);
     bool loadGame(const std::string& filename, QString* errorMessage = nullptr);
     bool saveGame(const std::string& filename, QString* errorMessage = nullptr);
@@ -73,38 +64,11 @@ public:
 
 private:
     bool executeCommand(const Command& command, QString* errorMessage);
-    bool ensureTurnPrepared(QString* errorMessage);
-    bool beginCurrentTurn(QString* errorMessage);
-    bool finishTurnAndAdvance(QString* errorMessage);
-    bool checkGameEnd() const;
-    void rebuildContext();
-    void resetSessionState();
-    void initializeBoardAndDecks();
-    void randomizeTurnOrder();
-    std::vector<Player*> buildPlayerPointers();
-    std::vector<Player*> buildPlayerPointers() const;
     bool handleException(const std::exception& exception, QString* errorMessage);
 
-    Board board;
-    Dice dice;
-    TurnManager turnManager;
-    AuctionManager auctionManager;
-    BankruptcyHandler bankruptcyHandler;
     TransactionLogger logger;
     QtGameIO io;
-
-    CardDeck<ActionCard> chanceDeck;
-    CardDeck<ActionCard> communityDeck;
-    CardDeck<SkillCard> skillDeck;
-
-    GameContext* context = nullptr;
+    CoreGameSession coreSession;
     ConfigData configData;
-    std::vector<Player> players;
-    CommandProcessor commandProcessor;
-
     bool configLoaded = false;
-    bool gameReady = false;
-    bool currentTurnPrepared = false;
-    bool gameEnded = false;
-    std::function<void()> turnChangedHandler;
 };

@@ -89,7 +89,11 @@ else
 endif
 
 BuildRun: all
+ifeq ($(OS),Windows_NT)
 	$(GUI_TARGET)
+else
+	QT_OPENGL=software LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe $(GUI_TARGET)
+endif
 
 # Clean up generated files
 clean:

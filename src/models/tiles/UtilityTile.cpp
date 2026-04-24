@@ -39,7 +39,7 @@ int UtilityTile::calculateRent(int diceTotal, const GameContext& gameContext) {
 }
 
 int UtilityTile::getSellValueToBank() const {
-    return 0;
+    return getMortgageValue();
 }
 
 PropertyType UtilityTile::getPropertyType() const {

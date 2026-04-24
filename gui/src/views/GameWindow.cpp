@@ -1547,7 +1547,9 @@ void GameWindow::refreshActionAvailability()
     rollButton->setEnabled(canRoll);
     setDiceButton->setEnabled(canRoll);
     useSkillButton->setEnabled(hasGame && !currentPlayerOverview->hasUsedSkillThisTurn &&
-        !currentPlayerOverview->hasRolledThisTurn && !currentPlayer->getHand().empty());
+        !currentPlayerOverview->hasRolledThisTurn &&
+        !currentPlayerOverview->hasTakenActionThisTurn &&
+        !currentPlayer->getHand().empty());
     payFineButton->setEnabled(hasGame && currentPlayerOverview->isInJail);
     buildButton->setEnabled(hasGame);
     mortgageButton->setEnabled(hasGame);
@@ -1807,6 +1809,12 @@ bool GameWindow::promptLiquidationPlan(
     cancelButton->setMinimumHeight(46);
     footerRow->addWidget(cancelButton);
 
+    auto* undoButton = new QPushButton(QStringLiteral("UNDO"), shell);
+    undoButton->setObjectName(QStringLiteral("liquidationSecondaryButton"));
+    undoButton->setCursor(Qt::PointingHandCursor);
+    undoButton->setMinimumHeight(46);
+    footerRow->addWidget(undoButton);
+
     auto* finalizeButton = new QPushButton(QStringLiteral("FINALIZE"), shell);
     finalizeButton->setObjectName(QStringLiteral("liquidationPrimaryButton"));
     finalizeButton->setCursor(Qt::PointingHandCursor);
@@ -1919,6 +1927,7 @@ bool GameWindow::promptLiquidationPlan(
 
         sellButton->setEnabled(!eligibleTiles(LiquidationActionKind::Sell).isEmpty());
         mortgageButton->setEnabled(!eligibleTiles(LiquidationActionKind::Mortgage).isEmpty());
+        undoButton->setEnabled(!plannedOrder.isEmpty());
         finalizeButton->setEnabled(shortage <= 0 && !plannedOrder.isEmpty());
     };
 
@@ -1926,6 +1935,7 @@ bool GameWindow::promptLiquidationPlan(
         sellButton->setEnabled(enabled && !eligibleTiles(LiquidationActionKind::Sell).isEmpty());
         mortgageButton->setEnabled(enabled && !eligibleTiles(LiquidationActionKind::Mortgage).isEmpty());
         cancelButton->setEnabled(enabled);
+        undoButton->setEnabled(enabled && !plannedOrder.isEmpty());
         finalizeButton->setEnabled(enabled && (targetAmount - (player.getBalance() + plannedGain()) <= 0) && !plannedOrder.isEmpty());
     };
 
@@ -1967,6 +1977,27 @@ bool GameWindow::promptLiquidationPlan(
         decisions.clear();
         plannedActions.clear();
         plannedOrder.clear();
+        refreshPlanner();
+    });
+    connect(undoButton, &QPushButton::clicked, &dialog, [&]() {
+        if (plannedOrder.isEmpty()) {
+            return;
+        }
+
+        setPlannerButtonsEnabled(false);
+        const int selectedTileIndex = promptBoardTileSelection(
+            QStringLiteral("Pilih aset dalam rencana yang ingin dibatalkan."),
+            plannedOrder,
+            true
+        );
+        setPlannerButtonsEnabled(true);
+        dialog.raise();
+        dialog.activateWindow();
+
+        if (selectedTileIndex >= 0 && plannedActions.contains(selectedTileIndex)) {
+            plannedActions.remove(selectedTileIndex);
+            plannedOrder.removeOne(selectedTileIndex);
+        }
         refreshPlanner();
     });
     connect(finalizeButton, &QPushButton::clicked, &dialog, [&]() {

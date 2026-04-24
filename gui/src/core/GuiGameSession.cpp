@@ -1,87 +1,19 @@
 #include "core/GuiGameSession.hpp"
 
-#include <algorithm>
-#include <random>
-#include <stdexcept>
+#include <exception>
 #include <utility>
 
 #include <QString>
 
-#include "core/BoardFactory.hpp"
-#include "core/DeckFactory.hpp"
-#include "core/GameStateMapper.hpp"
-#include "core/TurnService.hpp"
 #include "models/state/Command.hpp"
-#include "models/state/GameState.hpp"
-#include "models/state/PlayerState.hpp"
-#include "models/state/PropertyState.hpp"
-#include "models/tiles/PropertyTile.hpp"
-#include "models/tiles/StreetTile.hpp"
-#include "models/tiles/Tile.hpp"
 #include "utils/ConfigLoader.hpp"
 #include "utils/SaveManager.hpp"
 #include "utils/UiCommon.hpp"
 
-namespace {
-
-std::vector<Player*> buildPlayerPointersFrom(std::vector<Player>& players)
-{
-    std::vector<Player*> result;
-    result.reserve(players.size());
-    for (Player& player : players) {
-        result.push_back(&player);
-    }
-    return result;
-}
-
-Player* findPlayerByUsername(std::vector<Player>& players, const std::string& username)
-{
-    for (Player& player : players) {
-        if (player.getUsername() == username) {
-            return &player;
-        }
-    }
-
-    return nullptr;
-}
-
-int parseSavedBuildingLevel(const std::string& value)
-{
-    if (value == "H") {
-        return 5;
-    }
-
-    std::size_t parsed = 0;
-    const int level = std::stoi(value, &parsed);
-    if (parsed != value.size() || level < 0 || level > 5) {
-        throw std::runtime_error("Level bangunan pada save tidak valid.");
-    }
-    return level;
-}
-
-}  // namespace
-
 GuiGameSession::GuiGameSession(QWidget* dialogParent)
-    : turnManager(0),
-      io(dialogParent),
-      commandProcessor(
-          board,
-          players,
-          dice,
-          turnManager,
-          io,
-          &logger,
-          context,
-          [this]() {
-              return snapshot();
-          }
-      )
+    : io(dialogParent),
+      coreSession(io, &logger)
 {
-}
-
-GuiGameSession::~GuiGameSession()
-{
-    delete context;
 }
 
 bool GuiGameSession::loadConfig(QString* errorMessage)
@@ -139,7 +71,7 @@ void GuiGameSession::setLiquidationPlanHandler(std::function<bool(
 
 void GuiGameSession::setTurnChangedHandler(std::function<void()> handler)
 {
-    turnChangedHandler = std::move(handler);
+    coreSession.setTurnChangedHandler(std::move(handler));
 }
 
 bool GuiGameSession::startNewGame(const std::vector<std::string>& playerNames, QString* errorMessage)
@@ -149,27 +81,9 @@ bool GuiGameSession::startNewGame(const std::vector<std::string>& playerNames, Q
     }
 
     try {
-        resetSessionState();
-
-        if (playerNames.size() < 2 || playerNames.size() > 4) {
-            throw std::runtime_error("Jumlah pemain harus berada pada rentang 2 sampai 4.");
-        }
-
-        players.reserve(playerNames.size());
-        for (const std::string& name : playerNames) {
-            players.emplace_back(name, configData.getMiscConfig().getInitialBalance());
-        }
-
-        initializeBoardAndDecks();
-        randomizeTurnOrder();
-        logger.clear();
-        logger.log(1, "SYSTEM", "GAME_START", "Permainan baru dimulai.");
-
-        gameReady = true;
-        gameEnded = false;
-        currentTurnPrepared = false;
-
-        return ensureTurnPrepared(errorMessage);
+        io.clearMessages();
+        coreSession.startNewGame(configData, playerNames);
+        return true;
     } catch (const std::exception& exception) {
         return handleException(exception, errorMessage);
     }
@@ -182,92 +96,9 @@ bool GuiGameSession::loadGame(const std::string& filename, QString* errorMessage
     }
 
     try {
-        resetSessionState();
-
+        io.clearMessages();
         SaveManager saveManager;
-        const GameState gameState = saveManager.loadGame(filename);
-
-        BoardFactory::build(board, configData);
-        DeckFactory::buildActionDecks(chanceDeck, communityDeck);
-        DeckFactory::buildSkillDeckFromState(skillDeck, gameState.getDeckState());
-        rebuildContext();
-
-        for (const PlayerState& state : gameState.getPlayerStates()) {
-            players.emplace_back(state.getUsername(), state.getBalance());
-            Player& player = players.back();
-            Tile* playerTile = board.getTile(state.getPositionCode());
-            player.setPosition(playerTile == nullptr ? state.getPosition() : playerTile->getIndex());
-            player.setStatus(state.getStatus());
-            player.setJailTurns(state.getJailTurns());
-            player.setConsecutiveDoubles(0);
-            player.setShieldActive(false);
-            player.setDiscountPercent(0);
-            player.setUsedSkillThisTurn(false);
-            player.setHasRolledThisTurn(false);
-            player.setActionTakenThisTurn(false);
-
-            for (const std::string& cardName : state.getCardHand()) {
-                SkillCard* card = DeckFactory::createSkillCardByName(cardName);
-                if (card == nullptr) {
-                    continue;
-                }
-
-                skillDeck.adoptCard(card);
-                try {
-                    player.addCard(card);
-                } catch (const std::exception&) {
-                    skillDeck.discardCard(card);
-                }
-            }
-        }
-
-        for (const PropertyState& propertyState : gameState.getPropertyStates()) {
-            Tile* tile = board.getTile(propertyState.getCode());
-            if (tile == nullptr || tile->asPropertyTile() == nullptr) {
-                continue;
-            }
-
-            PropertyTile* property = tile->asPropertyTile();
-            property->returnToBank();
-
-            Player* owner = findPlayerByUsername(players, propertyState.getOwnerUsername());
-            if (owner != nullptr) {
-                property->transferTo(*owner);
-                if (propertyState.getStatus() == PropertyStatus::MORTGAGED) {
-                    property->mortgage();
-                }
-            }
-
-            StreetTile* street = property->asStreetTile();
-            if (street != nullptr) {
-                street->setBuildingLevel(parseSavedBuildingLevel(propertyState.getBuildingLevel()));
-                street->setFestivalState(
-                    propertyState.getFestivalMultiplier(),
-                    propertyState.getFestivalDuration()
-                );
-            }
-        }
-
-        turnManager.restoreTurnOrder(gameState.getTurnOrder(), buildPlayerPointers());
-        turnManager.setMaxTurn(gameState.getMaxTurn());
-        turnManager.setCurrentTurn(gameState.getCurrentTurn());
-
-        const std::vector<Player*> activePlayers = turnManager.getActivePlayers();
-        for (int index = 0; index < static_cast<int>(activePlayers.size()); ++index) {
-            if (activePlayers[index] != nullptr &&
-                activePlayers[index]->getUsername() == gameState.getActivePlayerUsername()) {
-                turnManager.setCurrentIndex(index);
-                break;
-            }
-        }
-
-        logger.clear();
-        logger.importEntries(gameState.getLogEntries());
-        logger.log(turnManager.getCurrentTurn(), "SYSTEM", "LOAD", "Permainan berhasil dimuat.");
-
-        gameReady = true;
-        gameEnded = checkGameEnd();
-        currentTurnPrepared = true;
+        coreSession.loadGame(configData, saveManager.loadGame(filename));
         return true;
     } catch (const std::exception& exception) {
         return handleException(exception, errorMessage);
@@ -319,22 +150,26 @@ bool GuiGameSession::payJailFine(QString* errorMessage)
 
 bool GuiGameSession::isReady() const
 {
-    return gameReady;
+    return coreSession.isReady();
 }
 
 bool GuiGameSession::isGameEnded() const
 {
-    return gameEnded;
+    return coreSession.isGameEnded();
 }
 
 const ConfigData& GuiGameSession::getConfigData() const
 {
-    return configData;
+    if (configLoaded) {
+        return configData;
+    }
+
+    return coreSession.getConfigData();
 }
 
 const std::vector<Player>& GuiGameSession::getPlayers() const
 {
-    return players;
+    return coreSession.getPlayers();
 }
 
 const TransactionLogger& GuiGameSession::getLogger() const
@@ -344,67 +179,32 @@ const TransactionLogger& GuiGameSession::getLogger() const
 
 GameState GuiGameSession::snapshot() const
 {
-    return GameStateMapper::create(board, players, turnManager, skillDeck, const_cast<TransactionLogger*>(&logger));
+    return coreSession.snapshot();
 }
 
 std::vector<Player*> GuiGameSession::determineWinner() const
 {
-    std::vector<Player*> candidates;
-    for (const Player& player : players) {
-        if (!player.isBankrupt()) {
-            candidates.push_back(const_cast<Player*>(&player));
-        }
-    }
-
-    std::sort(candidates.begin(), candidates.end(), [](const Player* left, const Player* right) {
-        if (left->getBalance() != right->getBalance()) {
-            return left->getBalance() > right->getBalance();
-        }
-        if (left->getProperties().size() != right->getProperties().size()) {
-            return left->getProperties().size() > right->getProperties().size();
-        }
-        return left->getHand().size() > right->getHand().size();
-    });
-
-    std::vector<Player*> winners;
-    if (candidates.empty()) {
-        return winners;
-    }
-
-    winners.push_back(candidates.front());
-    for (std::size_t index = 1; index < candidates.size(); ++index) {
-        const Player* best = winners.front();
-        const Player* current = candidates[index];
-        if (best->getBalance() == current->getBalance() &&
-            best->getProperties().size() == current->getProperties().size() &&
-            best->getHand().size() == current->getHand().size()) {
-            winners.push_back(candidates[index]);
-        } else {
-            break;
-        }
-    }
-
-    return winners;
+    return coreSession.determineWinner();
 }
 
 Player* GuiGameSession::getCurrentPlayer()
 {
-    return turnManager.getCurrentPlayer();
+    return coreSession.getCurrentPlayer();
 }
 
 const Player* GuiGameSession::getCurrentPlayer() const
 {
-    return turnManager.getCurrentPlayer();
+    return coreSession.getCurrentPlayer();
 }
 
 int GuiGameSession::getCurrentTurn() const
 {
-    return turnManager.getCurrentTurn();
+    return coreSession.getCurrentTurn();
 }
 
 int GuiGameSession::getMaxTurn() const
 {
-    return turnManager.getMaxTurn();
+    return coreSession.getMaxTurn();
 }
 
 QStringList GuiGameSession::takePendingMessages()
@@ -424,163 +224,11 @@ QString GuiGameSession::currentPlayerUsername() const
 
 bool GuiGameSession::executeCommand(const Command& command, QString* errorMessage)
 {
-    if (!gameReady) {
-        if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("Permainan belum aktif.");
-        }
-        return false;
-    }
-
-    if (!ensureTurnPrepared(errorMessage)) {
-        return false;
-    }
-
-    Player* currentPlayer = getCurrentPlayer();
-    if (currentPlayer == nullptr) {
-        if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("Tidak ada pemain aktif.");
-        }
-        return false;
-    }
-
     try {
-        const CommandResult result = commandProcessor.process(command, *currentPlayer);
-        if (result.isTurnFinished()) {
-            return finishTurnAndAdvance(errorMessage);
-        }
-
-        gameEnded = checkGameEnd();
-        return true;
+        return coreSession.executeCommand(command);
     } catch (const std::exception& exception) {
         return handleException(exception, errorMessage);
     }
-}
-
-bool GuiGameSession::ensureTurnPrepared(QString* errorMessage)
-{
-    if (currentTurnPrepared) {
-        return true;
-    }
-
-    return beginCurrentTurn(errorMessage);
-}
-
-bool GuiGameSession::beginCurrentTurn(QString* errorMessage)
-{
-    try {
-        Player* currentPlayer = getCurrentPlayer();
-        if (currentPlayer == nullptr) {
-            throw std::runtime_error("Tidak ada giliran aktif.");
-        }
-
-        TurnService::processTurn(
-            *currentPlayer,
-            board,
-            skillDeck,
-            configData,
-            io,
-            turnManager,
-            &logger
-        );
-        currentTurnPrepared = true;
-        return true;
-    } catch (const std::exception& exception) {
-        return handleException(exception, errorMessage);
-    }
-}
-
-bool GuiGameSession::finishTurnAndAdvance(QString* errorMessage)
-{
-    if (checkGameEnd()) {
-        gameEnded = true;
-        return true;
-    }
-
-    turnManager.advance();
-    currentTurnPrepared = false;
-    if (turnChangedHandler) {
-        turnChangedHandler();
-    }
-    gameEnded = checkGameEnd();
-    if (gameEnded) {
-        return true;
-    }
-
-    return beginCurrentTurn(errorMessage);
-}
-
-bool GuiGameSession::checkGameEnd() const
-{
-    int activePlayers = 0;
-    for (const Player& player : players) {
-        if (!player.isBankrupt()) {
-            ++activePlayers;
-        }
-    }
-
-    return activePlayers <= 1 || (turnManager.getMaxTurn() > 0 && turnManager.isMaxTurnReached());
-}
-
-void GuiGameSession::rebuildContext()
-{
-    delete context;
-    context = new GameContext(
-        &board,
-        &turnManager,
-        &auctionManager,
-        &bankruptcyHandler,
-        &logger,
-        &io,
-        &dice,
-        &chanceDeck,
-        &communityDeck,
-        &skillDeck
-    );
-}
-
-void GuiGameSession::resetSessionState()
-{
-    delete context;
-    context = nullptr;
-
-    players.clear();
-    board.buildBoard({});
-    chanceDeck = CardDeck<ActionCard>();
-    communityDeck = CardDeck<ActionCard>();
-    skillDeck = CardDeck<SkillCard>();
-    logger.clear();
-    io.clearMessages();
-    turnManager = TurnManager(configData.getMiscConfig().getMaxTurn());
-    gameReady = false;
-    currentTurnPrepared = false;
-    gameEnded = false;
-}
-
-void GuiGameSession::initializeBoardAndDecks()
-{
-    BoardFactory::build(board, configData);
-    DeckFactory::buildActionDecks(chanceDeck, communityDeck);
-    DeckFactory::buildSkillDeck(skillDeck);
-    rebuildContext();
-}
-
-void GuiGameSession::randomizeTurnOrder()
-{
-    std::vector<Player*> playerPointers = buildPlayerPointers();
-    std::shuffle(playerPointers.begin(), playerPointers.end(), std::mt19937(std::random_device{}()));
-    turnManager = TurnManager(configData.getMiscConfig().getMaxTurn());
-    turnManager.initializeTurnOrder(playerPointers);
-    rebuildContext();
-}
-
-std::vector<Player*> GuiGameSession::buildPlayerPointers()
-{
-    return buildPlayerPointersFrom(players);
-}
-
-std::vector<Player*> GuiGameSession::buildPlayerPointers() const
-{
-    return buildPlayerPointersFrom(const_cast<std::vector<Player>&>(players));
 }
 
 bool GuiGameSession::handleException(const std::exception& exception, QString* errorMessage)
@@ -589,11 +237,12 @@ bool GuiGameSession::handleException(const std::exception& exception, QString* e
         *errorMessage = QString::fromStdString(exception.what());
     }
 
+    const Player* currentPlayer = getCurrentPlayer();
     io.showError(
         exception,
         &logger,
-        turnManager.getCurrentTurn(),
-        getCurrentPlayer() == nullptr ? "SYSTEM" : getCurrentPlayer()->getUsername()
+        getCurrentTurn(),
+        currentPlayer == nullptr ? "SYSTEM" : currentPlayer->getUsername()
     );
     return false;
 }

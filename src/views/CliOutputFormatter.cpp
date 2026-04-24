@@ -297,7 +297,7 @@ namespace CliOutputFormatter {
 
         if (player.isJailed()) {
             lines.push_back(makeHelpCommandRow("BAYAR_DENDA", "keluar dari penjara dengan denda"));
-            if (!player.hasUsedSkillThisTurn() && canUseSkillCard) {
+            if (!player.hasUsedSkillThisTurn() && !player.hasTakenActionThisTurn() && canUseSkillCard) {
                 lines.push_back(makeHelpCommandRow("GUNAKAN_KEMAMPUAN", "pakai kartu non-pergerakan"));
             }
             if (!player.hasRolledThisTurn() && player.getJailTurns() <= 3) {
@@ -308,7 +308,7 @@ namespace CliOutputFormatter {
             if (!player.hasRolledThisTurn()) {
                 lines.push_back(makeHelpCommandRow("LEMPAR_DADU", "lempar dadu"));
                 lines.push_back(makeHelpCommandRow("ATUR_DADU X Y", "set nilai dadu manual"));
-                if (!player.hasUsedSkillThisTurn() && canUseSkillCard) {
+                if (!player.hasUsedSkillThisTurn() && !player.hasTakenActionThisTurn() && canUseSkillCard) {
                     lines.push_back(makeHelpCommandRow("GUNAKAN_KEMAMPUAN", "pakai kartu skill"));
                 }
             }

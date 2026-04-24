@@ -101,9 +101,19 @@ int GameIO::promptAuctionBid(const PropertyTile&, const Player& bidder, int high
 {
     return promptInt(
         bidder.getUsername() +
-            " saldo M" + std::to_string(bidder.getBalance()) +
-            ", bid tertinggi M" + std::to_string(highestBid) +
+            " saldo " + TextFormatter::formatMoney(bidder.getBalance()) +
+            ", bid tertinggi " + TextFormatter::formatMoney(highestBid) +
             ". Masukkan bid (0 untuk pass): ");
+}
+
+int GameIO::promptAuctionBid(
+    const PropertyTile& property,
+    const Player& bidder,
+    int highestBid,
+    const std::string&
+)
+{
+    return promptAuctionBid(property, bidder, highestBid);
 }
 
 int GameIO::promptTaxPaymentOption(
@@ -116,11 +126,11 @@ int GameIO::promptTaxPaymentOption(
 )
 {
     showMessage("Pilih opsi pembayaran " + tileName + ":");
-    showMessage("Bayar tetap: M" + std::to_string(flatAmount));
+    showMessage("Bayar tetap: " + TextFormatter::formatMoney(flatAmount));
     showMessage(
         "Bayar berdasarkan kekayaan: " + std::to_string(percentage) +
-            "% dari total kekayaan M" + std::to_string(wealth) +
-            " = M" + std::to_string(percentageAmount));
+            "% dari total kekayaan " + TextFormatter::formatMoney(wealth) +
+            " = " + TextFormatter::formatMoney(percentageAmount));
 
     const int choice = promptIntInRange(
         "Pilih pembayaran: 1 untuk bayar tetap, 2 untuk persentase kekayaan: ",
@@ -141,82 +151,170 @@ bool GameIO::promptLiquidationPlan(
         return true;
     }
 
-    std::vector<bool> used(candidates.size(), false);
-    int plannedGain = 0;
+    auto candidateForTile = [&](int tileIndex) -> const LiquidationCandidate* {
+        for (const LiquidationCandidate& candidate : candidates) {
+            if (candidate.tileIndex == tileIndex) {
+                return &candidate;
+            }
+        }
+        return nullptr;
+    };
 
-    while (player.getBalance() + plannedGain < targetAmount) {
-        const int shortage = targetAmount - (player.getBalance() + plannedGain);
-        showMessage(
-            "Likuidasi aset dibutuhkan. Kekurangan dana: M" + std::to_string(shortage) + ".");
+    auto isPlanned = [&](int tileIndex) {
+        for (const LiquidationDecision& decision : decisions) {
+            if (decision.tileIndex == tileIndex) {
+                return true;
+            }
+        }
+        return false;
+    };
 
-        std::vector<int> visibleIndices;
-        for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
-            if (used[i]) {
+    auto plannedGain = [&]() {
+        int total = 0;
+        for (const LiquidationDecision& decision : decisions) {
+            const LiquidationCandidate* candidate = candidateForTile(decision.tileIndex);
+            if (candidate == nullptr) {
                 continue;
             }
 
-            const LiquidationCandidate& candidate = candidates[i];
-            if (candidate.sellValue > 0) {
-                visibleIndices.push_back(i);
+            total += decision.action == LiquidationActionKind::Sell
+                ? candidate->sellValue
+                : candidate->mortgageValue;
+        }
+        return total;
+    };
+
+    auto removePlannedAt = [&](int index) {
+        if (index < 0 || index >= static_cast<int>(decisions.size())) {
+            return;
+        }
+        decisions.erase(decisions.begin() + index);
+    };
+
+    while (true) {
+        const int gain = plannedGain();
+        const int shortage = targetAmount - (player.getBalance() + gain);
+
+        showMessage("");
+        showMessage("=== Rencana Likuidasi Aset ===");
+        showMessage("Uang saat ini      : " + TextFormatter::formatMoney(player.getBalance()));
+        showMessage("Target kewajiban   : " + TextFormatter::formatMoney(targetAmount));
+        showMessage("Dana rencana       : " + TextFormatter::formatMoney(gain));
+        if (shortage > 0) {
+            showMessage("Sisa kekurangan    : " + TextFormatter::formatMoney(shortage));
+        } else {
+            showMessage("Target terpenuhi   : surplus " + TextFormatter::formatMoney(-shortage));
+        }
+
+        if (decisions.empty()) {
+            showMessage("Rencana terpilih   : belum ada");
+        } else {
+            showMessage("Rencana terpilih:");
+            for (int i = 0; i < static_cast<int>(decisions.size()); ++i) {
+                const LiquidationDecision& decision = decisions[i];
+                const LiquidationCandidate* candidate = candidateForTile(decision.tileIndex);
+                if (candidate == nullptr) {
+                    continue;
+                }
+
+                const bool isSell = decision.action == LiquidationActionKind::Sell;
+                const int value = isSell ? candidate->sellValue : candidate->mortgageValue;
                 showMessage(
-                    std::to_string(static_cast<int>(visibleIndices.size())) +
+                    std::to_string(i + 1) + ". " +
+                    (isSell ? "Jual ke Bank " : "Gadai ") +
+                    candidate->name + " (" + candidate->code + ") - " +
+                    TextFormatter::formatMoney(value));
+            }
+        }
+
+        std::vector<LiquidationDecision> availableActions;
+        showMessage("");
+        showMessage("Opsi aset yang belum dipilih:");
+        for (const LiquidationCandidate& candidate : candidates) {
+            if (isPlanned(candidate.tileIndex)) {
+                continue;
+            }
+
+            if (candidate.sellValue > 0) {
+                availableActions.push_back({candidate.tileIndex, LiquidationActionKind::Sell});
+                showMessage(
+                    std::to_string(static_cast<int>(availableActions.size())) +
                     ". Jual ke Bank " + candidate.name +
-                    " (" + candidate.code + ") - M" + std::to_string(candidate.sellValue));
+                    " (" + candidate.code + ") - " + TextFormatter::formatMoney(candidate.sellValue));
             }
             if (candidate.mortgageValue > 0) {
-                visibleIndices.push_back(i);
+                availableActions.push_back({candidate.tileIndex, LiquidationActionKind::Mortgage});
                 showMessage(
-                    std::to_string(static_cast<int>(visibleIndices.size())) +
+                    std::to_string(static_cast<int>(availableActions.size())) +
                     ". Gadai " + candidate.name +
-                    " (" + candidate.code + ") - M" + std::to_string(candidate.mortgageValue));
+                    " (" + candidate.code + ") - " + TextFormatter::formatMoney(candidate.mortgageValue));
             }
         }
 
-        if (visibleIndices.empty()) {
-            decisions.clear();
-            return false;
+        if (availableActions.empty()) {
+            showMessage("Tidak ada opsi aset lain yang tersedia.");
         }
 
-        showMessage("0. Batal dan kosongkan seluruh rencana likuidasi");
+        showMessage("");
+        showMessage("0. Batalkan likuidasi");
+        const int undoMenu = static_cast<int>(availableActions.size()) + 1;
+        const int clearMenu = static_cast<int>(availableActions.size()) + 2;
+        const int finalizeMenu = static_cast<int>(availableActions.size()) + 3;
+        showMessage(std::to_string(undoMenu) + ". Undo pilihan tertentu");
+        showMessage(std::to_string(clearMenu) + ". Kosongkan rencana");
+        showMessage(std::to_string(finalizeMenu) + ". Finalize rencana");
+
         const int choice = promptIntInRange(
-            "Pilih opsi likuidasi: ",
+            "Pilih aksi likuidasi: ",
             0,
-            static_cast<int>(visibleIndices.size()));
+            finalizeMenu);
 
         if (choice == 0) {
             decisions.clear();
             return false;
         }
 
-        int currentDisplay = 0;
-        for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
-            if (used[i]) {
+        if (choice >= 1 && choice <= static_cast<int>(availableActions.size())) {
+            decisions.push_back(availableActions[choice - 1]);
+            continue;
+        }
+
+        if (choice == undoMenu) {
+            if (decisions.empty()) {
+                showMessage("Belum ada pilihan yang bisa di-undo.");
                 continue;
             }
 
-            const LiquidationCandidate& candidate = candidates[i];
-            if (candidate.sellValue > 0) {
-                ++currentDisplay;
-                if (currentDisplay == choice) {
-                    used[i] = true;
-                    plannedGain += candidate.sellValue;
-                    decisions.push_back({candidate.tileIndex, LiquidationActionKind::Sell});
-                    break;
-                }
+            const int undoChoice = promptIntInRange(
+                "Pilih nomor rencana yang ingin dibatalkan (0 untuk kembali): ",
+                0,
+                static_cast<int>(decisions.size()));
+            if (undoChoice > 0) {
+                removePlannedAt(undoChoice - 1);
             }
-            if (candidate.mortgageValue > 0) {
-                ++currentDisplay;
-                if (currentDisplay == choice) {
-                    used[i] = true;
-                    plannedGain += candidate.mortgageValue;
-                    decisions.push_back({candidate.tileIndex, LiquidationActionKind::Mortgage});
-                    break;
-                }
+            continue;
+        }
+
+        if (choice == clearMenu) {
+            decisions.clear();
+            continue;
+        }
+
+        if (choice == finalizeMenu) {
+            if (decisions.empty()) {
+                showMessage("Rencana masih kosong. Pilih aset terlebih dahulu.");
+                continue;
+            }
+            if (targetAmount - (player.getBalance() + plannedGain()) > 0) {
+                showMessage("Dana rencana belum cukup untuk menutup kewajiban. Pilih aset lagi.");
+                continue;
+            }
+
+            if (confirmYN("Jalankan rencana likuidasi ini?")) {
+                return true;
             }
         }
     }
-
-    return true;
 }
 
 int GameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)

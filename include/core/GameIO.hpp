@@ -73,6 +73,12 @@ public:
     );
     virtual bool usesRichGuiPresentation() const;
     virtual int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid);
+    virtual int promptAuctionBid(
+        const PropertyTile& property,
+        const Player& bidder,
+        int highestBid,
+        const std::string& highestBidderName
+    );
     virtual int promptTaxPaymentOption(
         const Player& player,
         const std::string& tileName,

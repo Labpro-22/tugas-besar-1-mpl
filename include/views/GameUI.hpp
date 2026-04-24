@@ -19,6 +19,12 @@ private:
     PropertyCardRenderer propRenderer;
 
     Command readCommand();
+    int promptAuctionBidInput(
+        const std::string& playerName,
+        int balance,
+        int highestBid,
+        const std::string& highestBidderName
+    );
 
 public:
     int showMainMenu();
@@ -32,6 +38,12 @@ public:
     std::string promptText(const std::string& prompt) override;
     int promptAuctionBid(const std::string& playerName, int highestBid, int balance) override;
     int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
+    int promptAuctionBid(
+        const PropertyTile& property,
+        const Player& bidder,
+        int highestBid,
+        const std::string& highestBidderName
+    ) override;
     int promptTaxPaymentOption(
         const Player& player,
         const std::string& tileName,

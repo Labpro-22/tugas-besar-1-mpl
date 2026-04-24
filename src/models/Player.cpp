@@ -122,8 +122,19 @@ void Player::clearHand() {
 int Player::getTotalWealth() const {
     int total = balance;
     for (const PropertyTile* prop : properties) {
+        if (prop == nullptr) {
+            continue;
+        }
+
         total += prop->getBuyPrice();
-        total += (prop->getSellValueToBank() - prop->getBuyPrice());
+        if (prop->getPropertyType() == PropertyType::STREET) {
+            int level = prop->getBuildingLevel();
+            if (level > 0 && level <= 4) {
+                total += level * prop->getHouseCost();
+            } else if (level == 5) {
+                total += (4 * prop->getHouseCost()) + prop->getHotelCost();
+            }
+        }
     }
     return total;
 }

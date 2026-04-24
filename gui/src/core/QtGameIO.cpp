@@ -1,6 +1,7 @@
 #include "core/QtGameIO.hpp"
 
 #include <limits>
+#include <functional>
 #include <stdexcept>
 #include <utility>
 
@@ -10,6 +11,7 @@
 #include <QFrame>
 #include <QGraphicsOpacityEffect>
 #include <QHBoxLayout>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QPainter>
 #include <QPixmap>
@@ -32,6 +34,27 @@
 #include "utils/TransactionLogger.hpp"
 
 namespace {
+
+class AuctionBidDialog : public QDialog
+{
+public:
+    using QDialog::QDialog;
+
+    std::function<void()> passOnEnter;
+
+protected:
+    void keyPressEvent(QKeyEvent* event) override
+    {
+        if (event != nullptr && (event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter)) {
+            if (passOnEnter) {
+                passOnEnter();
+            }
+            return;
+        }
+
+        QDialog::keyPressEvent(event);
+    }
+};
 
 bool isTestMode()
 {
@@ -786,6 +809,16 @@ bool QtGameIO::usesRichGuiPresentation() const
 
 int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid)
 {
+    return promptAuctionBid(property, bidder, highestBid, "");
+}
+
+int QtGameIO::promptAuctionBid(
+    const PropertyTile& property,
+    const Player& bidder,
+    int highestBid,
+    const std::string& highestBidderName
+)
+{
     if (isTestMode()) {
         Q_UNUSED(property);
         Q_UNUSED(bidder);
@@ -793,9 +826,15 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
         return 0;
     }
 
-    QDialog dialog(dialogParent, Qt::Dialog | Qt::FramelessWindowHint);
+    int selectedBid = -1;
+
+    AuctionBidDialog dialog(dialogParent, Qt::Dialog | Qt::FramelessWindowHint);
     dialog.setModal(true);
     dialog.setAttribute(Qt::WA_TranslucentBackground);
+    dialog.passOnEnter = [&]() {
+        selectedBid = -1;
+        dialog.reject();
+    };
 
     auto* root = new QVBoxLayout(&dialog);
     root->setContentsMargins(20, 20, 20, 20);
@@ -825,10 +864,9 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     layout->addWidget(propertyLabel);
 
     auto* bidderLabel = new QLabel(
-        QStringLiteral("%1\nSaldo: M%2 | Bid tertinggi: M%3")
+        QStringLiteral("%1\nSaldo: M%2")
             .arg(toQString(bidder.getUsername()))
-            .arg(bidder.getBalance())
-            .arg(qMax(0, highestBid)),
+            .arg(bidder.getBalance()),
         shell
     );
     bidderLabel->setAlignment(Qt::AlignCenter);
@@ -836,19 +874,24 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     bidderLabel->setObjectName(QStringLiteral("auctionBidder"));
     layout->addWidget(bidderLabel);
 
-    auto* bidInput = new QSpinBox(shell);
-    bidInput->setObjectName(QStringLiteral("auctionBidInput"));
-    bidInput->setRange(0, qMax(0, bidder.getBalance()));
-    bidInput->setSingleStep(10);
-    bidInput->setPrefix(QStringLiteral("M"));
-    bidInput->setValue(highestBid < 0 ? 0 : qMin(bidder.getBalance(), highestBid + 1));
-    bidInput->setEnabled(highestBid < 0 || bidder.getBalance() > highestBid);
-    layout->addWidget(bidInput);
+    const bool canBid = highestBid < 0 || bidder.getBalance() > highestBid;
+    const int minimumBid = highestBid < 0 ? 0 : highestBid + 1;
+    const QString highestBidText = highestBid < 0 || highestBidderName.empty()
+        ? QStringLiteral("Bid tertinggi: belum ada")
+        : QStringLiteral("Bid tertinggi: M%1 (%2)")
+            .arg(highestBid)
+            .arg(toQString(highestBidderName));
+
+    auto* highestBidLabel = new QLabel(highestBidText, shell);
+    highestBidLabel->setAlignment(Qt::AlignCenter);
+    highestBidLabel->setWordWrap(true);
+    highestBidLabel->setObjectName(QStringLiteral("auctionBidder"));
+    layout->addWidget(highestBidLabel);
 
     auto* hint = new QLabel(
-        highestBid < 0 || bidder.getBalance() > highestBid
-            ? QStringLiteral("Masukkan bid lebih tinggi dari bid saat ini, atau pass.")
-            : QStringLiteral("Saldo tidak cukup untuk menaikkan bid. Pilih pass."),
+        canBid
+            ? QStringLiteral("Pilih BID untuk memasukkan nominal, atau PASS. Tekan Enter untuk pass.")
+            : QStringLiteral("Saldo tidak cukup untuk menaikkan bid. Tekan Enter atau pilih PASS."),
         shell
     );
     hint->setAlignment(Qt::AlignCenter);
@@ -864,13 +907,17 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     passButton->setObjectName(QStringLiteral("auctionPassButton"));
     passButton->setCursor(Qt::PointingHandCursor);
     passButton->setMinimumHeight(42);
+    passButton->setDefault(true);
+    passButton->setAutoDefault(true);
     buttonRow->addWidget(passButton);
 
     auto* bidButton = new QPushButton(QStringLiteral("BID"), shell);
     bidButton->setObjectName(QStringLiteral("auctionBidButton"));
     bidButton->setCursor(Qt::PointingHandCursor);
     bidButton->setMinimumHeight(42);
-    bidButton->setEnabled(highestBid < 0 || bidder.getBalance() > highestBid);
+    bidButton->setAutoDefault(false);
+    bidButton->setDefault(false);
+    bidButton->setEnabled(canBid);
     buttonRow->addWidget(bidButton);
 
     dialog.setStyleSheet(QStringLiteral(
@@ -887,15 +934,6 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
         "#auctionProperty { color:#111; font:900 12pt 'Trebuchet MS'; }"
         "#auctionBidder { color:#26333f; font:800 10pt 'Trebuchet MS'; }"
         "#auctionHint { color:#5d6670; font:700 8.8pt 'Trebuchet MS'; }"
-        "#auctionBidInput {"
-        "  min-height: 42px;"
-        "  padding: 4px 10px;"
-        "  border: 2px solid #111;"
-        "  border-radius: 4px;"
-        "  background: white;"
-        "  color:#111;"
-        "  font:900 13pt 'Trebuchet MS';"
-        "}"
         "QPushButton {"
         "  border: none;"
         "  border-radius: 4px;"
@@ -909,13 +947,13 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
         "#auctionBidButton:disabled { background:#c9c5b9; color:#777; }"
     ));
 
-    int selectedBid = 0;
     QObject::connect(passButton, &QPushButton::clicked, &dialog, [&]() {
         selectedBid = -1;
         dialog.reject();
     });
+    bool wantsBid = false;
     QObject::connect(bidButton, &QPushButton::clicked, &dialog, [&]() {
-        selectedBid = bidInput->value();
+        wantsBid = true;
         dialog.accept();
     });
 
@@ -923,7 +961,26 @@ int QtGameIO::promptAuctionBid(const PropertyTile& property, const Player& bidde
     centerDialogOnParent(dialog, dialogParent);
     animateDialogEntrance(dialog);
     dialog.exec();
-    return selectedBid;
+
+    if (!wantsBid || !canBid) {
+        return selectedBid;
+    }
+
+    bool accepted = false;
+    const int bid = showNumberPrompt(
+        dialogParent,
+        QStringLiteral("BID"),
+        QStringLiteral("Masukkan bid untuk %1.\n%2\nBid harus minimal M%3.")
+            .arg(toQString(bidder.getUsername()))
+            .arg(highestBidText)
+            .arg(minimumBid),
+        minimumBid,
+        bidder.getBalance(),
+        minimumBid,
+        &accepted
+    );
+
+    return accepted ? bid : -1;
 }
 
 int QtGameIO::promptTaxPaymentOption(

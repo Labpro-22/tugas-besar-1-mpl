@@ -12,6 +12,7 @@
 #include "models/config/ConfigData.hpp"
 #include "models/config/SpecialConfig.hpp"
 #include "utils/CardDeck.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 
 namespace {
@@ -49,11 +50,11 @@ void TurnService::processTurn(
 
         if (player.getJailTurns() > 3) {
             io.showMessage(
-                "Ini giliran ke-4 di penjara. Kamu wajib BAYAR_DENDA sebesar M" +
-                    std::to_string(fine) + " sebelum bisa bergerak.");
+                "Ini giliran ke-4 di penjara. Kamu wajib BAYAR_DENDA sebesar " +
+                    TextFormatter::formatMoney(fine) + " sebelum bisa bergerak.");
         } else {
             io.showMessage(
-                "Pilihan: BAYAR_DENDA sebesar M" + std::to_string(fine) +
+                "Pilihan: BAYAR_DENDA sebesar " + TextFormatter::formatMoney(fine) +
                     " atau LEMPAR_DADU/ATUR_DADU untuk mencoba double.");
         }
     }

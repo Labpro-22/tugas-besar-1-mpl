@@ -147,6 +147,6 @@ std::string DeckFactory::describeSkillCard(const SkillCard* card) {
     if (typeName == "ShieldCard") return "Kebal tagihan atau sanksi selama 1 turn";
     if (typeName == "TeleportCard") return "Pindah ke petak manapun";
     if (typeName == "LassoCard") return "Menarik lawan terdekat di depan";
-    if (typeName == "DemolitionCard") return "Menghancurkan properti lawan";
+    if (typeName == "DemolitionCard") return "Menghancurkan bangunan properti lawan";
     return "Kartu kemampuan";
 }
