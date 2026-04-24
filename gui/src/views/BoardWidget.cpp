@@ -51,7 +51,7 @@ namespace Pal {
 namespace {
 QString formatCurrency(int amount)
 {
-    return QStringLiteral("₩%1").arg(amount);
+    return QStringLiteral("M%1").arg(amount);
 }
 
 QString formatTileName(const std::string& rawName)
@@ -266,6 +266,12 @@ void BoardWidget::setPawns(const QVector<PawnData>& pawnData)
 void BoardWidget::setBuildings(const QVector<BuildingData>& buildingData)
 {
     buildings = buildingData;
+    update();
+}
+
+void BoardWidget::setOwners(const QVector<OwnerData>& ownerData)
+{
+    owners = ownerData;
     update();
 }
 
@@ -484,6 +490,51 @@ void BoardWidget::drawBuildings(QPainter &p, const QRect &board, int cs, int es)
 // ─────────────────────────────────────────────────────────────────────────────
 //  TILE DATA  (index 0=GO at bottom-right, clockwise)
 // ─────────────────────────────────────────────────────────────────────────────
+void BoardWidget::drawOwners(QPainter &p, const QRect &board, int cs, int es) const
+{
+    if (owners.isEmpty()) {
+        return;
+    }
+
+    p.save();
+    p.setRenderHint(QPainter::Antialiasing);
+
+    for (const OwnerData& owner : owners) {
+        if (owner.tileIndex < 0 || owner.tileIndex >= cells.size()) {
+            continue;
+        }
+        if (!isInspectableTile(owner.tileIndex) || owner.ownerName.isEmpty()) {
+            continue;
+        }
+
+        const QRect tile = tileRect(owner.tileIndex, board, cs, es);
+        const int badgeHeight = qMax(14, qMin(tile.width(), tile.height()) / 5);
+        const int badgeWidth = qMax(28, qMin(tile.width() - 8, badgeHeight * 3));
+        const QRect badge(tile.left() + 4, tile.bottom() - badgeHeight - 4, badgeWidth, badgeHeight);
+
+        const QColor accent = owner.accentColor.isValid() ? owner.accentColor : QColor(40, 40, 40);
+        p.setPen(QPen(Qt::black, 1));
+        p.setBrush(accent);
+        p.drawRoundedRect(badge, 4, 4);
+
+        QFont font(QStringLiteral("Trebuchet MS"), qMax(6, badgeHeight / 2), QFont::Black);
+        p.setFont(font);
+        p.setPen(Qt::white);
+        p.drawText(badge, Qt::AlignCenter, initialsForName(owner.ownerName));
+
+        if (owner.mortgaged) {
+            const QRect mortgageBadge(badge.right() + 3, badge.top(), badgeHeight, badgeHeight);
+            p.setPen(QPen(Qt::black, 1));
+            p.setBrush(QColor(30, 30, 30));
+            p.drawRoundedRect(mortgageBadge, 4, 4);
+            p.setPen(Qt::white);
+            p.drawText(mortgageBadge, Qt::AlignCenter, QStringLiteral("M"));
+        }
+    }
+
+    p.restore();
+}
+
 QVector<BoardWidget::CellData> BoardWidget::createCells() const
 {
     QVector<CellData> d(40);
@@ -499,51 +550,51 @@ QVector<BoardWidget::CellData> BoardWidget::createCells() const
 
     // ── BOTTOM (indices 0–9, right→left) ──
     spec( 0, TileKind::CornerGo,          "",          "Petak Mulai");
-    prop( 1, "₩60",   "GARUT",            Pal::brown);
+    prop( 1, "M60",   "GARUT",            Pal::brown);
     spec( 2, TileKind::CommunityChest,    "",          "DANA\nUMUM",    Pal::darkBlue);
-    prop( 3, "₩60",   "TASIKMALAYA",      Pal::brown);
-    spec( 4, TileKind::IncomeTax,         "PAY ₩150",  "PPH",           Pal::line);
-    spec( 5, TileKind::Railroad,          "₩200",      "STASIUN\nGAMBIR");
-    prop( 6, "₩100",  "BOGOR",            Pal::sky);
+    prop( 3, "M60",   "TASIKMALAYA",      Pal::brown);
+    spec( 4, TileKind::IncomeTax,         "PAY M150",  "PPH",           Pal::line);
+    spec( 5, TileKind::Railroad,          "M200",      "STASIUN\nGAMBIR");
+    prop( 6, "M100",  "BOGOR",            Pal::sky);
     spec( 7, TileKind::Festival,          "",          "FESTIVAL",      Pal::pink);
-    prop( 8, "₩100",  "DEPOK",            Pal::sky);
-    prop( 9, "₩120",  "BEKASI",           Pal::sky);
+    prop( 8, "M100",  "DEPOK",            Pal::sky);
+    prop( 9, "M120",  "BEKASI",           Pal::sky);
 
     // ── LEFT (indices 10–19, bottom→top) ──
     spec(10, TileKind::CornerJail,        "",          "PENJARA");
-    prop(11, "₩140",  "MAGELANG",         Pal::pink);
-    spec(12, TileKind::UtilityElec,       "₩150",      "PLN",           Pal::line);
-    prop(13, "₩140",  "SOLO",             Pal::pink);
-    prop(14, "₩160",  "YOGYAKARTA",       Pal::pink);
-    spec(15, TileKind::Railroad,          "₩200",      "STASIUN\nBANDUNG");
-    prop(16, "₩180",  "MALANG",           Pal::orange);
+    prop(11, "M140",  "MAGELANG",         Pal::pink);
+    spec(12, TileKind::UtilityElec,       "M150",      "PLN",           Pal::line);
+    prop(13, "M140",  "SOLO",             Pal::pink);
+    prop(14, "M160",  "YOGYAKARTA",       Pal::pink);
+    spec(15, TileKind::Railroad,          "M200",      "STASIUN\nBANDUNG");
+    prop(16, "M180",  "MALANG",           Pal::orange);
     spec(17, TileKind::CommunityChest,    "",          "DANA\nUMUM",    Pal::darkBlue);
-    prop(18, "₩180",  "SEMARANG",         Pal::orange);
-    prop(19, "₩200",  "SURABAYA",         Pal::orange);
+    prop(18, "M180",  "SEMARANG",         Pal::orange);
+    prop(19, "M200",  "SURABAYA",         Pal::orange);
 
     // ── TOP (indices 20–29, left→right) ──
     spec(20, TileKind::CornerFreeParking, "",          "BEBAS PARKIR");
-    prop(21, "₩220",  "MAKASSAR",         Pal::red);
+    prop(21, "M220",  "MAKASSAR",         Pal::red);
     spec(22, TileKind::Chance,            "",          "KESEMPATAN",    Pal::darkBlue);
-    prop(23, "₩240",  "BALIKPAPAN",       Pal::red);
-    prop(24, "₩260",  "MANADO",           Pal::red);
-    spec(25, TileKind::Railroad,          "₩200",      "STASIUN\nTUGU");
-    prop(26, "₩260",  "PALEMBANG",        Pal::yellow);
-    prop(27, "₩260",  "PEKANBARU",        Pal::yellow);
-    spec(28, TileKind::UtilityWater,      "₩150",      "PAM",           Pal::line);
-    prop(29, "₩280",  "MEDAN",            Pal::yellow);
+    prop(23, "M240",  "BALIKPAPAN",       Pal::red);
+    prop(24, "M260",  "MANADO",           Pal::red);
+    spec(25, TileKind::Railroad,          "M200",      "STASIUN\nTUGU");
+    prop(26, "M260",  "PALEMBANG",        Pal::yellow);
+    prop(27, "M260",  "PEKANBARU",        Pal::yellow);
+    spec(28, TileKind::UtilityWater,      "M150",      "PAM",           Pal::line);
+    prop(29, "M280",  "MEDAN",            Pal::yellow);
 
     // ── RIGHT (indices 30–39, top→bottom) ──
     spec(30, TileKind::CornerGoToJail,    "",          "PERGI KE\nPENJARA");
-    prop(31, "₩300",  "BANDUNG",          Pal::green);
-    prop(32, "₩300",  "DENPASAR",         Pal::green);
+    prop(31, "M300",  "BANDUNG",          Pal::green);
+    prop(32, "M300",  "DENPASAR",         Pal::green);
     spec(33, TileKind::Festival,          "",          "FESTIVAL",      Pal::pink);
-    prop(34, "₩320",  "MATARAM",          Pal::green);
-    spec(35, TileKind::Railroad,          "₩200",      "STASIUN\nGUBENG");
+    prop(34, "M320",  "MATARAM",          Pal::green);
+    spec(35, TileKind::Railroad,          "M200",      "STASIUN\nGUBENG");
     spec(36, TileKind::Chance,            "",          "KESEMPATAN",    Pal::orange);
-    prop(37, "₩350",  "JAKARTA",          Pal::darkBlue);
-    spec(38, TileKind::LuxuryTax,         "₩150",      "PPNBM",         Pal::line);
-    prop(39, "₩400",  "IKN",              Pal::darkBlue);
+    prop(37, "M350",  "JAKARTA",          Pal::darkBlue);
+    spec(38, TileKind::LuxuryTax,         "M150",      "PPNBM",         Pal::line);
+    prop(39, "M400",  "IKN",              Pal::darkBlue);
 
     const QString configDir = findConfigDirectory();
     if (!configDir.isEmpty()) {
@@ -743,7 +794,7 @@ void BoardWidget::drawCornerGo(QPainter &p, const QRect &r) const
     QFont tiny("Arial", qMax(6, W/17), QFont::Bold);
     p.setFont(tiny);
     p.setPen(Pal::line);
-    const QString goSalary = (!cells.isEmpty() && !cells[0].price.isEmpty()) ? cells[0].price : QStringLiteral("₩200");
+    const QString goSalary = (!cells.isEmpty() && !cells[0].price.isEmpty()) ? cells[0].price : QStringLiteral("M200");
     p.drawText(r.adjusted(4,4,-W/2,-H/2), Qt::AlignLeft|Qt::AlignTop|Qt::TextWordWrap,
                QStringLiteral("DAPAT\n%1 GAJI\nSAAT LEWAT").arg(goSalary));
 
@@ -1177,6 +1228,7 @@ void BoardWidget::paintEvent(QPaintEvent *event)
     for (int i = 0; i < 40; ++i)
         drawCell(p, i, tileRect(i, board, cs, es));
 
+    drawOwners(p, board, cs, es);
     drawBuildings(p, board, cs, es);
 
     for (int i = 0; i < 40; ++i)

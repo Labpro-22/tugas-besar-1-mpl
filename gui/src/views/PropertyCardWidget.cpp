@@ -7,6 +7,7 @@
 #include <QPainter>
 #include <QPixmap>
 #include <QRectF>
+#include <QStringList>
 #include <QtGui/QFontMetrics>
 
 #include "utils/UiCommon.hpp"
@@ -134,6 +135,20 @@ void PropertyCardWidget::setSelectedProperty(int propertyId)
     update();
 }
 
+void PropertyCardWidget::setOwnershipInfo(
+    const QString& newOwnerName,
+    const QColor& accentColor,
+    bool mortgaged,
+    int buildingLevel
+)
+{
+    ownerName = newOwnerName.isEmpty() ? QStringLiteral("BANK") : newOwnerName;
+    ownerAccentColor = accentColor;
+    currentPropertyMortgaged = mortgaged;
+    currentBuildingLevel = buildingLevel;
+    update();
+}
+
 int PropertyCardWidget::selectedPropertyId() const
 {
     return currentPropertyId;
@@ -212,6 +227,8 @@ void PropertyCardWidget::paintEvent(QPaintEvent *event)
         drawPropertyCard(painter, cardRect, *property);
         break;
     }
+
+    drawOwnershipBadge(painter, cardRect);
 }
 
 void PropertyCardWidget::drawCardBase(QPainter& painter, const QRectF& cardRect) const
@@ -425,6 +442,63 @@ void PropertyCardWidget::drawUtilityCard(
             "shown on dice."
         ).arg(singleUtility).arg(bothUtilities)
     );
+
+    painter.restore();
+}
+
+void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& cardRect) const
+{
+    painter.save();
+    painter.setRenderHint(QPainter::Antialiasing);
+
+    const QString ownerText = ownerName == QStringLiteral("BANK")
+        ? QStringLiteral("OWNER: BANK")
+        : QStringLiteral("OWNER: %1").arg(ownerName);
+
+    QStringList statusParts;
+    if (currentPropertyMortgaged) {
+        statusParts.append(QStringLiteral("MORTGAGED"));
+    }
+    if (currentBuildingLevel >= 5) {
+        statusParts.append(QStringLiteral("HOTEL"));
+    } else if (currentBuildingLevel > 0) {
+        statusParts.append(QStringLiteral("%1 HOUSE").arg(currentBuildingLevel));
+    }
+
+    const QString statusText = statusParts.isEmpty()
+        ? QStringLiteral("ACTIVE")
+        : statusParts.join(QStringLiteral(" | "));
+
+    const QRectF badgeRect(
+        cardRect.left() + cardRect.width() * 0.08,
+        cardRect.bottom() - cardRect.height() * 0.145,
+        cardRect.width() * 0.84,
+        cardRect.height() * 0.095
+    );
+
+    QColor accent = ownerAccentColor.isValid() ? ownerAccentColor : QColor(34, 34, 34);
+    if (ownerName == QStringLiteral("BANK")) {
+        accent = QColor(70, 78, 88);
+    }
+
+    painter.setPen(QPen(kCardBorder, 1.4));
+    painter.setBrush(QColor(255, 255, 255, 232));
+    painter.drawRoundedRect(badgeRect, 5, 5);
+
+    const QRectF stripe(badgeRect.left(), badgeRect.top(), badgeRect.width(), qMax<qreal>(5.0, badgeRect.height() * 0.18));
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(accent);
+    painter.drawRect(stripe);
+
+    QFont ownerFont(QStringLiteral("Trebuchet MS"), qMax(8, int(cardRect.width() * 0.034)), QFont::Black);
+    painter.setFont(ownerFont);
+    painter.setPen(kBodyText);
+    painter.drawText(badgeRect.adjusted(8, 5, -8, -badgeRect.height() * 0.42), Qt::AlignCenter, ownerText);
+
+    QFont statusFont(QStringLiteral("Trebuchet MS"), qMax(7, int(cardRect.width() * 0.028)), QFont::DemiBold);
+    painter.setFont(statusFont);
+    painter.setPen(kMutedText);
+    painter.drawText(badgeRect.adjusted(8, badgeRect.height() * 0.48, -8, -3), Qt::AlignCenter, statusText);
 
     painter.restore();
 }

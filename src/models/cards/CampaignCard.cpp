@@ -34,6 +34,10 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
     }
 
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
+    std::vector<Player*> recipients;
+    std::vector<int> payments;
+    int totalAmountToPay = 0;
+
     for (Player* otherPlayer : activePlayers) {
         if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt()) {
             continue;
@@ -46,27 +50,39 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
                     " menjadi " + TextFormatter::formatMoney(amountToPay) + ".");
         }
 
-        if (!player.canAfford(amountToPay)) {
-            BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
-            if (bankruptcyHandler != nullptr) {
-                const bool settled = bankruptcyHandler->handleBankruptcy(player, otherPlayer, amountToPay, gameContext);
-                if (!settled) {
-                    if (gameContext.getIO() != nullptr) {
-                        gameContext.getIO()->showMessage(
-                            "Likuidasi dibatalkan. Pembayaran CampaignCard kepada " +
-                            otherPlayer->getUsername() + " tidak jadi dilakukan.");
-                    }
-                    return;
-                }
-            } else {
-                player -= amountToPay;
-                *otherPlayer += amountToPay;
-            }
-            if (player.isBankrupt()) {
+        recipients.push_back(otherPlayer);
+        payments.push_back(amountToPay);
+        totalAmountToPay += amountToPay;
+    }
+
+    if (recipients.empty()) {
+        return;
+    }
+
+    if (!player.canAfford(totalAmountToPay)) {
+        BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
+        if (bankruptcyHandler != nullptr) {
+            if (bankruptcyHandler->calculateLiquidationMax(player) < totalAmountToPay) {
+                bankruptcyHandler->handleBankruptcy(player, nullptr, totalAmountToPay, gameContext);
                 return;
             }
-            continue;
+
+            gameContext.showMessage(
+                "Total kewajiban CampaignCard: " + TextFormatter::formatMoney(totalAmountToPay) + ".");
+            const bool settled = bankruptcyHandler->liquidateAssets(player, totalAmountToPay, gameContext);
+            if (!settled || player.getBalance() < totalAmountToPay) {
+                if (gameContext.getIO() != nullptr) {
+                    gameContext.getIO()->showMessage(
+                        "Likuidasi dibatalkan. Pembayaran CampaignCard tidak jadi dilakukan.");
+                }
+                return;
+            }
         }
+    }
+
+    for (std::size_t index = 0; index < recipients.size(); ++index) {
+        Player* otherPlayer = recipients[index];
+        const int amountToPay = payments[index];
 
         player -= amountToPay;
         *otherPlayer += amountToPay;

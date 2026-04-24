@@ -90,6 +90,7 @@ private:
     void refreshStats();
     void refreshHistory();
     void refreshBoardPawns();
+    void refreshSelectedPropertyDetails();
     void refreshActionAvailability();
     void syncSelectedPlayer();
     void syncSelectedProperty();

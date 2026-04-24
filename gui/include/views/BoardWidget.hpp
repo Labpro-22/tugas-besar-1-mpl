@@ -31,12 +31,20 @@ public:
         int buildingLevel = 0;
     };
 
+    struct OwnerData {
+        int tileIndex = 0;
+        QString ownerName;
+        QColor accentColor;
+        bool mortgaged = false;
+    };
+
     explicit BoardWidget(QWidget *parent = nullptr);
     ~BoardWidget() override;
 
     void setActivePawnName(const QString& pawnName);
     void setPawns(const QVector<PawnData>& pawnData);
     void setBuildings(const QVector<BuildingData>& buildingData);
+    void setOwners(const QVector<OwnerData>& ownerData);
     void setSelectedPropertyId(int propertyId);
     void setTileSelectionMode(const QSet<int>& validTileIndices, const QString& promptText, bool allowCancel = false);
     void clearTileSelectionMode();
@@ -81,6 +89,7 @@ private:
     QVector<CellData>           cells;
     QVector<PawnData>           pawns;
     QVector<BuildingData>       buildings;
+    QVector<OwnerData>          owners;
     mutable QMap<QString,QPixmap> pixCache;
     QString                     activePawnName;
     int                         selectedPropertyId = 0;
@@ -99,6 +108,7 @@ private:
 
     const QPixmap& pix(const QString &name) const;
     void drawBuildings(QPainter &p, const QRect &board, int cs, int es) const;
+    void drawOwners(QPainter &p, const QRect &board, int cs, int es) const;
     void drawPawns(QPainter &p, const QRect &board, int cs, int es) const;
     void drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) const;
 

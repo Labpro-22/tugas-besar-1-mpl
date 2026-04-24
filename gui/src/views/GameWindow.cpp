@@ -1367,6 +1367,7 @@ void GameWindow::refreshScene(const QString& statusText)
     refreshViewModels();
     syncSelectedPlayer();
     syncSelectedProperty();
+    refreshSelectedPropertyDetails();
     refreshBoardPawns();
     refreshSidebar();
     refreshActionAvailability();
@@ -1534,6 +1535,40 @@ void GameWindow::refreshBoardPawns()
         buildingData.append({it.key() - 1, it.value().buildingLevel});
     }
     boardWidget->setBuildings(buildingData);
+
+    QVector<BoardWidget::OwnerData> ownerData;
+    ownerData.reserve(propertyStateById.size());
+    for (auto it = propertyStateById.constBegin(); it != propertyStateById.constEnd(); ++it) {
+        const QString ownerUsername = it.value().ownerUsername;
+        if (ownerUsername.isEmpty() || ownerUsername == QStringLiteral("BANK")) {
+            continue;
+        }
+        ownerData.append({
+            it.key() - 1,
+            ownerUsername,
+            accentColorForPlayer(ownerUsername),
+            it.value().mortgaged
+        });
+    }
+    boardWidget->setOwners(ownerData);
+}
+
+void GameWindow::refreshSelectedPropertyDetails()
+{
+    if (propertyCardWidget == nullptr || propertyConfigForId(selectedPropertyId) == nullptr) {
+        return;
+    }
+
+    const PropertyViewState* state = propertyStateForId(selectedPropertyId);
+    const QString ownerUsername = state == nullptr || state->ownerUsername.isEmpty()
+        ? QStringLiteral("BANK")
+        : state->ownerUsername;
+    propertyCardWidget->setOwnershipInfo(
+        ownerUsername,
+        ownerUsername == QStringLiteral("BANK") ? QColor(70, 78, 88) : accentColorForPlayer(ownerUsername),
+        state != nullptr && state->mortgaged,
+        state == nullptr ? 0 : state->buildingLevel
+    );
 }
 
 void GameWindow::refreshActionAvailability()
@@ -1613,6 +1648,7 @@ void GameWindow::setSelectedProperty(int propertyId, bool showPreview)
     boardWidget->setSelectedPropertyId(propertyId);
     portfolioWidget->setSelectedPropertyId(propertyId);
     propertyCardWidget->setSelectedProperty(propertyId);
+    refreshSelectedPropertyDetails();
 
     if (showPreview) {
         showPropertyCard(propertyId);
@@ -1660,6 +1696,16 @@ void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& pr
     auto* card = new PropertyCardWidget(&dialog);
     card->setConfigData(session.getConfigData());
     card->setSelectedProperty(propertyId);
+    const PropertyViewState* state = propertyStateForId(propertyId);
+    const QString ownerUsername = state == nullptr || state->ownerUsername.isEmpty()
+        ? QStringLiteral("BANK")
+        : state->ownerUsername;
+    card->setOwnershipInfo(
+        ownerUsername,
+        ownerUsername == QStringLiteral("BANK") ? QColor(70, 78, 88) : accentColorForPlayer(ownerUsername),
+        state != nullptr && state->mortgaged,
+        state == nullptr ? 0 : state->buildingLevel
+    );
     layout->addWidget(card, 1);
 
     auto* info = new QLabel(
@@ -1946,7 +1992,9 @@ bool GameWindow::promptLiquidationPlan(
         }
 
         setPlannerButtonsEnabled(false);
+        dialog.hide();
         const int selectedTileIndex = promptBoardTileSelection(titleText, selectable, true);
+        dialog.show();
         setPlannerButtonsEnabled(true);
         dialog.raise();
         dialog.activateWindow();
@@ -1985,11 +2033,13 @@ bool GameWindow::promptLiquidationPlan(
         }
 
         setPlannerButtonsEnabled(false);
+        dialog.hide();
         const int selectedTileIndex = promptBoardTileSelection(
             QStringLiteral("Pilih aset dalam rencana yang ingin dibatalkan."),
             plannedOrder,
             true
         );
+        dialog.show();
         setPlannerButtonsEnabled(true);
         dialog.raise();
         dialog.activateWindow();
@@ -2103,6 +2153,7 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     auto* card = new PropertyCardWidget(&dialog);
     card->setConfigData(session.getConfigData());
     card->setSelectedProperty(propertyId);
+    card->setOwnershipInfo(QStringLiteral("BANK"), QColor(70, 78, 88), false, 0);
     layout->addWidget(card, 1);
 
     auto* info = new QLabel(

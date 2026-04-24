@@ -497,34 +497,45 @@ void BankruptcyHandler::auctionBankruptAssets(
                     break;
                 }
 
-                int amount = 0;
-                if (io != nullptr) {
-                    Player* highestBidder = auction->getHighestBidder();
-                    amount = io->promptAuctionBid(
-                        *property,
-                        *bidder,
-                        auction->getHighestBid(),
-                        highestBidder == nullptr ? "" : highestBidder->getUsername());
-                }
-
-                if (amount < 0) {
-                    auction->processPass(bidder);
-                    continue;
-                }
-
-                try {
-                    if (!auction->processBid(bidder, amount) && io != nullptr) {
-                        io->showMessage("Bid harus lebih besar dari bid tertinggi.");
-                    } else if (io != nullptr) {
-                        io->showMessage(
-                            "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
-                            " (" + bidder->getUsername() + ")"
-                        );
-                        io->showMessage("");
-                    }
-                } catch (const std::exception& e) {
+                bool bidResolved = false;
+                while (!bidResolved) {
+                    int amount = 0;
                     if (io != nullptr) {
-                        io->showError(e, context.getLogger(), getCurrentTurn(context), bidder->getUsername());
+                        Player* highestBidder = auction->getHighestBidder();
+                        amount = io->promptAuctionBid(
+                            *property,
+                            *bidder,
+                            auction->getHighestBid(),
+                            highestBidder == nullptr ? "" : highestBidder->getUsername());
+                    }
+
+                    if (amount < 0) {
+                        auction->processPass(bidder);
+                        bidResolved = true;
+                        continue;
+                    }
+
+                    try {
+                        if (!auction->processBid(bidder, amount)) {
+                            if (io != nullptr) {
+                                io->showMessage("Bid harus lebih besar dari bid tertinggi.");
+                            }
+                            bidResolved = io == nullptr;
+                        } else {
+                            if (io != nullptr) {
+                                io->showMessage(
+                                    "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
+                                    " (" + bidder->getUsername() + ")"
+                                );
+                                io->showMessage("");
+                            }
+                            bidResolved = true;
+                        }
+                    } catch (const std::exception& e) {
+                        if (io != nullptr) {
+                            io->showError(e, context.getLogger(), getCurrentTurn(context), bidder->getUsername());
+                        }
+                        bidResolved = io == nullptr;
                     }
                 }
             }
