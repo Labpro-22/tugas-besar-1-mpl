@@ -1,0 +1,185 @@
+13 15
+3
+Akram 625 TSK ACTIVE
+3
+DiscountCard 81 1
+MoveCard 8
+DemolitionCard
+Manu 242 PLN ACTIVE
+3
+DemolitionCard
+TeleportCard
+MoveCard 9
+Nathan 531 DNU ACTIVE
+2
+DiscountCard 6 1
+LassoCard
+Akram Nathan Manu
+Manu
+28
+BDG street BANK BANK 1 0 0
+BGR street Akram OWNED 1 0 0
+BKS street Akram OWNED 1 0 0
+BLP street Manu OWNED 1 0 0
+DEN street Nathan OWNED 1 0 0
+DPK street Manu OWNED 1 0 0
+GBR railroad Akram OWNED 1 0 0
+GRT street BANK BANK 1 0 0
+GUB railroad Nathan OWNED 1 0 0
+IKN street Nathan OWNED 2 2 0
+JKT street Akram OWNED 1 0 0
+MAL street BANK BANK 1 0 0
+MED street Manu OWNED 1 0 0
+MGL street Manu OWNED 1 0 0
+MKS street Akram OWNED 1 0 0
+MND street Nathan OWNED 1 0 0
+MTR street Akram OWNED 1 0 0
+PAM utility BANK BANK 1 0 0
+PKB street Manu OWNED 1 0 0
+PLB street Manu OWNED 1 0 0
+PLN utility Akram OWNED 1 0 0
+SBY street Akram OWNED 1 0 0
+SMG street BANK BANK 1 0 0
+SOL street BANK BANK 1 0 0
+STB railroad Manu OWNED 1 0 0
+TSK street Manu OWNED 1 0 0
+TUG railroad Akram OWNED 1 0 0
+YOG street Akram OWNED 1 0 0
+2
+ShieldCard
+ShieldCard
+134
+1 SYSTEM GAME_START Permainan baru dimulai.
+1 Akram KARTU_SKILL Mendapatkan DemolitionCard
+1 Akram DADU Lempar: 2+3=5
+1 Akram RAILROAD Akram mendapatkan STASIUN_GAMBIR secara otomatis.
+1 Nathan KARTU_SKILL Mendapatkan MoveCard
+1 Nathan DADU Lempar: 6+4=10
+1 Nathan PENJARA Nathan hanya mampir di Penjara.
+1 Manu KARTU_SKILL Mendapatkan LassoCard
+1 Manu DADU Lempar: 2+1=3
+1 Manu BELI Manu membeli TASIKMALAYA seharga M60
+2 Akram KARTU_SKILL Mendapatkan DiscountCard
+2 Akram DADU Lempar: 5+4=9
+2 Akram BELI Akram membeli YOGYAKARTA seharga M160
+2 Nathan KARTU_SKILL Mendapatkan MoveCard
+2 Nathan DADU Lempar: 4+3=7
+2 Manu KARTU_SKILL Mendapatkan DemolitionCard
+2 Manu DADU Lempar: 6+6=12
+2 Manu RAILROAD Manu mendapatkan STASIUN_BANDUNG secara otomatis.
+2 Manu DADU Lempar: 1+4=5
+2 Manu PARKIR Manu berhenti di Parkir Gratis.
+3 Akram KARTU_SKILL Mendapatkan ShieldCard
+3 Akram DADU Lempar: 6+2=8
+3 Akram RAILROAD Akram mendapatkan STASIUN_TUGU secara otomatis.
+3 Nathan KARTU_SKILL Mendapatkan ShieldCard
+3 Nathan DADU Lempar: 4+3=7
+3 Nathan BELI Nathan membeli MANADO seharga M240
+3 Manu KARTU_SKILL Mendapatkan TeleportCard
+3 Manu DADU Lempar: 1+2=3
+3 Manu BELI Manu membeli BALIKPAPAN seharga M220
+4 Akram KARTU_SKILL Mendapatkan TeleportCard
+4 Akram DADU Lempar: 3+2=5
+4 Akram PENJARA Masuk penjara dari petak PPJ
+4 Nathan KARTU_SKILL Mendapatkan DiscountCard
+4 Nathan BELI Nathan membeli DENPASAR seharga M300
+4 Nathan KARTU Menggunakan MoveCard
+4 Nathan DADU Lempar: 1+6=7
+4 Nathan BELI Nathan membeli IBU_KOTA_NUSANTARA seharga M400
+4 Manu KARTU_SKILL Mendapatkan MoveCard
+4 Manu DADU Lempar: 1+3=4
+4 Manu BELI Manu membeli PEKANBARU seharga M260
+5 Akram KARTU_SKILL Mendapatkan DiscountCard
+5 Akram PENJARA Percobaan keluar penjara: 3+5=8
+5 Nathan KARTU_SKILL Mendapatkan MoveCard
+5 Nathan DADU Lempar: 6+5=11
+5 Nathan PENJARA Nathan hanya mampir di Penjara.
+5 Manu KARTU_SKILL Mendapatkan LassoCard
+5 Manu BELI Manu membeli PALEMBANG seharga M260
+5 Manu KARTU Menggunakan TeleportCard
+5 Manu DADU Lempar: 1+4=5
+5 Manu BELI Manu membeli BANDUNG seharga M300
+6 Akram KARTU_SKILL Mendapatkan MoveCard
+6 Akram PENJARA Membayar denda M50 untuk keluar dari penjara.
+6 Akram BELI Akram membeli BEKASI seharga M120
+6 Akram KARTU Menggunakan TeleportCard
+6 Akram DADU Lempar: 1+2=3
+6 Akram UTILITY Akram mendapatkan PLN secara otomatis.
+6 Nathan KARTU_SKILL Mendapatkan ShieldCard
+6 Nathan DADU Lempar: 6+1=7
+6 Manu KARTU_SKILL Mendapatkan LassoCard
+6 Manu DADU Lempar: 6+6=12
+6 Manu DADU Lempar: 4+4=8
+6 Manu BELI Manu membeli MAGELANG seharga M140
+6 Manu DADU Lempar: 6+5=11
+7 Akram KARTU_SKILL Mendapatkan MoveCard
+7 Akram DADU Lempar: 4+5=9
+7 Akram BELI Akram membeli MAKASSAR seharga M220
+7 Nathan KARTU_SKILL Mendapatkan LassoCard
+7 Nathan DADU Lempar: 4+4=8
+7 Nathan SEWA Nathan membayar sewa ke Akram sebesar M50
+7 Nathan DADU Lempar: 5+3=8
+7 Nathan FESTIVAL Mengaktifkan festival pada IBU_KOTA_NUSANTARA
+7 Manu KARTU_SKILL Mendapatkan TeleportCard
+7 Manu PENJARA Membayar denda M50 untuk keluar dari penjara.
+7 Manu BELI Manu membeli DEPOK seharga M100
+7 Manu KARTU Menggunakan TeleportCard
+7 Manu DADU Lempar: 2+4=6
+7 Manu SEWA Manu membayar sewa ke Akram sebesar M12
+8 Akram KARTU_SKILL Mendapatkan DemolitionCard
+8 Akram DADU Lempar: 6+4=10
+8 Akram SEWA Akram membayar sewa ke Manu sebesar M26
+8 Nathan KARTU_SKILL Mendapatkan LassoCard
+8 Nathan DADU Lempar: 1+3=4
+8 Nathan LELANG Akram memenangkan JAKARTA seharga M22
+8 Manu KARTU_SKILL Mendapatkan ShieldCard
+8 Manu DADU Lempar: 5+2=7
+8 Manu SEWA Manu membayar sewa ke Akram sebesar M18
+9 Akram KARTU_SKILL Mendapatkan MoveCard
+9 Akram KARTU Menggunakan MoveCard
+9 Akram DADU Lempar: 3+6=9
+9 Akram BELI Akram membeli BOGOR seharga M100
+9 Nathan KARTU_SKILL Mendapatkan DemolitionCard
+9 Nathan DADU Lempar: 3+3=6
+9 Nathan SEWA Nathan membayar sewa ke Manu sebesar M4
+9 Nathan KARTU Menggunakan DemolitionCard
+9 Nathan DADU Lempar: 2+1=3
+9 Nathan SEWA Nathan membayar sewa ke Akram sebesar M6
+9 Manu KARTU_SKILL Mendapatkan TeleportCard
+9 Manu DADU Lempar: 5+3=8
+9 Manu BELI Manu membeli MEDAN seharga M280
+10 Akram KARTU_SKILL Mendapatkan DiscountCard
+10 Akram DADU Lempar: 2+3=5
+10 Akram SEWA Akram membayar sewa ke Manu sebesar M10
+10 Nathan KARTU_SKILL Mendapatkan TeleportCard
+10 Nathan DADU Lempar: 4+5=9
+10 Nathan SEWA Nathan membayar sewa ke Manu sebesar M25
+10 Manu KARTU_SKILL Mendapatkan MoveCard
+10 Manu DADU Lempar: 5+3=8
+10 Manu SEWA Manu membayar sewa ke Akram sebesar M35
+11 Akram KARTU_SKILL Mendapatkan MoveCard
+11 Akram DADU Lempar: 4+4=8
+11 Akram BELI Akram membeli SURABAYA seharga M200
+11 Akram DADU Lempar: 4+2=6
+11 Nathan KARTU_SKILL Mendapatkan ShieldCard
+11 Nathan DADU Lempar: 6+5=11
+11 Nathan SEWA Nathan membayar sewa ke Manu sebesar M44
+11 Manu KARTU_SKILL Mendapatkan MoveCard
+11 Manu DADU Lempar: 5+1=6
+12 Akram KARTU_SKILL Mendapatkan DemolitionCard
+12 Akram DADU Lempar: 4+5=9
+12 Akram BELI Akram membeli MATARAM seharga M320
+12 Nathan KARTU_SKILL Mendapatkan LassoCard
+12 Nathan DADU Lempar: 6+3=9
+12 Nathan RAILROAD Nathan mendapatkan STASIUN_GUBENG secara otomatis.
+12 Manu KARTU_SKILL Mendapatkan LassoCard
+12 Manu DADU Lempar: 4+5=9
+12 Manu SEWA Manu membayar sewa ke Akram sebesar M36
+13 Akram KARTU_SKILL Mendapatkan MoveCard
+13 Akram DADU Lempar: 6+3=9
+13 Akram SEWA Akram membayar sewa ke Manu sebesar M4
+13 Nathan KARTU_SKILL Mendapatkan DiscountCard
+13 Nathan FESTIVAL Mengaktifkan festival pada IBU_KOTA_NUSANTARA
+13 Nathan KARTU Menggunakan TeleportCard
+13 Nathan DADU Lempar: 3+6=9
+13 Manu KARTU_SKILL Mendapatkan MoveCard

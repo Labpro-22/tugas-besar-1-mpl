@@ -5,6 +5,7 @@
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "models/tiles/StreetTile.hpp"
 #include "utils/OutputFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 #include <algorithm>
@@ -115,45 +116,6 @@ namespace {
         io->showMessage("Total aset + uang tunai          : " + OutputFormatter::formatMoney(player.getLiquidationMax()));
     }
 
-    void showLiquidationPanel(Player& player, int amount, const std::vector<LiquidationOption>& options, GameContext& context) {
-        GameIO* io = context.getIO();
-        if (io == nullptr) {
-            return;
-        }
-
-        io->showMessage("=== Panel Likuidasi ===");
-        io->showMessage(
-            "Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()) +
-            "  |  Kewajiban: " + OutputFormatter::formatMoney(amount)
-        );
-        io->showMessage("");
-        io->showMessage("[Jual ke Bank]");
-        for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-            if (options[i].action != LiquidationAction::SELL) {
-                continue;
-            }
-            std::ostringstream line;
-            line << (i + 1) << ". "
-                 << fitColumn(options[i].property->getName() + " (" + options[i].property->getCode() + ")", 18)
-                 << "[" << OutputFormatter::formatPropertyCategory(*options[i].property) << "]  Harga Jual: "
-                 << OutputFormatter::formatMoney(options[i].value);
-            io->showMessage(line.str());
-        }
-        io->showMessage("");
-        io->showMessage("[Gadaikan]");
-        for (int i = 0; i < static_cast<int>(options.size()); ++i) {
-            if (options[i].action != LiquidationAction::MORTGAGE) {
-                continue;
-            }
-            std::ostringstream line;
-            line << (i + 1) << ". "
-                 << fitColumn(options[i].property->getName() + " (" + options[i].property->getCode() + ")", 18)
-                 << "[" << OutputFormatter::formatPropertyCategory(*options[i].property) << "]  Nilai Gadai: "
-                 << OutputFormatter::formatMoney(options[i].value);
-            io->showMessage(line.str());
-        }
-    }
-
     std::vector<std::string> describePlayerAssets(const Player& player) {
         std::vector<std::string> lines;
         for (PropertyTile* prop : player.getProperties()) {
@@ -174,6 +136,8 @@ namespace {
         return turnManager == nullptr ? 0 : turnManager->getCurrentTurn();
     }
 
+    bool colorGroupHasBuildings(const Player& player, const StreetTile& selectedStreet);
+
     std::vector<LiquidationCandidate> buildLiquidationCandidates(Player& player) {
         std::vector<LiquidationCandidate> options;
         for (PropertyTile* property : player.getProperties()) {
@@ -187,6 +151,11 @@ namespace {
             candidate.name = property->getName();
             candidate.sellValue = property->getSellValueToBank();
             candidate.mortgageValue = property->getMortgageValue();
+            if (const StreetTile* street = property->asStreetTile()) {
+                if (colorGroupHasBuildings(player, *street)) {
+                    candidate.mortgageValue = 0;
+                }
+            }
             if (candidate.sellValue > 0 || candidate.mortgageValue > 0) {
                 options.push_back(candidate);
             }
@@ -201,6 +170,19 @@ namespace {
             }
         }
         return nullptr;
+    }
+
+    bool colorGroupHasBuildings(const Player& player, const StreetTile& selectedStreet) {
+        for (PropertyTile* property : player.getProperties()) {
+            const StreetTile* street = property == nullptr ? nullptr : property->asStreetTile();
+            if (street == nullptr || street->getColorGroup() != selectedStreet.getColorGroup()) {
+                continue;
+            }
+            if (street->getBuildingLevel() > 0) {
+                return true;
+            }
+        }
+        return false;
     }
 
     void resetPropertyDevelopment(PropertyTile* property) {
@@ -258,7 +240,7 @@ namespace {
     }
 }
 
-void BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context) {
+bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context) {
     GameIO* io = context.getIO();
     int totalAvailable = calculateLiquidationMax(player);
 

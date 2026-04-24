@@ -47,97 +47,6 @@ namespace {
         return result;
     }
 
-    std::vector<StreetTile*> getOwnedStreetsInColorGroup(Board& board, const Player& player, ColorGroup colorGroup) {
-        std::vector<StreetTile*> result;
-        std::vector<StreetTile*> group = board.getProperties(colorGroup);
-        for (StreetTile* street : group) {
-            if (street == nullptr || !street->isOwnedBy(player) || street->getStatus() != PropertyStatus::OWNED) {
-                continue;
-            }
-            result.push_back(street);
-        }
-        std::sort(result.begin(), result.end(), [](const StreetTile* lhs, const StreetTile* rhs) {
-            return lhs->getIndex() < rhs->getIndex();
-        });
-        return result;
-    }
-
-    std::vector<ColorGroup> getBuildableColorGroups(Board& board, const Player& player) {
-        std::vector<ColorGroup> groups;
-        const ColorGroup streetGroups[] = {
-            ColorGroup::COKLAT,
-            ColorGroup::BIRU_MUDA,
-            ColorGroup::MERAH_MUDA,
-            ColorGroup::ORANGE,
-            ColorGroup::MERAH,
-            ColorGroup::KUNING,
-            ColorGroup::HIJAU,
-            ColorGroup::BIRU_TUA
-        };
-
-        for (ColorGroup colorGroup : streetGroups) {
-            if (!board.hasMonopoly(player, colorGroup)) {
-                continue;
-            }
-
-            std::vector<StreetTile*> streets = getOwnedStreetsInColorGroup(board, player, colorGroup);
-            bool hasBuildableStreet = false;
-            for (StreetTile* street : streets) {
-                if (street != nullptr && street->canBuildNext()) {
-                    hasBuildableStreet = true;
-                    break;
-                }
-            }
-
-            if (hasBuildableStreet) {
-                groups.push_back(colorGroup);
-            }
-        }
-
-        return groups;
-    }
-
-    void printGroupBuildSummary(GameIO* io, Board& board, const Player& player, ColorGroup colorGroup) {
-        std::vector<StreetTile*> streets = getOwnedStreetsInColorGroup(board, player, colorGroup);
-        for (StreetTile* street : streets) {
-            int cost = street->getBuildingLevel() == 4 ? street->getHotelCost() : street->getHouseCost();
-            std::ostringstream line;
-            line << "   - " << fitColumn(street->getName() + " (" + street->getCode() + ")", 26)
-                 << " : " << OutputFormatter::formatBuildingLabel(*street);
-            if (street->getBuildingLevel() < 5) {
-                line << " (Harga " << (street->getBuildingLevel() == 4 ? "hotel" : "rumah")
-                     << ": " << OutputFormatter::formatMoney(cost) << ")";
-            }
-            io->showMessage(line.str());
-        }
-    }
-
-    void printGroupBuildState(GameIO* io,
-                              Board& board,
-                              const Player& player,
-                              ColorGroup colorGroup,
-                              const std::vector<StreetTile*>& selectable) {
-        std::vector<StreetTile*> streets = getOwnedStreetsInColorGroup(board, player, colorGroup);
-        for (StreetTile* street : streets) {
-            bool isSelectable = std::find(selectable.begin(), selectable.end(), street) != selectable.end();
-            std::ostringstream line;
-            line << "- " << fitColumn(street->getName() + " (" + street->getCode() + ")", 26)
-                 << " : " << fitColumn(OutputFormatter::formatBuildingLabel(*street), 8);
-
-            if (street->getBuildingLevel() == 5) {
-                line << " <- sudah maksimal, tidak dapat dibangun";
-            } else if (street->getBuildingLevel() == 4) {
-                if (isSelectable) {
-                    line << " <- siap upgrade ke hotel";
-                }
-            } else if (isSelectable) {
-                line << " <- dapat dibangun";
-            }
-
-            io->showMessage(line.str());
-        }
-    }
-
     bool canBuildEvenly(const Board& board, const Player& player, const StreetTile& target) {
         if (!board.hasMonopoly(player, target.getColorGroup())) {
             return false;
@@ -206,27 +115,28 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
         return;
     }
 
-    io->showMessage("=== Properti yang Dapat Digadaikan ===");
-    for (int i = 0; i < static_cast<int>(available.size()); ++i) {
-        std::ostringstream line;
-        std::string name = available[i]->getName() + " (" + available[i]->getCode() + ")";
-        std::string category = "[" + OutputFormatter::formatPropertyCategory(*available[i]) + "]";
-        line << (i + 1) << ". "
-             << fitColumn(name, 21)
-             << fitColumn(category, 11)
-             << " Nilai Gadai: " << OutputFormatter::formatMoney(available[i]->getMortgageValue());
-        io->showMessage(line.str());
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(available.size());
+    for (PropertyTile* property : available) {
+        if (property != nullptr) {
+            validTileIndices.push_back(property->getIndex());
+        }
     }
 
-    io->showMessage("");
-    int choice = io->promptIntInRange(
-        "Pilih nomor properti (0 untuk batal): ",
-        0,
-        static_cast<int>(available.size()));
-    if (choice == 0) {
+    const int selectedTileIndex = io->promptTileSelection(
+        "Pilih properti yang ingin digadaikan langsung dari board.",
+        validTileIndices,
+        true
+    );
+    if (selectedTileIndex < 0) {
         return;
     }
-    PropertyTile* selected = available[choice - 1];
+
+    PropertyTile* selected = dynamic_cast<PropertyTile*>(board->getTile(selectedTileIndex));
+    if (selected == nullptr || selected->getStatus() != PropertyStatus::OWNED || !selected->isOwnedBy(player)) {
+        io->showMessage("Properti yang dipilih tidak valid untuk digadaikan.");
+        return;
+    }
 
     if (selected->getPropertyType() == PropertyType::STREET) {
         StreetTile* selectedStreet = selected->asStreetTile();
@@ -316,29 +226,36 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
         return;
     }
 
-    io->showMessage("=== Properti yang Sedang Digadaikan ===");
-    for (int i = 0; i < static_cast<int>(mortgaged.size()); ++i) {
-        int redeemCost = player.getDiscountedAmount(mortgaged[i]->getBuyPrice());
-        std::ostringstream line;
-        std::string name = mortgaged[i]->getName() + " (" + mortgaged[i]->getCode() + ")";
-        std::string category = "[" + OutputFormatter::formatPropertyCategory(*mortgaged[i]) + "]";
-        line << (i + 1) << ". "
-             << fitColumn(name, 18)
-             << fitColumn(category, 12)
-             << "[M]  Harga Tebus: " << OutputFormatter::formatMoney(redeemCost);
-        io->showMessage(line.str());
-    }
-
-    io->showMessage("");
-    io->showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
-    int choice = io->promptIntInRange(
-        "Pilih nomor properti (0 untuk batal): ",
-        0,
-        static_cast<int>(mortgaged.size()));
-    if (choice == 0) {
+    Board* board = context.getBoard();
+    if (board == nullptr) {
         return;
     }
-    PropertyTile* selected = mortgaged[choice - 1];
+
+    io->showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
+
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(mortgaged.size());
+    for (PropertyTile* property : mortgaged) {
+        if (property != nullptr) {
+            validTileIndices.push_back(property->getIndex());
+        }
+    }
+
+    const int selectedTileIndex = io->promptTileSelection(
+        "Pilih properti yang ingin di-unmortgage langsung dari board.",
+        validTileIndices,
+        true
+    );
+    if (selectedTileIndex < 0) {
+        return;
+    }
+
+    PropertyTile* selected = dynamic_cast<PropertyTile*>(board->getTile(selectedTileIndex));
+    if (selected == nullptr || selected->getStatus() != PropertyStatus::MORTGAGED || !selected->isOwnedBy(player)) {
+        io->showMessage("Properti yang dipilih tidak valid untuk di-unmortgage.");
+        return;
+    }
+
     int originalCost = selected->getBuyPrice();
     int redeemCost = player.getDiscountedAmount(originalCost);
     if (!player.canAfford(redeemCost)) {
@@ -378,69 +295,50 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
         return;
     }
 
-    std::vector<ColorGroup> buildableGroups = getBuildableColorGroups(*board, player);
-    if (buildableGroups.empty()) {
-        io->showMessage("Tidak ada color group yang memenuhi syarat untuk dibangun.");
-        io->showMessage("Kamu harus memiliki seluruh petak dalam satu color group terlebih dahulu.");
-        return;
-    }
-
-    io->showMessage("=== Color Group yang Memenuhi Syarat ===");
-    for (int i = 0; i < static_cast<int>(buildableGroups.size()); ++i) {
-        io->showMessage(std::to_string(i + 1) + ". [" + OutputFormatter::formatColorGroup(buildableGroups[i]) + "]");
-        printGroupBuildSummary(io, *board, player, buildableGroups[i]);
-    }
-    io->showMessage("");
-    io->showMessage("Uang kamu saat ini : " + OutputFormatter::formatMoney(player.getBalance()));
-    int groupChoice = io->promptIntInRange(
-        "Pilih nomor color group (0 untuk batal): ",
-        0,
-        static_cast<int>(buildableGroups.size()));
-    if (groupChoice == 0) {
-        return;
-    }
-
-    ColorGroup selectedGroup = buildableGroups[groupChoice - 1];
-    std::vector<StreetTile*> groupStreets = getOwnedStreetsInColorGroup(*board, player, selectedGroup);
     std::vector<StreetTile*> selectable;
-    bool allFourHouses = !groupStreets.empty();
-    for (StreetTile* street : groupStreets) {
+    for (PropertyTile* property : player.getProperties()) {
+        StreetTile* street = property == nullptr ? nullptr : property->asStreetTile();
         if (street == nullptr) {
             continue;
         }
-        if (street->getBuildingLevel() != 4 && street->getBuildingLevel() != 5) {
-            allFourHouses = false;
+        if (street->getStatus() != PropertyStatus::OWNED || !street->isOwnedBy(player)) {
+            continue;
         }
         if (street->canBuildNext() && canBuildEvenly(*board, player, *street)) {
             selectable.push_back(street);
         }
     }
 
-    io->showMessage("");
-    io->showMessage("Color group [" + OutputFormatter::formatColorGroup(selectedGroup) + "]:");
-    printGroupBuildState(io, *board, player, selectedGroup, selectable);
-    io->showMessage("");
-
-    if (allFourHouses) {
-        io->showMessage(
-            "Seluruh color group [" + OutputFormatter::formatColorGroup(selectedGroup) +
-            "] sudah memiliki 4 rumah. Siap di-upgrade ke hotel!"
-        );
-    }
-
     if (selectable.empty()) {
+        io->showMessage("Tidak ada properti yang memenuhi syarat untuk dibangun.");
+        io->showMessage("Kamu harus memiliki seluruh petak dalam satu color group terlebih dahulu.");
         return;
     }
 
-    for (int i = 0; i < static_cast<int>(selectable.size()); ++i) {
-        io->showMessage(std::to_string(i + 1) + ". " + selectable[i]->getName() + " (" + selectable[i]->getCode() + ")");
+    std::vector<int> validTileIndices;
+    validTileIndices.reserve(selectable.size());
+    for (StreetTile* street : selectable) {
+        if (street != nullptr) {
+            validTileIndices.push_back(street->getIndex());
+        }
     }
-    int choice = io->promptIntInRange("Pilih petak (0 untuk batal): ", 0, static_cast<int>(selectable.size()));
-    if (choice == 0) {
+
+    io->showMessage("Uang kamu saat ini : " + OutputFormatter::formatMoney(player.getBalance()));
+    const int selectedTileIndex = io->promptTileSelection(
+        "Pilih properti yang ingin dibangun langsung dari board.",
+        validTileIndices,
+        true
+    );
+    if (selectedTileIndex < 0) {
         return;
     }
 
-    StreetTile* selected = selectable[choice - 1];
+    StreetTile* selected = dynamic_cast<StreetTile*>(board->getTile(selectedTileIndex));
+    if (selected == nullptr || selected->getStatus() != PropertyStatus::OWNED || !selected->isOwnedBy(player) ||
+        !selected->canBuildNext() || !canBuildEvenly(*board, player, *selected)) {
+        io->showMessage("Properti yang dipilih tidak valid untuk dibangun.");
+        return;
+    }
     int cost = selected->getBuildingLevel() == 4 ? selected->getHotelCost() : selected->getHouseCost();
     int costToPay = player.getDiscountedAmount(cost);
 
@@ -480,14 +378,6 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
             ". Biaya: " + OutputFormatter::formatMoney(costToPay));
     }
     io->showMessage("Uang tersisa: " + OutputFormatter::formatMoney(player.getBalance()));
-    std::vector<StreetTile*> updatedSelectable;
-    std::vector<StreetTile*> updatedGroupStreets = getOwnedStreetsInColorGroup(*board, player, selectedGroup);
-    for (StreetTile* street : updatedGroupStreets) {
-        if (street != nullptr && street->canBuildNext() && canBuildEvenly(*board, player, *street)) {
-            updatedSelectable.push_back(street);
-        }
-    }
-    printGroupBuildState(io, *board, player, selectedGroup, updatedSelectable);
     if (selected->getBuildingLevel() == 5) {
         logAssetAction(
             context,
