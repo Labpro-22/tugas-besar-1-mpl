@@ -6,6 +6,8 @@ class QButtonGroup;
 class QLabel;
 class QLineEdit;
 class QPushButton;
+class QGridLayout;
+class QVBoxLayout;
 
 class GameSetupPage : public QWidget
 {
@@ -34,7 +36,18 @@ private:
     QPushButton* twoPlayersButton = nullptr;
     QPushButton* threePlayersButton = nullptr;
     QPushButton* fourPlayersButton = nullptr;
+    QPushButton* backButton = nullptr;
+    QPushButton* startButton = nullptr;
+    QLabel* titleLabel = nullptr;
+    QLabel* subtitleLabel = nullptr;
+    QLabel* countLabel = nullptr;
+    QLabel* playerDetailsLabel = nullptr;
+    QList<QLabel*> playerDots;
+    QList<QLabel*> playerNameLabels;
     QList<QWidget*> playerCards;
     QList<QLineEdit*> playerInputs;
     QWidget* setupCard = nullptr;
+    QVBoxLayout* outerLayout = nullptr;
+    QVBoxLayout* cardLayout = nullptr;
+    QGridLayout* playerGrid = nullptr;
 };

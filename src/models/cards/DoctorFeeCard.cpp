@@ -6,13 +6,13 @@
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
 #include "models/Player.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 
 DoctorFeeCard::DoctorFeeCard()
     : DoctorFeeCard(700) {}
 
 DoctorFeeCard::DoctorFeeCard(int amount)
-    : ActionCard("Biaya dokter. Bayar " + OutputFormatter::formatMoney(amount) + "."),
+    : ActionCard("Biaya dokter. Bayar " + TextFormatter::formatMoney(amount) + "."),
       amount(amount) {}
 
 int DoctorFeeCard::getAmount() const {
@@ -23,16 +23,16 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda!");
         gameContext.showMessage(
-            "Tagihan " + OutputFormatter::formatMoney(amount) +
-                " dibatalkan. Uang Anda tetap: " + OutputFormatter::formatMoney(player.getBalance()) + ".");
+            "Tagihan " + TextFormatter::formatMoney(amount) +
+                " dibatalkan. Uang Anda tetap: " + TextFormatter::formatMoney(player.getBalance()) + ".");
         return;
     }
 
     int amountToPay = player.consumeDiscountedAmount(amount);
     if (amountToPay != amount) {
         gameContext.showMessage(
-            "Diskon diterapkan dari " + OutputFormatter::formatMoney(amount) +
-                " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
+            "Diskon diterapkan dari " + TextFormatter::formatMoney(amount) +
+                " menjadi " + TextFormatter::formatMoney(amountToPay) + ".");
     }
 
     if (player.canAfford(amountToPay)) {
@@ -42,20 +42,20 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
                 player.getUsername() + " membayar biaya dokter " +
-                    OutputFormatter::formatMoney(amountToPay) + " ke Bank.");
+                    TextFormatter::formatMoney(amountToPay) + " ke Bank.");
         }
         gameContext.showMessage(
-            "Kamu membayar " + OutputFormatter::formatMoney(amountToPay) +
-                " ke Bank. Sisa Uang = " + OutputFormatter::formatMoney(player.getBalance()) + ".");
+            "Kamu membayar " + TextFormatter::formatMoney(amountToPay) +
+                " ke Bank. Sisa Uang = " + TextFormatter::formatMoney(player.getBalance()) + ".");
         gameContext.showMessage(
-            "Uang kamu: " + OutputFormatter::formatMoney(beforeBalance) +
-                " -> " + OutputFormatter::formatMoney(player.getBalance()) + ".");
+            "Uang kamu: " + TextFormatter::formatMoney(beforeBalance) +
+                " -> " + TextFormatter::formatMoney(player.getBalance()) + ".");
         return;
     }
 
     gameContext.showMessage(
-        "Kamu tidak mampu membayar biaya dokter! (" + OutputFormatter::formatMoney(amountToPay) + ")");
-    gameContext.showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
+        "Kamu tidak mampu membayar biaya dokter! (" + TextFormatter::formatMoney(amountToPay) + ")");
+    gameContext.showMessage("Uang kamu saat ini: " + TextFormatter::formatMoney(player.getBalance()));
 
     BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
     if (bankruptcyHandler != nullptr) {

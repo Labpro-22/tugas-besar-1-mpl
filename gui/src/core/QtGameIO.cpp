@@ -759,6 +759,16 @@ void QtGameIO::showAuctionNotification(const std::string& title, const std::stri
     showNoticeCard(dialogParent, toQString(title), toQString(detail), QStringLiteral("CONTINUE"));
 }
 
+void QtGameIO::showStreetPurchasePreview(
+    const Player&,
+    const PropertyTile&,
+    const StreetTile&,
+    int,
+    int
+)
+{
+}
+
 bool QtGameIO::usesRichGuiPresentation() const
 {
     return true;

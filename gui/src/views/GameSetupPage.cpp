@@ -4,6 +4,7 @@
 
 #include <QButtonGroup>
 #include <QFrame>
+#include <QFont>
 #include <QGridLayout>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -46,7 +47,7 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    auto* outerLayout = new QVBoxLayout();
+    outerLayout = new QVBoxLayout();
     outerLayout->setContentsMargins(0, 32, 0, 32);
     outerLayout->setAlignment(Qt::AlignCenter);
     rootLayout->addLayout(outerLayout, 1);
@@ -56,26 +57,27 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     setupCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
     outerLayout->addWidget(setupCard, 0, Qt::AlignCenter);
 
-    auto* cardLayout = new QVBoxLayout(setupCard);
+    cardLayout = new QVBoxLayout(setupCard);
     cardLayout->setContentsMargins(52, 40, 52, 40);
     cardLayout->setSpacing(22);
 
-    auto* backButton = new QPushButton(QStringLiteral("<  BACK"), setupCard);
+    backButton = new QPushButton(QStringLiteral("<  BACK"), setupCard);
     backButton->setObjectName(QStringLiteral("backButton"));
     backButton->setCursor(Qt::PointingHandCursor);
     backButton->setFlat(true);
     backButton->setMaximumWidth(130);
     cardLayout->addWidget(backButton, 0, Qt::AlignLeft);
 
-    auto* titleLabel = new QLabel(QStringLiteral("Game Setup"), setupCard);
+    titleLabel = new QLabel(QStringLiteral("Game Setup"), setupCard);
     titleLabel->setStyleSheet(QStringLiteral("color:#05070a;font:900 30pt 'Trebuchet MS';"));
     cardLayout->addWidget(titleLabel);
 
-    auto* subtitleLabel = new QLabel(QStringLiteral("Configure the player slots for the upcoming match."), setupCard);
+    subtitleLabel = new QLabel(QStringLiteral("Configure the player slots for the upcoming match."), setupCard);
     subtitleLabel->setStyleSheet(QStringLiteral("color:#343a43;font:500 15pt 'Trebuchet MS';"));
+    subtitleLabel->setWordWrap(true);
     cardLayout->addWidget(subtitleLabel);
 
-    auto* countLabel = new QLabel(QStringLiteral("NUMBER OF PLAYERS"), setupCard);
+    countLabel = new QLabel(QStringLiteral("NUMBER OF PLAYERS"), setupCard);
     countLabel->setStyleSheet(QStringLiteral("margin-top:18px;color:#101318;font:800 11pt 'Trebuchet MS';letter-spacing:1px;"));
     cardLayout->addWidget(countLabel);
 
@@ -110,14 +112,16 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     divider->setFixedHeight(1);
     cardLayout->addWidget(divider);
 
-    auto* playerDetailsLabel = new QLabel(QStringLiteral("PLAYER DETAILS"), setupCard);
+    playerDetailsLabel = new QLabel(QStringLiteral("PLAYER DETAILS"), setupCard);
     playerDetailsLabel->setStyleSheet(QStringLiteral("color:#101318;font:800 11pt 'Trebuchet MS';letter-spacing:1px;"));
     cardLayout->addWidget(playerDetailsLabel);
 
-    auto* grid = new QGridLayout();
-    grid->setHorizontalSpacing(18);
-    grid->setVerticalSpacing(18);
-    cardLayout->addLayout(grid);
+    playerGrid = new QGridLayout();
+    playerGrid->setHorizontalSpacing(18);
+    playerGrid->setVerticalSpacing(18);
+    playerGrid->setColumnStretch(0, 1);
+    playerGrid->setColumnStretch(1, 1);
+    cardLayout->addLayout(playerGrid);
 
     for (int index = 0; index < 4; ++index) {
         auto* playerCard = new QFrame(setupCard);
@@ -136,10 +140,12 @@ GameSetupPage::GameSetupPage(QWidget* parent)
         dot->setFixedSize(16, 16);
         dot->setStyleSheet(QStringLiteral("background:%1;border-radius:8px;").arg(playerAccent(index).name()));
         labelRow->addWidget(dot, 0, Qt::AlignVCenter);
+        playerDots.append(dot);
 
         auto* playerLabelWidget = new QLabel(playerLabel(index), playerCard);
         playerLabelWidget->setStyleSheet(QStringLiteral("color:#222831;font:800 11pt 'Trebuchet MS';"));
         labelRow->addWidget(playerLabelWidget);
+        playerNameLabels.append(playerLabelWidget);
         labelRow->addStretch(1);
 
         auto* input = new QLineEdit(playerCard);
@@ -150,13 +156,13 @@ GameSetupPage::GameSetupPage(QWidget* parent)
 
         playerCards.append(playerCard);
         playerInputs.append(input);
-        grid->addWidget(playerCard, index / 2, index % 2);
+        playerGrid->addWidget(playerCard, index / 2, index % 2);
     }
 
     auto* bottomRow = new QHBoxLayout();
     bottomRow->addStretch(1);
 
-    auto* startButton = new QPushButton(QStringLiteral("START GAME"), setupCard);
+    startButton = new QPushButton(QStringLiteral("START GAME"), setupCard);
     startButton->setObjectName(QStringLiteral("startButton"));
     startButton->setCursor(Qt::PointingHandCursor);
     startButton->setMinimumSize(220, 68);
@@ -280,7 +286,117 @@ void GameSetupPage::applyPlayerCount(int count)
 
 void GameSetupPage::updateResponsiveLayout()
 {
+    const int pageWidth = qMax(width(), minimumWidth());
+    const int pageHeight = qMax(height(), minimumHeight());
+    const int setupWidth = std::clamp(static_cast<int>(pageWidth * 0.78), 520, 1120);
+    const int sectionGap = std::clamp(pageHeight / 40, 14, 28);
+    const int cardPaddingX = std::clamp(pageWidth / 28, 26, 68);
+    const int cardPaddingY = std::clamp(pageHeight / 24, 24, 52);
+    const int titleSize = std::clamp(pageWidth / 34, 18, 30);
+    const int subtitleSize = std::clamp(pageWidth / 64, 10, 15);
+    const int sectionTitleSize = std::clamp(pageWidth / 90, 9, 12);
+    const int countButtonHeight = std::clamp(pageHeight / 11, 50, 74);
+    const int inputHeight = std::clamp(pageHeight / 10, 48, 66);
+    const int startHeight = std::clamp(pageHeight / 9, 58, 78);
+    const int startWidth = std::clamp(static_cast<int>(setupWidth * 0.28), 220, 320);
+    const int labelDotSize = std::clamp(pageWidth / 60, 14, 18);
+
+    if (outerLayout != nullptr) {
+        outerLayout->setContentsMargins(0, std::clamp(pageHeight / 18, 18, 42), 0, std::clamp(pageHeight / 18, 18, 42));
+    }
+
     if (setupCard != nullptr) {
-        setupCard->setMaximumWidth(std::clamp(width() - 80, 520, 780));
+        setupCard->setMinimumWidth(std::clamp(static_cast<int>(pageWidth * 0.54), 480, 780));
+        setupCard->setMaximumWidth(setupWidth);
+    }
+
+    if (cardLayout != nullptr) {
+        cardLayout->setContentsMargins(cardPaddingX, cardPaddingY, cardPaddingX, cardPaddingY);
+        cardLayout->setSpacing(sectionGap);
+    }
+
+    if (playerGrid != nullptr) {
+        const int gridGap = std::clamp(pageWidth / 60, 12, 24);
+        const int columnCount = setupWidth >= 760 ? 2 : 1;
+        playerGrid->setHorizontalSpacing(gridGap);
+        playerGrid->setVerticalSpacing(gridGap);
+        for (int index = 0; index < playerCards.size(); ++index) {
+            playerGrid->addWidget(playerCards[index], index / columnCount, index % columnCount);
+        }
+    }
+
+    if (titleLabel != nullptr) {
+        titleLabel->setStyleSheet(QStringLiteral("color:#05070a;font:900 %1pt 'Trebuchet MS';").arg(titleSize));
+    }
+
+    if (subtitleLabel != nullptr) {
+        subtitleLabel->setStyleSheet(QStringLiteral("color:#343a43;font:500 %1pt 'Trebuchet MS';").arg(subtitleSize));
+    }
+
+    const QString sectionLabelStyle = QStringLiteral(
+        "color:#101318;font:800 %1pt 'Trebuchet MS';letter-spacing:1px;"
+    ).arg(sectionTitleSize);
+    if (countLabel != nullptr) {
+        countLabel->setStyleSheet(QStringLiteral("margin-top:%1px;%2").arg(std::clamp(sectionGap - 4, 10, 18)).arg(sectionLabelStyle));
+    }
+    if (playerDetailsLabel != nullptr) {
+        playerDetailsLabel->setStyleSheet(sectionLabelStyle);
+    }
+
+    if (backButton != nullptr) {
+        backButton->setMaximumWidth(std::clamp(pageWidth / 7, 110, 150));
+        QFont font(QStringLiteral("Trebuchet MS"), std::clamp(sectionTitleSize, 9, 11), QFont::Bold);
+        backButton->setFont(font);
+    }
+
+    const QList<QPushButton*> countButtons = {twoPlayersButton, threePlayersButton, fourPlayersButton};
+    for (QPushButton* button : countButtons) {
+        if (button == nullptr) {
+            continue;
+        }
+        button->setMinimumHeight(countButtonHeight);
+        QFont font(QStringLiteral("Trebuchet MS"), std::clamp(countButtonHeight / 5, 11, 16), QFont::Black);
+        button->setFont(font);
+    }
+
+    for (QWidget* playerCard : playerCards) {
+        auto* layout = qobject_cast<QVBoxLayout*>(playerCard != nullptr ? playerCard->layout() : nullptr);
+        if (layout != nullptr) {
+            layout->setSpacing(std::clamp(sectionGap / 2, 6, 12));
+        }
+    }
+
+    for (int index = 0; index < playerDots.size(); ++index) {
+        QLabel* dot = playerDots[index];
+        if (dot == nullptr) {
+            continue;
+        }
+        dot->setFixedSize(labelDotSize, labelDotSize);
+        dot->setStyleSheet(QStringLiteral("background:%1;border-radius:%2px;")
+            .arg(playerAccent(index).name())
+            .arg(labelDotSize / 2));
+    }
+
+    for (QLabel* label : playerNameLabels) {
+        if (label == nullptr) {
+            continue;
+        }
+        label->setStyleSheet(QStringLiteral("color:#222831;font:800 %1pt 'Trebuchet MS';")
+            .arg(std::clamp(sectionTitleSize, 10, 13)));
+    }
+
+    for (QLineEdit* input : playerInputs) {
+        if (input == nullptr) {
+            continue;
+        }
+        input->setMinimumHeight(inputHeight);
+        QFont font(QStringLiteral("Trebuchet MS"), std::clamp(inputHeight / 5, 10, 14));
+        input->setFont(font);
+    }
+
+    if (startButton != nullptr) {
+        startButton->setMinimumSize(startWidth, startHeight);
+        QFont font(QStringLiteral("Trebuchet MS"), std::clamp(startHeight / 5, 11, 15), QFont::Black);
+        startButton->setFont(font);
     }
 }

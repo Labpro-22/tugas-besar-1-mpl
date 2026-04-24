@@ -5,13 +5,13 @@
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 
 CampaignCard::CampaignCard()
     : CampaignCard(200) {}
 
 CampaignCard::CampaignCard(int amount)
-    : ActionCard("Anda mau nyaleg. Bayar " + OutputFormatter::formatMoney(amount) + " kepada setiap pemain."),
+    : ActionCard("Anda mau nyaleg. Bayar " + TextFormatter::formatMoney(amount) + " kepada setiap pemain."),
       amount(amount) {}
 
 int CampaignCard::getAmount() const {
@@ -42,8 +42,8 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
         int amountToPay = player.consumeDiscountedAmount(amount);
         if (amountToPay != amount) {
             gameContext.showMessage(
-                "Diskon diterapkan dari " + OutputFormatter::formatMoney(amount) +
-                    " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
+                "Diskon diterapkan dari " + TextFormatter::formatMoney(amount) +
+                    " menjadi " + TextFormatter::formatMoney(amountToPay) + ".");
         }
 
         if (!player.canAfford(amountToPay)) {
@@ -66,11 +66,11 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
                 player.getUsername() + " membayar " +
-                    OutputFormatter::formatMoney(amountToPay) + " kepada " +
+                    TextFormatter::formatMoney(amountToPay) + " kepada " +
                     otherPlayer->getUsername() + ".");
         }
         gameContext.showMessage(
-            player.getUsername() + " membayar " + OutputFormatter::formatMoney(amountToPay) +
+            player.getUsername() + " membayar " + TextFormatter::formatMoney(amountToPay) +
                 " kepada " + otherPlayer->getUsername() + ".");
     }
 }

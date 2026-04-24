@@ -1,9 +1,12 @@
 #include <QApplication>
+#include <QCoreApplication>
+#include <Qt>
 
 #include "views/GameWindow.hpp"
 
 int main(int argc, char *argv[])
 {
+    QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL);
     QApplication app(argc, argv);
     QApplication::setStyle("Fusion");
 

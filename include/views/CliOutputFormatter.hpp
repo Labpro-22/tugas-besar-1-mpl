@@ -7,14 +7,8 @@ class Player;
 class PropertyTile;
 class StreetTile;
 class LogEntry;
-enum class ColorGroup;
 
-namespace OutputFormatter {
-    std::string formatMoney(int value);
-    std::string formatColorGroup(ColorGroup colorGroup);
-    std::string formatPropertyCategory(const PropertyTile& property);
-    std::string formatBuildingLevel(int buildingLevel);
-    std::string formatBuildingLabel(const StreetTile& street);
+namespace CliOutputFormatter {
     std::vector<std::string> formatLogEntries(const std::vector<LogEntry>& entries);
     std::vector<std::string> formatMainMenu();
     std::vector<std::string> formatLoadCommandPrompt();

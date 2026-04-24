@@ -15,7 +15,7 @@
 #include "models/tiles/StreetTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "models/tiles/UtilityTile.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 
 namespace {
 
@@ -200,7 +200,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
         }
 
         std::cout << " P" << (i + 1) << " : " << player.getUsername()
-                  << " (" << OutputFormatter::formatMoney(player.getBalance()) << ") " << status << "\n";
+                  << " (" << TextFormatter::formatMoney(player.getBalance()) << ") " << status << "\n";
     }
 
     std::cout << "\n";

@@ -11,7 +11,7 @@
 #include "models/Player.hpp"
 #include "models/state/LogEntry.hpp"
 #include "models/tiles/PropertyTile.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 
 void GameIO::showPawnStep(const Player&, int)
 {
@@ -35,9 +35,9 @@ bool GameIO::confirmPropertyPurchase(const Player& player, const PropertyTile& p
     }
 
     std::string prompt = "Apakah kamu ingin membeli properti ini seharga " +
-        OutputFormatter::formatMoney(finalPrice);
+        TextFormatter::formatMoney(finalPrice);
     if (finalPrice != originalPrice) {
-        prompt += " (setelah diskon dari " + OutputFormatter::formatMoney(originalPrice) + ")";
+        prompt += " (setelah diskon dari " + TextFormatter::formatMoney(originalPrice) + ")";
     }
     prompt += "?";
 
@@ -72,6 +72,24 @@ void GameIO::showPaymentNotification(const std::string& title, const std::string
 void GameIO::showAuctionNotification(const std::string& title, const std::string& detail)
 {
     showMessage(title + ": " + detail);
+}
+
+void GameIO::showStreetPurchasePreview(
+    const Player& player,
+    const PropertyTile&,
+    const StreetTile&,
+    int originalPrice,
+    int finalPrice
+)
+{
+    showMessage("Harga beli: " + TextFormatter::formatMoney(originalPrice));
+    showMessage("Uang kamu saat ini: " + TextFormatter::formatMoney(player.getBalance()));
+    if (finalPrice != originalPrice) {
+        showMessage(
+            "Diskon aktif. Harga beli menjadi " + TextFormatter::formatMoney(finalPrice) +
+            " dari " + TextFormatter::formatMoney(originalPrice) + "."
+        );
+    }
 }
 
 bool GameIO::usesRichGuiPresentation() const

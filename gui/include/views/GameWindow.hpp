@@ -21,6 +21,8 @@ class PropertyCardWidget;
 class PropertyPortfolioWidget;
 class QDialog;
 class QFrame;
+class QGridLayout;
+class QHBoxLayout;
 class QScrollArea;
 class QStackedWidget;
 class QToolButton;
@@ -116,10 +118,14 @@ private:
     StartMenuPage* startMenuPage = nullptr;
     GameSetupPage* setupPage = nullptr;
     QWidget* gamePage = nullptr;
+    QHBoxLayout* gamePageLayout = nullptr;
 
     BoardWidget* boardWidget = nullptr;
     QWidget* sidebarPanel = nullptr;
     QFrame* boardShell = nullptr;
+    QVBoxLayout* boardShellLayout = nullptr;
+    QVBoxLayout* sidebarLayout = nullptr;
+    QGridLayout* actionsLayout = nullptr;
     QLabel* playerAvatarLabel = nullptr;
     QLabel* playerNameLabel = nullptr;
     QLabel* playerMoneyLabel = nullptr;

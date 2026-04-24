@@ -80,7 +80,11 @@ gui-build: gui-configure
 	cmake --build $(GUI_BUILD_DIR) --target $(QT_UI_TARGET) --parallel
 
 gui-run: gui-build
+ifeq ($(OS),Windows_NT)
 	$(GUI_TARGET)
+else
+	QT_OPENGL=software LIBGL_ALWAYS_SOFTWARE=1 MESA_LOADER_DRIVER_OVERRIDE=llvmpipe $(GUI_TARGET)
+endif
 
 BuildRun: all
 	$(GUI_TARGET)

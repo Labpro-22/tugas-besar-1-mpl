@@ -62,6 +62,13 @@ public:
     void showPropertyNotice(const Player& player, const PropertyTile& property) override;
     void showPaymentNotification(const std::string& title, const std::string& detail) override;
     void showAuctionNotification(const std::string& title, const std::string& detail) override;
+    void showStreetPurchasePreview(
+        const Player& player,
+        const PropertyTile& tile,
+        const StreetTile& street,
+        int originalPrice,
+        int finalPrice
+    ) override;
     void showHelp(const Player& player) override;
     void showSection(const std::string& title);
     void showTurnSummary(const Player& player);

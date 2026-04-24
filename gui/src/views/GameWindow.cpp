@@ -11,6 +11,7 @@
 #include <QDir>
 #include <QEventLoop>
 #include <QFileInfo>
+#include <QFont>
 #include <QFrame>
 #include <QGridLayout>
 #include <QHBoxLayout>
@@ -581,28 +582,29 @@ QWidget* GameWindow::buildGamePage()
 {
     auto* page = new QWidget(this);
 
-    auto* rootLayout = new QHBoxLayout(page);
-    rootLayout->setContentsMargins(18, 18, 18, 18);
-    rootLayout->setSpacing(16);
+    gamePageLayout = new QHBoxLayout(page);
+    gamePageLayout->setContentsMargins(18, 18, 18, 18);
+    gamePageLayout->setSpacing(16);
 
     boardShell = new QFrame(page);
     boardShell->setObjectName(QStringLiteral("boardShell"));
-    auto* boardLayout = new QVBoxLayout(boardShell);
-    boardLayout->setContentsMargins(18, 18, 18, 18);
-    boardLayout->setSpacing(0);
+    boardShellLayout = new QVBoxLayout(boardShell);
+    boardShellLayout->setContentsMargins(18, 18, 18, 18);
+    boardShellLayout->setSpacing(0);
 
     boardWidget = new BoardWidget(boardShell);
     boardWidget->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
-    boardLayout->addWidget(boardWidget, 1);
-    rootLayout->addWidget(boardShell, 1);
+    boardShellLayout->addWidget(boardWidget, 1);
+    gamePageLayout->addWidget(boardShell, 1);
 
     sidebarPanel = new QFrame(page);
     sidebarPanel->setObjectName(QStringLiteral("sidebarPanel"));
     sidebarPanel->setMinimumWidth(320);
     sidebarPanel->setMaximumWidth(350);
-    rootLayout->addWidget(sidebarPanel, 0);
+    sidebarPanel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    gamePageLayout->addWidget(sidebarPanel, 0);
 
-    auto* sidebarLayout = new QVBoxLayout(sidebarPanel);
+    sidebarLayout = new QVBoxLayout(sidebarPanel);
     sidebarLayout->setContentsMargins(0, 0, 0, 0);
     sidebarLayout->setSpacing(0);
 
@@ -683,10 +685,12 @@ QWidget* GameWindow::buildGamePage()
 
     auto* actionsSection = new QFrame(sidebarPanel);
     actionsSection->setObjectName(QStringLiteral("actionsSection"));
-    auto* actionsLayout = new QGridLayout(actionsSection);
+    actionsLayout = new QGridLayout(actionsSection);
     actionsLayout->setContentsMargins(18, 0, 18, 12);
     actionsLayout->setHorizontalSpacing(10);
     actionsLayout->setVerticalSpacing(10);
+    actionsLayout->setColumnStretch(0, 1);
+    actionsLayout->setColumnStretch(1, 1);
 
     rollButton = new QToolButton(actionsSection);
     setDiceButton = new QToolButton(actionsSection);
@@ -1211,13 +1215,15 @@ void GameWindow::refreshPlayerHeader()
     playerAvatarLabel->setPixmap(QPixmap());
     playerAvatarLabel->setText(shortPlayerLabel(player->name));
     const QColor accent = player->accentColor.isValid() ? player->accentColor : QColor(90, 190, 240);
+    const int avatarRadius = qMax(10, playerAvatarLabel->width() / 6);
+    const int avatarFontSize = std::clamp(playerAvatarLabel->width() / 4, 12, 18);
     playerAvatarLabel->setStyleSheet(QStringLiteral(
         "background: %1;"
         "border: 2px solid rgba(255,255,255,0.95);"
-        "border-radius: 11px;"
+        "border-radius: %2px;"
         "color: white;"
-        "font: 900 15pt 'Trebuchet MS';"
-    ).arg(accent.name()));
+        "font: 900 %3pt 'Trebuchet MS';"
+    ).arg(accent.name()).arg(avatarRadius).arg(avatarFontSize));
 }
 
 void GameWindow::refreshPlayerSelector()
@@ -1788,28 +1794,78 @@ void GameWindow::resizeEvent(QResizeEvent* event)
 
 void GameWindow::updateResponsiveLayout()
 {
+    const int windowWidth = qMax(width(), minimumWidth());
+    const int windowHeight = qMax(height(), minimumHeight());
+    const int shellMargin = std::clamp(windowWidth / 70, 14, 28);
+    const int shellSpacing = std::clamp(windowWidth / 90, 12, 22);
+    const int sidebarWidth = std::clamp(static_cast<int>(windowWidth * 0.29), 320, 460);
+    const int avatarSize = std::clamp(windowHeight / 10, 56, 82);
+    const int portfolioMinHeight = std::clamp(windowHeight / 4, 170, 260);
+    const int portfolioMaxHeight = std::clamp(windowHeight / 3, 210, 320);
+    const int historyMinHeight = std::clamp(windowHeight / 4, 180, 290);
+    const int actionHeight = std::clamp(windowHeight / 10, 62, 96);
+    const int actionIcon = std::clamp(actionHeight / 3, 20, 34);
+    const int actionFont = std::clamp(actionHeight / 7, 9, 13);
+    const int playerNameFont = std::clamp(windowWidth / 80, 11, 18);
+    const int moneyFont = std::clamp(windowWidth / 64, 13, 22);
+    const int switchFont = std::clamp(windowWidth / 110, 8, 11);
+
+    if (gamePageLayout != nullptr) {
+        gamePageLayout->setContentsMargins(shellMargin, shellMargin, shellMargin, shellMargin);
+        gamePageLayout->setSpacing(shellSpacing);
+    }
+
+    if (boardShellLayout != nullptr) {
+        boardShellLayout->setContentsMargins(shellMargin, shellMargin, shellMargin, shellMargin);
+    }
+
     if (sidebarPanel != nullptr) {
-        const int sidebarWidth = std::clamp(width() / 4, 280, 360);
         sidebarPanel->setMinimumWidth(sidebarWidth);
-        sidebarPanel->setMaximumWidth(sidebarWidth + 18);
+        sidebarPanel->setMaximumWidth(sidebarWidth + std::clamp(windowWidth / 80, 18, 28));
+    }
+
+    if (sidebarLayout != nullptr) {
+        sidebarLayout->setSpacing(0);
     }
 
     if (playerAvatarLabel != nullptr) {
-        const int avatarSize = std::clamp(height() / 11, 48, 64);
         playerAvatarLabel->setFixedSize(avatarSize, avatarSize);
     }
 
+    if (playerNameLabel != nullptr) {
+        QFont playerNameFontStyle(QStringLiteral("Trebuchet MS"), playerNameFont, QFont::Black);
+        playerNameLabel->setFont(playerNameFontStyle);
+    }
+
+    if (playerMoneyLabel != nullptr) {
+        QFont moneyFontStyle(QStringLiteral("Trebuchet MS"), moneyFont, QFont::Black);
+        playerMoneyLabel->setFont(moneyFontStyle);
+    }
+
+    if (playerSwitchButton != nullptr) {
+        QFont switchButtonFont(QStringLiteral("Trebuchet MS"), switchFont, QFont::Black);
+        playerSwitchButton->setFont(switchButtonFont);
+        playerSwitchButton->setMinimumSize(std::clamp(sidebarWidth / 5, 60, 86), std::clamp(windowHeight / 22, 34, 46));
+    }
+
     if (portfolioWidget != nullptr) {
-        portfolioWidget->setMinimumHeight(std::clamp(height() / 4, 150, 210));
-        portfolioWidget->setMaximumHeight(std::clamp(height() / 3, 180, 240));
+        portfolioWidget->setMinimumHeight(portfolioMinHeight);
+        portfolioWidget->setMaximumHeight(portfolioMaxHeight);
     }
 
     if (historyScroll != nullptr) {
-        historyScroll->setMinimumHeight(std::clamp(height() / 4, 150, 220));
+        historyScroll->setMinimumHeight(historyMinHeight);
     }
 
-    const int actionHeight = std::clamp(height() / 11, 56, 76);
-    const int actionIcon = std::clamp(actionHeight / 3, 18, 28);
+    if (actionsLayout != nullptr) {
+        const int horizontalGap = std::clamp(sidebarWidth / 28, 10, 20);
+        const int verticalGap = std::clamp(windowHeight / 60, 10, 18);
+        const int actionsPadding = std::clamp(sidebarWidth / 20, 16, 28);
+        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, std::clamp(actionsPadding - 2, 10, 22));
+        actionsLayout->setHorizontalSpacing(horizontalGap);
+        actionsLayout->setVerticalSpacing(verticalGap);
+    }
+
     const QList<QToolButton*> actionButtons = {
         rollButton, setDiceButton, useSkillButton, payFineButton,
         buildButton, mortgageButton, redeemButton, saveButton
@@ -1819,6 +1875,11 @@ void GameWindow::updateResponsiveLayout()
             continue;
         }
         button->setMinimumHeight(actionHeight);
+        button->setMaximumHeight(actionHeight + 8);
         button->setIconSize(QSize(actionIcon, actionIcon));
+        QFont font(QStringLiteral("Trebuchet MS"), actionFont, QFont::Black);
+        button->setFont(font);
     }
+
+    refreshPlayerHeader();
 }

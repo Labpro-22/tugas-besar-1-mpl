@@ -9,6 +9,7 @@ class ActionCard;
 class Board;
 class Player;
 class PropertyTile;
+class StreetTile;
 class SkillCard;
 class TurnManager;
 class LogEntry;
@@ -46,6 +47,13 @@ public:
     virtual void showActionCard(CardType cardType, const ActionCard& card);
     virtual void showPaymentNotification(const std::string& title, const std::string& detail);
     virtual void showAuctionNotification(const std::string& title, const std::string& detail);
+    virtual void showStreetPurchasePreview(
+        const Player& player,
+        const PropertyTile& tile,
+        const StreetTile& street,
+        int originalPrice,
+        int finalPrice
+    );
     virtual bool usesRichGuiPresentation() const;
     virtual int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid);
     virtual int promptTaxPaymentOption(

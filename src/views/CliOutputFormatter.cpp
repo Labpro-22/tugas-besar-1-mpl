@@ -1,4 +1,4 @@
-#include "utils/OutputFormatter.hpp"
+#include "views/CliOutputFormatter.hpp"
 
 #include <algorithm>
 #include <iomanip>
@@ -12,6 +12,7 @@
 #include "models/state/LogEntry.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
+#include "utils/TextFormatter.hpp"
 
 namespace {
     const int DEED_INNER_WIDTH = 48;
@@ -101,7 +102,7 @@ namespace {
     std::string buildPropertyHeadline(const PropertyTile* property) {
         std::string category;
         if (property->getPropertyType() == PropertyType::STREET) {
-            category = "[" + OutputFormatter::formatColorGroup(property->getColorGroup()) + "]";
+            category = "[" + TextFormatter::formatColorGroup(property->getColorGroup()) + "]";
         } else if (property->getPropertyType() == PropertyType::RAILROAD) {
             category = "[RAILROAD]";
         } else {
@@ -131,7 +132,7 @@ namespace {
         }
 
         if (property->getPropertyType() == PropertyType::STREET) {
-            return OutputFormatter::formatColorGroup(property->getColorGroup());
+            return TextFormatter::formatColorGroup(property->getColorGroup());
         }
 
         if (property->getPropertyType() == PropertyType::RAILROAD) {
@@ -151,7 +152,7 @@ namespace {
             return "";
         }
 
-        return OutputFormatter::formatBuildingLevel(level);
+        return TextFormatter::formatBuildingLevel(level);
     }
 
     std::string propertyListStatus(const PropertyTile* property) {
@@ -175,7 +176,7 @@ namespace {
         return "Festival aktif x" + std::to_string(property->getFestivalMultiplier()) +
             ", sisa " + std::to_string(property->getFestivalDuration()) +
             " giliran, sewa kini " +
-            OutputFormatter::formatMoney(
+            TextFormatter::formatMoney(
                 property->getRentAtLevel(property->getBuildingLevel()) * property->getFestivalMultiplier()
             );
     }
@@ -209,7 +210,7 @@ namespace {
         const std::string name = property->getName() + " (" + property->getCode() + ")";
         row << "  - " << std::left << std::setw(31) << name
             << std::setw(10) << buildingLabel(property)
-            << std::setw(8) << OutputFormatter::formatMoney(propertyDisplayValue(property))
+            << std::setw(8) << TextFormatter::formatMoney(propertyDisplayValue(property))
             << propertyListStatus(property);
         return row.str();
     }
@@ -228,63 +229,7 @@ namespace {
     }
 }
 
-namespace OutputFormatter {
-    std::string formatMoney(int value) {
-        return std::string(value < 0 ? "-M" : "M") + std::to_string(value < 0 ? -value : value);
-    }
-
-    std::string formatColorGroup(ColorGroup colorGroup) {
-        switch (colorGroup) {
-            case ColorGroup::COKLAT:
-                return "COKLAT";
-            case ColorGroup::BIRU_MUDA:
-                return "BIRU MUDA";
-            case ColorGroup::MERAH_MUDA:
-                return "MERAH MUDA";
-            case ColorGroup::ORANGE:
-                return "ORANGE";
-            case ColorGroup::MERAH:
-                return "MERAH";
-            case ColorGroup::KUNING:
-                return "KUNING";
-            case ColorGroup::HIJAU:
-                return "HIJAU";
-            case ColorGroup::BIRU_TUA:
-                return "BIRU TUA";
-            case ColorGroup::ABU_ABU:
-                return "ABU-ABU";
-            case ColorGroup::DEFAULT:
-            default:
-                return "DEFAULT";
-        }
-    }
-
-    std::string formatPropertyCategory(const PropertyTile& property) {
-        if (property.getPropertyType() == PropertyType::STREET) {
-            return formatColorGroup(property.getColorGroup());
-        }
-
-        if (property.getPropertyType() == PropertyType::RAILROAD) {
-            return "STASIUN";
-        }
-
-        return "UTILITAS";
-    }
-
-    std::string formatBuildingLevel(int buildingLevel) {
-        if (buildingLevel <= 0) {
-            return "0 rumah";
-        }
-        if (buildingLevel == 5) {
-            return "Hotel";
-        }
-        return std::to_string(buildingLevel) + " rumah";
-    }
-
-    std::string formatBuildingLabel(const StreetTile& street) {
-        return formatBuildingLevel(street.getBuildingLevel());
-    }
-
+namespace CliOutputFormatter {
     std::vector<std::string> formatLogEntries(const std::vector<LogEntry>& entries) {
         std::vector<std::string> lines;
         std::size_t turnWidth = 0;
@@ -386,7 +331,7 @@ namespace OutputFormatter {
 
     std::vector<std::string> formatTurnSummary(const Player& player) {
         return {
-            "Saldo     : " + formatMoney(player.getBalance()),
+            "Saldo     : " + TextFormatter::formatMoney(player.getBalance()),
             "Posisi    : " + std::to_string(player.getPosition() + 1),
             "Properti  : " + std::to_string(player.getProperties().size()),
             "Kartu     : " + std::to_string(player.getHand().size())
@@ -424,7 +369,7 @@ namespace OutputFormatter {
 
             for (const Player& player : players) {
                 lines.push_back(player.getUsername());
-                lines.push_back("Uang      : " + formatMoney(player.getBalance()));
+                lines.push_back("Uang      : " + TextFormatter::formatMoney(player.getBalance()));
                 lines.push_back("Properti  : " + std::to_string(player.getProperties().size()));
                 lines.push_back("Kartu     : " + std::to_string(player.getHand().size()));
                 if (player.isBankrupt()) {
@@ -479,14 +424,14 @@ namespace OutputFormatter {
     }
 
     std::vector<std::string> formatStreetPurchasePreview(const PropertyTile& tile, const StreetTile& street) {
-        const std::string colorLabel = formatColorGroup(tile.getColorGroup());
-        const std::string buyPrice = formatMoney(tile.getBuyPrice());
-        const std::string rent0 = formatMoney(street.getRentAtLevel(0));
-        const std::string rent1 = formatMoney(street.getRentAtLevel(1));
-        const std::string rent2 = formatMoney(street.getRentAtLevel(2));
-        const std::string rent3 = formatMoney(street.getRentAtLevel(3));
-        const std::string rent4 = formatMoney(street.getRentAtLevel(4));
-        const std::string rent5 = formatMoney(street.getRentAtLevel(5));
+        const std::string colorLabel = TextFormatter::formatColorGroup(tile.getColorGroup());
+        const std::string buyPrice = TextFormatter::formatMoney(tile.getBuyPrice());
+        const std::string rent0 = TextFormatter::formatMoney(street.getRentAtLevel(0));
+        const std::string rent1 = TextFormatter::formatMoney(street.getRentAtLevel(1));
+        const std::string rent2 = TextFormatter::formatMoney(street.getRentAtLevel(2));
+        const std::string rent3 = TextFormatter::formatMoney(street.getRentAtLevel(3));
+        const std::string rent4 = TextFormatter::formatMoney(street.getRentAtLevel(4));
+        const std::string rent5 = TextFormatter::formatMoney(street.getRentAtLevel(5));
         const std::string headline = "[" + colorLabel + "] " + tile.getName() + " (" + tile.getCode() + ")";
 
         return {
@@ -513,21 +458,21 @@ namespace OutputFormatter {
             makeCenteredRow("AKTA KEPEMILIKAN"),
             makeCenteredRow(buildPropertyHeadline(property)),
             makeBorder('='),
-            makeKeyValueRow("Harga Beli", formatMoney(property->getBuyPrice())),
-            makeKeyValueRow("Nilai Gadai", formatMoney(property->getMortgageValue()))
+            makeKeyValueRow("Harga Beli", TextFormatter::formatMoney(property->getBuyPrice())),
+            makeKeyValueRow("Nilai Gadai", TextFormatter::formatMoney(property->getMortgageValue()))
         };
 
         if (property->getPropertyType() == PropertyType::STREET) {
             lines.push_back(makeBorder('-'));
-            lines.push_back(makeKeyValueRow("Sewa (unimproved)", formatMoney(property->getRentAtLevel(0))));
-            lines.push_back(makeKeyValueRow("Sewa (1 rumah)", formatMoney(property->getRentAtLevel(1))));
-            lines.push_back(makeKeyValueRow("Sewa (2 rumah)", formatMoney(property->getRentAtLevel(2))));
-            lines.push_back(makeKeyValueRow("Sewa (3 rumah)", formatMoney(property->getRentAtLevel(3))));
-            lines.push_back(makeKeyValueRow("Sewa (4 rumah)", formatMoney(property->getRentAtLevel(4))));
-            lines.push_back(makeKeyValueRow("Sewa (hotel)", formatMoney(property->getRentAtLevel(5))));
+            lines.push_back(makeKeyValueRow("Sewa (unimproved)", TextFormatter::formatMoney(property->getRentAtLevel(0))));
+            lines.push_back(makeKeyValueRow("Sewa (1 rumah)", TextFormatter::formatMoney(property->getRentAtLevel(1))));
+            lines.push_back(makeKeyValueRow("Sewa (2 rumah)", TextFormatter::formatMoney(property->getRentAtLevel(2))));
+            lines.push_back(makeKeyValueRow("Sewa (3 rumah)", TextFormatter::formatMoney(property->getRentAtLevel(3))));
+            lines.push_back(makeKeyValueRow("Sewa (4 rumah)", TextFormatter::formatMoney(property->getRentAtLevel(4))));
+            lines.push_back(makeKeyValueRow("Sewa (hotel)", TextFormatter::formatMoney(property->getRentAtLevel(5))));
             lines.push_back(makeBorder('-'));
-            lines.push_back(makeKeyValueRow("Harga Rumah", formatMoney(property->getHouseCost())));
-            lines.push_back(makeKeyValueRow("Harga Hotel", formatMoney(property->getHotelCost())));
+            lines.push_back(makeKeyValueRow("Harga Rumah", TextFormatter::formatMoney(property->getHouseCost())));
+            lines.push_back(makeKeyValueRow("Harga Hotel", TextFormatter::formatMoney(property->getHotelCost())));
 
             if (property->getFestivalDuration() > 0) {
                 lines.push_back(makeBorder('-'));
@@ -541,7 +486,7 @@ namespace OutputFormatter {
                 lines.push_back(
                     makeKeyValueRow(
                         "Sewa saat ini",
-                        formatMoney(
+                        TextFormatter::formatMoney(
                             property->getRentAtLevel(property->getBuildingLevel()) * property->getFestivalMultiplier()
                         )
                     )
@@ -602,7 +547,7 @@ namespace OutputFormatter {
         }
 
         lines.push_back("");
-        lines.push_back("Total kekayaan properti: " + formatMoney(totalPropertyWealth));
+        lines.push_back("Total kekayaan properti: " + TextFormatter::formatMoney(totalPropertyWealth));
         return lines;
     }
 }

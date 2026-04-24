@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "utils/OutputFormatter.hpp"
+#include "views/CliOutputFormatter.hpp"
 
 namespace {
     void printLines(const std::vector<std::string>& lines) {
@@ -15,9 +15,9 @@ namespace {
 }
 
 void PropertyCardRenderer::renderDeed(const PropertyTile* property) const {
-    printLines(OutputFormatter::formatPropertyDeed(property));
+    printLines(CliOutputFormatter::formatPropertyDeed(property));
 }
 
 void PropertyCardRenderer::renderPlayerProperties(const Player& player) const {
-    printLines(OutputFormatter::formatPlayerProperties(player));
+    printLines(CliOutputFormatter::formatPlayerProperties(player));
 }

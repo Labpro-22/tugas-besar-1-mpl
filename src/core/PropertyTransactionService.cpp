@@ -13,7 +13,7 @@
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 
 namespace {
@@ -29,7 +29,7 @@ namespace {
             if (level <= 0) {
                 return "Tanpa bangunan";
             }
-            return OutputFormatter::formatBuildingLevel(level);
+            return TextFormatter::formatBuildingLevel(level);
         }
 
         if (tile.getPropertyType() == PropertyType::RAILROAD) {
@@ -63,16 +63,7 @@ void PropertyTransactionService::handlePropertyLanded(
         if (street != nullptr) {
             int priceToPay = player.getDiscountedAmount(price);
             if (io != nullptr) {
-                for (const std::string& line : OutputFormatter::formatStreetPurchasePreview(tile, *street)) {
-                    io->showMessage(line);
-                }
-                io->showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
-                if (priceToPay != price) {
-                    io->showMessage(
-                        "Diskon aktif. Harga beli menjadi " + OutputFormatter::formatMoney(priceToPay) +
-                        " dari " + OutputFormatter::formatMoney(price) + "."
-                    );
-                }
+                io->showStreetPurchasePreview(player, tile, *street, price, priceToPay);
             }
 
             if (price > 0 && io != nullptr && io->confirmPropertyPurchase(player, tile)) {
@@ -85,11 +76,11 @@ void PropertyTransactionService::handlePropertyLanded(
                     player.getUsername() + " membayar M" + std::to_string(finalPrice) +
                         " ke Bank untuk membeli " + tile.getName() + ".");
                 io->showMessage(tile.getName() + " kini menjadi milikmu!");
-                io->showMessage("Uang tersisa: " + OutputFormatter::formatMoney(player.getBalance()));
+                io->showMessage("Uang tersisa: " + TextFormatter::formatMoney(player.getBalance()));
                 context.logEvent(
                     "BELI",
                     "Beli " + tile.getName() + " (" + tile.getCode() +
-                        ") seharga " + OutputFormatter::formatMoney(finalPrice));
+                        ") seharga " + TextFormatter::formatMoney(finalPrice));
                 return;
             }
 
@@ -182,7 +173,7 @@ void PropertyTransactionService::handlePropertyLanded(
                         }
                     } else if (io != nullptr) {
                         io->showMessage(
-                        "Penawaran tertinggi: " + OutputFormatter::formatMoney(auction->getHighestBid()) +
+                        "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
                             " (" + bidder->getUsername() + ")"
                         );
                         io->showMessage("");
@@ -215,7 +206,7 @@ void PropertyTransactionService::handlePropertyLanded(
                     auction->processBid(forcedBidder, amount);
                     if (io != nullptr) {
                         io->showMessage(
-                            "Penawaran tertinggi: " + OutputFormatter::formatMoney(auction->getHighestBid()) +
+                            "Penawaran tertinggi: " + TextFormatter::formatMoney(auction->getHighestBid()) +
                             " (" + forcedBidder->getUsername() + ")"
                         );
                         io->showMessage("");
@@ -236,7 +227,7 @@ void PropertyTransactionService::handlePropertyLanded(
             if (io != nullptr) {
                 io->showMessage("Lelang selesai!");
                 io->showMessage("Pemenang: " + winner->getUsername());
-                io->showMessage("Harga akhir: " + OutputFormatter::formatMoney(winningBid));
+                io->showMessage("Harga akhir: " + TextFormatter::formatMoney(winningBid));
                 io->showMessage("");
                 io->showPaymentNotification(
                     "PAYMENT",
@@ -254,7 +245,7 @@ void PropertyTransactionService::handlePropertyLanded(
             context.logEvent(
                 "LELANG",
                 "Menang lelang " + tile.getName() + " (" + tile.getCode() +
-                    ") seharga " + OutputFormatter::formatMoney(winningBid));
+                    ") seharga " + TextFormatter::formatMoney(winningBid));
         } else {
             if (io != nullptr) {
                 io->showAuctionNotification(
@@ -330,7 +321,7 @@ void PropertyTransactionService::handleRentPayment(
                 "), milik " + owner->getUsername() + "!");
         io->showMessage("");
         io->showMessage("Kondisi      : " + getRentConditionLabel(tile));
-        io->showMessage("Sewa         : " + OutputFormatter::formatMoney(rentAmount));
+        io->showMessage("Sewa         : " + TextFormatter::formatMoney(rentAmount));
         if (tile.getFestivalDuration() > 0) {
             io->showMessage(
                 "Festival     : aktif x" + std::to_string(tile.getFestivalMultiplier()) +
@@ -339,8 +330,8 @@ void PropertyTransactionService::handleRentPayment(
         }
         if (rentAmount != originalRentAmount) {
             io->showMessage(
-                "Diskon aktif  : " + OutputFormatter::formatMoney(originalRentAmount) +
-                " -> " + OutputFormatter::formatMoney(rentAmount)
+                "Diskon aktif  : " + TextFormatter::formatMoney(originalRentAmount) +
+                " -> " + TextFormatter::formatMoney(rentAmount)
             );
         }
         io->showMessage("");
@@ -350,8 +341,8 @@ void PropertyTransactionService::handleRentPayment(
         if (io != nullptr) {
             io->showMessage(
                 payerLabel + " tidak mampu membayar sewa penuh! (" +
-                    OutputFormatter::formatMoney(rentAmount) + ")");
-            io->showMessage(payerBalanceLabel + " saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
+                    TextFormatter::formatMoney(rentAmount) + ")");
+            io->showMessage(payerBalanceLabel + " saat ini: " + TextFormatter::formatMoney(player.getBalance()));
         }
         BankruptcyHandler* bankruptcyHandler = context.getBankruptcyHandler();
         if (bankruptcyHandler != nullptr) {
@@ -374,17 +365,17 @@ void PropertyTransactionService::handleRentPayment(
             player.getUsername() + " membayar sewa M" + std::to_string(rentAmount) +
                 " kepada " + owner->getUsername() + ".");
         io->showMessage(
-            payerBalanceLabel + "     : " + OutputFormatter::formatMoney(playerBefore) +
-                " -> " + OutputFormatter::formatMoney(player.getBalance()));
+            payerBalanceLabel + "     : " + TextFormatter::formatMoney(playerBefore) +
+                " -> " + TextFormatter::formatMoney(player.getBalance()));
         io->showMessage(
-            "Uang " + owner->getUsername() + " : " + OutputFormatter::formatMoney(ownerBefore) +
-                " -> " + OutputFormatter::formatMoney(owner->getBalance()));
+            "Uang " + owner->getUsername() + " : " + TextFormatter::formatMoney(ownerBefore) +
+                " -> " + TextFormatter::formatMoney(owner->getBalance()));
     }
 
     TransactionLogger* logger = context.getLogger();
     if (logger != nullptr) {
         std::string detail =
-            "Bayar " + OutputFormatter::formatMoney(rentAmount) + " ke " + owner->getUsername() +
+            "Bayar " + TextFormatter::formatMoney(rentAmount) + " ke " + owner->getUsername() +
             " (" + tile.getCode() + ", " + getRentConditionLabel(tile);
         if (tile.getFestivalDuration() > 0) {
             detail += ", festival aktif x" + std::to_string(tile.getFestivalMultiplier());

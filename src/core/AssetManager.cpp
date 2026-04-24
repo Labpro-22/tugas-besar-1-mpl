@@ -13,7 +13,7 @@
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 
 namespace {
@@ -103,10 +103,10 @@ namespace {
             int cost = street->getBuildingLevel() == 4 ? street->getHotelCost() : street->getHouseCost();
             std::ostringstream line;
             line << "   - " << fitColumn(street->getName() + " (" + street->getCode() + ")", 26)
-                 << " : " << OutputFormatter::formatBuildingLabel(*street);
+                 << " : " << TextFormatter::formatBuildingLabel(*street);
             if (street->getBuildingLevel() < 5) {
                 line << " (Harga " << (street->getBuildingLevel() == 4 ? "hotel" : "rumah")
-                     << ": " << OutputFormatter::formatMoney(cost) << ")";
+                     << ": " << TextFormatter::formatMoney(cost) << ")";
             }
             io->showMessage(line.str());
         }
@@ -122,7 +122,7 @@ namespace {
             bool isSelectable = std::find(selectable.begin(), selectable.end(), street) != selectable.end();
             std::ostringstream line;
             line << "- " << fitColumn(street->getName() + " (" + street->getCode() + ")", 26)
-                 << " : " << fitColumn(OutputFormatter::formatBuildingLabel(*street), 8);
+                 << " : " << fitColumn(TextFormatter::formatBuildingLabel(*street), 8);
 
             if (street->getBuildingLevel() == 5) {
                 line << " <- sudah maksimal, tidak dapat dibangun";
@@ -210,11 +210,11 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
     for (int i = 0; i < static_cast<int>(available.size()); ++i) {
         std::ostringstream line;
         std::string name = available[i]->getName() + " (" + available[i]->getCode() + ")";
-        std::string category = "[" + OutputFormatter::formatPropertyCategory(*available[i]) + "]";
+        std::string category = "[" + TextFormatter::formatPropertyCategory(*available[i]) + "]";
         line << (i + 1) << ". "
              << fitColumn(name, 21)
              << fitColumn(category, 11)
-             << " Nilai Gadai: " << OutputFormatter::formatMoney(available[i]->getMortgageValue());
+             << " Nilai Gadai: " << TextFormatter::formatMoney(available[i]->getMortgageValue());
         io->showMessage(line.str());
     }
 
@@ -236,7 +236,7 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
 
         std::vector<StreetTile*> buildings = getOwnedBuildingsInColorGroup(*board, player, *selectedStreet);
         if (!buildings.empty()) {
-            const std::string groupLabel = OutputFormatter::formatColorGroup(selectedStreet->getColorGroup());
+            const std::string groupLabel = TextFormatter::formatColorGroup(selectedStreet->getColorGroup());
             io->showMessage(selected->getName() + " tidak dapat digadaikan!");
             io->showMessage("Masih terdapat bangunan di color group [" + groupLabel + "].");
             io->showMessage("Bangunan harus dijual terlebih dahulu.");
@@ -248,8 +248,8 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
                 std::string name = buildings[i]->getName() + " (" + buildings[i]->getCode() + ")";
                 line << (i + 1) << ". "
                      << fitColumn(name, 24)
-                     << " - " << fitColumn(OutputFormatter::formatBuildingLabel(*buildings[i]), 8)
-                     << " -> Nilai jual bangunan: " << OutputFormatter::formatMoney(buildingSellValue(*buildings[i]));
+                     << " - " << fitColumn(TextFormatter::formatBuildingLabel(*buildings[i]), 8)
+                     << " -> Nilai jual bangunan: " << TextFormatter::formatMoney(buildingSellValue(*buildings[i]));
                 io->showMessage(line.str());
             }
             io->showMessage("");
@@ -270,12 +270,12 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
                     player += received;
                     io->showMessage(
                         "Bangunan " + street->getName() + " terjual. Kamu menerima " +
-                        OutputFormatter::formatMoney(received) + "."
+                        TextFormatter::formatMoney(received) + "."
                     );
                 }
             }
 
-            io->showMessage("Uang kamu sekarang: " + OutputFormatter::formatMoney(player.getBalance()));
+            io->showMessage("Uang kamu sekarang: " + TextFormatter::formatMoney(player.getBalance()));
             io->showMessage("");
 
             if (!io->confirmYN("Lanjut menggadaikan " + selected->getName() + "?")) {
@@ -287,15 +287,15 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
     selected->mortgage();
     player += selected->getMortgageValue();
     io->showMessage(selected->getName() + " berhasil digadaikan.");
-    io->showMessage("Kamu menerima " + OutputFormatter::formatMoney(selected->getMortgageValue()) + " dari Bank.");
-    io->showMessage("Uang kamu sekarang: " + OutputFormatter::formatMoney(player.getBalance()));
+    io->showMessage("Kamu menerima " + TextFormatter::formatMoney(selected->getMortgageValue()) + " dari Bank.");
+    io->showMessage("Uang kamu sekarang: " + TextFormatter::formatMoney(player.getBalance()));
     io->showMessage("Catatan: Sewa tidak dapat dipungut dari properti yang digadaikan.");
     logAssetAction(
         context,
         player,
         "GADAI",
         "Gadai " + selected->getName() + " (" + selected->getCode() +
-            "), terima " + OutputFormatter::formatMoney(selected->getMortgageValue()));
+            "), terima " + TextFormatter::formatMoney(selected->getMortgageValue()));
 }
 
 void AssetManager::redeemProperty(Player& player, GameContext& context) {
@@ -321,16 +321,16 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
         int redeemCost = player.getDiscountedAmount(mortgaged[i]->getBuyPrice());
         std::ostringstream line;
         std::string name = mortgaged[i]->getName() + " (" + mortgaged[i]->getCode() + ")";
-        std::string category = "[" + OutputFormatter::formatPropertyCategory(*mortgaged[i]) + "]";
+        std::string category = "[" + TextFormatter::formatPropertyCategory(*mortgaged[i]) + "]";
         line << (i + 1) << ". "
              << fitColumn(name, 18)
              << fitColumn(category, 12)
-             << "[M]  Harga Tebus: " << OutputFormatter::formatMoney(redeemCost);
+             << "[M]  Harga Tebus: " << TextFormatter::formatMoney(redeemCost);
         io->showMessage(line.str());
     }
 
     io->showMessage("");
-    io->showMessage("Uang kamu saat ini: " + OutputFormatter::formatMoney(player.getBalance()));
+    io->showMessage("Uang kamu saat ini: " + TextFormatter::formatMoney(player.getBalance()));
     int choice = io->promptIntInRange(
         "Pilih nomor properti (0 untuk batal): ",
         0,
@@ -345,30 +345,30 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
         io->showMessage(
             "Uang kamu tidak cukup untuk menebus " + selected->getName() + ".");
         io->showMessage(
-            "Harga tebus: " + OutputFormatter::formatMoney(redeemCost) +
-            " | Uang kamu: " + OutputFormatter::formatMoney(player.getBalance()));
+            "Harga tebus: " + TextFormatter::formatMoney(redeemCost) +
+            " | Uang kamu: " + TextFormatter::formatMoney(player.getBalance()));
         return;
     }
 
     redeemCost = player.consumeDiscountedAmount(originalCost);
     if (redeemCost != originalCost) {
         io->showMessage(
-            "Diskon diterapkan dari " + OutputFormatter::formatMoney(originalCost) +
-                " menjadi " + OutputFormatter::formatMoney(redeemCost) + ".");
+            "Diskon diterapkan dari " + TextFormatter::formatMoney(originalCost) +
+                " menjadi " + TextFormatter::formatMoney(redeemCost) + ".");
     }
 
     player -= redeemCost;
     selected->redeem();
     io->showMessage("");
     io->showMessage(selected->getName() + " berhasil ditebus!");
-    io->showMessage("Kamu membayar " + OutputFormatter::formatMoney(redeemCost) + " ke Bank.");
-    io->showMessage("Uang kamu sekarang: " + OutputFormatter::formatMoney(player.getBalance()));
+    io->showMessage("Kamu membayar " + TextFormatter::formatMoney(redeemCost) + " ke Bank.");
+    io->showMessage("Uang kamu sekarang: " + TextFormatter::formatMoney(player.getBalance()));
     logAssetAction(
         context,
         player,
         "TEBUS",
         "Tebus " + selected->getName() + " (" + selected->getCode() +
-            "), bayar " + OutputFormatter::formatMoney(redeemCost));
+            "), bayar " + TextFormatter::formatMoney(redeemCost));
 }
 
 void AssetManager::buildProperty(Player& player, GameContext& context) {
@@ -387,11 +387,11 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
 
     io->showMessage("=== Color Group yang Memenuhi Syarat ===");
     for (int i = 0; i < static_cast<int>(buildableGroups.size()); ++i) {
-        io->showMessage(std::to_string(i + 1) + ". [" + OutputFormatter::formatColorGroup(buildableGroups[i]) + "]");
+        io->showMessage(std::to_string(i + 1) + ". [" + TextFormatter::formatColorGroup(buildableGroups[i]) + "]");
         printGroupBuildSummary(io, *board, player, buildableGroups[i]);
     }
     io->showMessage("");
-    io->showMessage("Uang kamu saat ini : " + OutputFormatter::formatMoney(player.getBalance()));
+    io->showMessage("Uang kamu saat ini : " + TextFormatter::formatMoney(player.getBalance()));
     int groupChoice = io->promptIntInRange(
         "Pilih nomor color group (0 untuk batal): ",
         0,
@@ -417,13 +417,13 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
     }
 
     io->showMessage("");
-    io->showMessage("Color group [" + OutputFormatter::formatColorGroup(selectedGroup) + "]:");
+    io->showMessage("Color group [" + TextFormatter::formatColorGroup(selectedGroup) + "]:");
     printGroupBuildState(io, *board, player, selectedGroup, selectable);
     io->showMessage("");
 
     if (allFourHouses) {
         io->showMessage(
-            "Seluruh color group [" + OutputFormatter::formatColorGroup(selectedGroup) +
+            "Seluruh color group [" + TextFormatter::formatColorGroup(selectedGroup) +
             "] sudah memiliki 4 rumah. Siap di-upgrade ke hotel!"
         );
     }
@@ -445,9 +445,9 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
     int costToPay = player.getDiscountedAmount(cost);
 
     if (selected->getBuildingLevel() == 4) {
-        std::string prompt = "Upgrade ke hotel? Biaya: " + OutputFormatter::formatMoney(costToPay);
+        std::string prompt = "Upgrade ke hotel? Biaya: " + TextFormatter::formatMoney(costToPay);
         if (costToPay != cost) {
-            prompt += " (setelah diskon dari " + OutputFormatter::formatMoney(cost) + ")";
+            prompt += " (setelah diskon dari " + TextFormatter::formatMoney(cost) + ")";
         }
         if (!io->confirmYN(prompt)) {
             return;
@@ -458,16 +458,16 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
         io->showMessage(
             "Uang kamu tidak cukup untuk membangun di " + selected->getName() + ".");
         io->showMessage(
-            "Biaya: " + OutputFormatter::formatMoney(costToPay) +
-            " | Uang kamu: " + OutputFormatter::formatMoney(player.getBalance()));
+            "Biaya: " + TextFormatter::formatMoney(costToPay) +
+            " | Uang kamu: " + TextFormatter::formatMoney(player.getBalance()));
         return;
     }
 
     costToPay = player.consumeDiscountedAmount(cost);
     if (costToPay != cost) {
         io->showMessage(
-            "Diskon diterapkan dari " + OutputFormatter::formatMoney(cost) +
-                " menjadi " + OutputFormatter::formatMoney(costToPay) + ".");
+            "Diskon diterapkan dari " + TextFormatter::formatMoney(cost) +
+                " menjadi " + TextFormatter::formatMoney(costToPay) + ".");
     }
 
     player -= costToPay;
@@ -477,9 +477,9 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
     } else {
         io->showMessage(
             "Kamu membangun 1 rumah di " + selected->getName() +
-            ". Biaya: " + OutputFormatter::formatMoney(costToPay));
+            ". Biaya: " + TextFormatter::formatMoney(costToPay));
     }
-    io->showMessage("Uang tersisa: " + OutputFormatter::formatMoney(player.getBalance()));
+    io->showMessage("Uang tersisa: " + TextFormatter::formatMoney(player.getBalance()));
     std::vector<StreetTile*> updatedSelectable;
     std::vector<StreetTile*> updatedGroupStreets = getOwnedStreetsInColorGroup(*board, player, selectedGroup);
     for (StreetTile* street : updatedGroupStreets) {
@@ -494,13 +494,14 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
             player,
             "BANGUN",
             "Upgrade " + selected->getName() + " (" + selected->getCode() +
-                ") ke Hotel, biaya " + OutputFormatter::formatMoney(costToPay));
+                ") ke Hotel, biaya " + TextFormatter::formatMoney(costToPay));
     } else {
         logAssetAction(
             context,
             player,
             "BANGUN",
             "Bangun 1 rumah di " + selected->getName() + " (" + selected->getCode() +
-                "), biaya " + OutputFormatter::formatMoney(costToPay));
+                "), biaya " + TextFormatter::formatMoney(costToPay));
     }
 }
+

@@ -5,13 +5,13 @@
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 
 BirthdayCard::BirthdayCard()
     : BirthdayCard(100) {}
 
 BirthdayCard::BirthdayCard(int amount)
-    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan " + OutputFormatter::formatMoney(amount) + " dari setiap pemain."),
+    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan " + TextFormatter::formatMoney(amount) + " dari setiap pemain."),
       amount(amount) {}
 
 int BirthdayCard::getAmount() const {
@@ -34,7 +34,7 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         if (amountToPay != amount) {
             gameContext.showMessage(
                 "Diskon " + otherPlayer->getUsername() + " diterapkan dari " +
-                OutputFormatter::formatMoney(amount) + " menjadi " + OutputFormatter::formatMoney(amountToPay) + ".");
+                TextFormatter::formatMoney(amount) + " menjadi " + TextFormatter::formatMoney(amountToPay) + ".");
         }
 
         if (!otherPlayer->canAfford(amountToPay)) {
@@ -54,11 +54,11 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
             gameContext.getIO()->showPaymentNotification(
                 "PAYMENT",
                 otherPlayer->getUsername() + " membayar " +
-                    OutputFormatter::formatMoney(amountToPay) + " kepada " +
+                    TextFormatter::formatMoney(amountToPay) + " kepada " +
                     player.getUsername() + ".");
         }
         gameContext.showMessage(
-            otherPlayer->getUsername() + " memberi " + OutputFormatter::formatMoney(amountToPay) +
+            otherPlayer->getUsername() + " memberi " + TextFormatter::formatMoney(amountToPay) +
                 " kepada " + player.getUsername() + ".");
     }
 }

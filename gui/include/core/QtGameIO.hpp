@@ -1,6 +1,7 @@
 #pragma once
 
 #include <QStringList>
+#include <QVector>
 
 #include <functional>
 
@@ -10,6 +11,7 @@ class ActionCard;
 class QWidget;
 class Player;
 class PropertyTile;
+class StreetTile;
 class SkillCard;
 enum class CardType;
 
@@ -34,6 +36,13 @@ public:
     void showActionCard(CardType cardType, const ActionCard& card) override;
     void showPaymentNotification(const std::string& title, const std::string& detail) override;
     void showAuctionNotification(const std::string& title, const std::string& detail) override;
+    void showStreetPurchasePreview(
+        const Player& player,
+        const PropertyTile& tile,
+        const StreetTile& street,
+        int originalPrice,
+        int finalPrice
+    ) override;
     bool usesRichGuiPresentation() const override;
     int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
     int promptTaxPaymentOption(

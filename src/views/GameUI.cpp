@@ -7,9 +7,11 @@
 
 #include "core/TurnManager.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "models/tiles/StreetTile.hpp"
 #include "models/tiles/Tile.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/exceptions/ExceptionHandler.hpp"
+#include "views/CliOutputFormatter.hpp"
 #include "views/GameUI.hpp"
 
 namespace {
@@ -114,7 +116,7 @@ Command GameUI::readCommand() {
 }
 
 int GameUI::showMainMenu() {
-    printLines(OutputFormatter::formatMainMenu());
+    printLines(CliOutputFormatter::formatMainMenu());
 
     int choice = 0;
     while (true) {
@@ -132,7 +134,7 @@ int GameUI::showMainMenu() {
 }
 
 Command GameUI::promptLoadCommand() {
-    printLines(OutputFormatter::formatLoadCommandPrompt());
+    printLines(CliOutputFormatter::formatLoadCommandPrompt());
     while (true) {
         std::cout << "> ";
         Command command = readCommand();
@@ -319,11 +321,11 @@ int GameUI::promptTaxPaymentOption(
     int percentageAmount
 ) {
     showMessage("Pilih opsi pembayaran " + tileName + ":");
-    showMessage("1. Bayar tetap: " + OutputFormatter::formatMoney(flatAmount));
+    showMessage("1. Bayar tetap: " + TextFormatter::formatMoney(flatAmount));
     showMessage(
         "2. Bayar berdasarkan kekayaan: " + std::to_string(percentage) +
-        "% dari total kekayaan " + OutputFormatter::formatMoney(wealth) +
-        " = " + OutputFormatter::formatMoney(percentageAmount));
+        "% dari total kekayaan " + TextFormatter::formatMoney(wealth) +
+        " = " + TextFormatter::formatMoney(percentageAmount));
     return promptIntInRange("Pilih pembayaran (1-2): ", 1, 2);
 }
 
@@ -410,16 +412,33 @@ void GameUI::showAuctionNotification(const std::string& title, const std::string
     (void)detail;
 }
 
+void GameUI::showStreetPurchasePreview(
+    const Player& player,
+    const PropertyTile& tile,
+    const StreetTile& street,
+    int originalPrice,
+    int finalPrice
+) {
+    printLines(CliOutputFormatter::formatStreetPurchasePreview(tile, street));
+    showMessage("Uang kamu saat ini: " + TextFormatter::formatMoney(player.getBalance()));
+    if (finalPrice != originalPrice) {
+        showMessage(
+            "Diskon aktif. Harga beli menjadi " + TextFormatter::formatMoney(finalPrice) +
+            " dari " + TextFormatter::formatMoney(originalPrice) + "."
+        );
+    }
+}
+
 void GameUI::showHelp(const Player& player) {
-    printLines(OutputFormatter::formatHelpCommands(player));
+    printLines(CliOutputFormatter::formatHelpCommands(player));
 }
 
 void GameUI::showSection(const std::string& title) {
-    printLines(OutputFormatter::formatSectionTitle(title));
+    printLines(CliOutputFormatter::formatSectionTitle(title));
 }
 
 void GameUI::showTurnSummary(const Player& player) {
-    printLines(OutputFormatter::formatTurnSummary(player));
+    printLines(CliOutputFormatter::formatTurnSummary(player));
 }
 
 void GameUI::showDiceLanding(
@@ -430,7 +449,7 @@ void GameUI::showDiceLanding(
     const std::string& tileName,
     const std::string& tileCode
 ) {
-    printLines(OutputFormatter::formatDiceLanding(die1, die2, total, playerName, tileName, tileCode));
+    printLines(CliOutputFormatter::formatDiceLanding(die1, die2, total, playerName, tileName, tileCode));
 }
 
 void GameUI::showWinner(
@@ -440,11 +459,11 @@ void GameUI::showWinner(
 ) {
     TurnManager* turnManager = context.getTurnManager();
     bool maxTurnReached = turnManager != nullptr && turnManager->isMaxTurnReached();
-    printLines(OutputFormatter::formatWinnerSummary(winners, players, maxTurnReached));
+    printLines(CliOutputFormatter::formatWinnerSummary(winners, players, maxTurnReached));
 }
 
 void GameUI::showLogEntries(const std::vector<LogEntry>& entries) {
-    printLines(OutputFormatter::formatLogEntries(entries));
+    printLines(CliOutputFormatter::formatLogEntries(entries));
 }
 
 void GameUI::renderBoard(const Board& board, const std::vector<Player>& players, const TurnManager& turnManager) {

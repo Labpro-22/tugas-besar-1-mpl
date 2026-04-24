@@ -10,7 +10,7 @@
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/StreetTile.hpp"
-#include "utils/OutputFormatter.hpp"
+#include "utils/TextFormatter.hpp"
 #include "utils/TransactionLogger.hpp"
 
 FestivalTile::FestivalTile() : ActionTile() {}
@@ -104,14 +104,14 @@ void FestivalTile::applyFestivalEffect(StreetTile* selectedStreet, Player& playe
     if (previousDuration <= 0) {
         gameContext.showMessage("Efek festival aktif!");
         gameContext.showMessage("");
-        gameContext.showMessage("Sewa awal: " + OutputFormatter::formatMoney(previousRent));
-        gameContext.showMessage("Sewa sekarang: " + OutputFormatter::formatMoney(currentRent));
+        gameContext.showMessage("Sewa awal: " + TextFormatter::formatMoney(previousRent));
+        gameContext.showMessage("Sewa sekarang: " + TextFormatter::formatMoney(currentRent));
         gameContext.showMessage("Durasi: " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
     } else if (previousMultiplier < 8) {
         gameContext.showMessage("Efek diperkuat!");
         gameContext.showMessage("");
-        gameContext.showMessage("Sewa sebelumnya: " + OutputFormatter::formatMoney(previousRent));
-        gameContext.showMessage("Sewa sekarang: " + OutputFormatter::formatMoney(currentRent));
+        gameContext.showMessage("Sewa sebelumnya: " + TextFormatter::formatMoney(previousRent));
+        gameContext.showMessage("Sewa sekarang: " + TextFormatter::formatMoney(currentRent));
         gameContext.showMessage("Durasi di-reset menjadi: " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
     } else {
         gameContext.showMessage("Efek sudah maksimum (harga sewa sudah digandakan tiga kali)");
@@ -126,7 +126,7 @@ void FestivalTile::applyFestivalEffect(StreetTile* selectedStreet, Player& playe
             player.getUsername(),
             "FESTIVAL",
             selectedStreet->getName() + " (" + selectedStreet->getCode() + "): sewa " +
-            OutputFormatter::formatMoney(previousRent) + " -> " + OutputFormatter::formatMoney(currentRent) +
+            TextFormatter::formatMoney(previousRent) + " -> " + TextFormatter::formatMoney(currentRent) +
             ", durasi " + std::to_string(selectedStreet->getFestivalDuration()) + " giliran");
     }
 }
