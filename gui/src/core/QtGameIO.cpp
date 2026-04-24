@@ -460,6 +460,16 @@ void QtGameIO::setBoardTileSelectionHandler(std::function<int(const QString&, co
     boardTileSelectionHandler = std::move(handler);
 }
 
+void QtGameIO::setLiquidationPlanHandler(std::function<bool(
+    const Player&,
+    int,
+    const std::vector<LiquidationCandidate>&,
+    std::vector<LiquidationDecision>&
+)> handler)
+{
+    liquidationPlanHandler = std::move(handler);
+}
+
 int QtGameIO::promptInt(const std::string& prompt)
 {
     if (isTestMode()) {
@@ -1017,6 +1027,37 @@ int QtGameIO::promptTaxPaymentOption(
     animateDialogEntrance(dialog);
     dialog.exec();
     return selectedChoice;
+}
+
+bool QtGameIO::promptLiquidationPlan(
+    const Player& player,
+    int targetAmount,
+    const std::vector<LiquidationCandidate>& candidates,
+    std::vector<LiquidationDecision>& decisions
+)
+{
+    if (isTestMode()) {
+        Q_UNUSED(player);
+        Q_UNUSED(targetAmount);
+        decisions.clear();
+        for (const LiquidationCandidate& candidate : candidates) {
+            if (candidate.sellValue > 0) {
+                decisions.push_back({candidate.tileIndex, LiquidationActionKind::Sell});
+                return true;
+            }
+            if (candidate.mortgageValue > 0) {
+                decisions.push_back({candidate.tileIndex, LiquidationActionKind::Mortgage});
+                return true;
+            }
+        }
+        return false;
+    }
+
+    if (liquidationPlanHandler) {
+        return liquidationPlanHandler(player, targetAmount, candidates, decisions);
+    }
+
+    return GameIO::promptLiquidationPlan(player, targetAmount, candidates, decisions);
 }
 
 int QtGameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)

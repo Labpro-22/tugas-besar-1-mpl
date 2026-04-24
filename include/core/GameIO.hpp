@@ -10,6 +10,23 @@ class Player;
 class PropertyTile;
 class SkillCard;
 enum class CardType;
+enum class LiquidationActionKind {
+    Sell,
+    Mortgage
+};
+
+struct LiquidationCandidate {
+    int tileIndex = -1;
+    std::string code;
+    std::string name;
+    int sellValue = 0;
+    int mortgageValue = 0;
+};
+
+struct LiquidationDecision {
+    int tileIndex = -1;
+    LiquidationActionKind action = LiquidationActionKind::Sell;
+};
 
 class GameIO {
 public:
@@ -41,6 +58,12 @@ public:
         int percentage,
         int wealth,
         int percentageAmount
+    );
+    virtual bool promptLiquidationPlan(
+        const Player& player,
+        int targetAmount,
+        const std::vector<LiquidationCandidate>& candidates,
+        std::vector<LiquidationDecision>& decisions
     );
     virtual int promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices);
     virtual int promptTileSelection(

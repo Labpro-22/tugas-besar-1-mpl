@@ -127,6 +127,16 @@ void GuiGameSession::setBoardTileSelectionHandler(std::function<int(const QStrin
     io.setBoardTileSelectionHandler(std::move(handler));
 }
 
+void GuiGameSession::setLiquidationPlanHandler(std::function<bool(
+    const Player&,
+    int,
+    const std::vector<LiquidationCandidate>&,
+    std::vector<LiquidationDecision>&
+)> handler)
+{
+    io.setLiquidationPlanHandler(std::move(handler));
+}
+
 void GuiGameSession::setTurnChangedHandler(std::function<void()> handler)
 {
     turnChangedHandler = std::move(handler);

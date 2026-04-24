@@ -877,6 +877,14 @@ void GameWindow::configureSession()
     session.setBoardTileSelectionHandler([this](const QString& title, const QVector<int>& validTileIndices, bool allowCancel) {
         return promptBoardTileSelection(title, validTileIndices, allowCancel);
     });
+    session.setLiquidationPlanHandler([this](
+        const Player& player,
+        int targetAmount,
+        const std::vector<LiquidationCandidate>& candidates,
+        std::vector<LiquidationDecision>& decisions
+    ) {
+        return promptLiquidationPlan(player, targetAmount, candidates, decisions);
+    });
 
     session.setTurnChangedHandler([this]() {
         refreshViewModels();
@@ -1079,23 +1087,202 @@ void GameWindow::showGameFinishedDialogIfNeeded()
 
     finishDialogShown = true;
     const std::vector<Player*> winners = session.determineWinner();
+    const std::vector<Player>& allPlayers = session.getPlayers();
 
-    QStringList lines;
-    lines.append(QStringLiteral("Permainan selesai pada turn %1.").arg(session.getCurrentTurn()));
-    if (winners.empty()) {
-        lines.append(QStringLiteral("Tidak ada pemenang yang dapat ditentukan."));
-    } else {
-        lines.append(QStringLiteral("Pemenang:"));
-        for (Player* winner : winners) {
-            if (winner != nullptr) {
-                lines.append(QStringLiteral("- %1 (Total Wealth: M%2)")
-                    .arg(QString::fromStdString(winner->getUsername()))
-                    .arg(winner->getTotalWealth()));
-            }
+    int activePlayers = 0;
+    QStringList remainingPlayers;
+    for (const Player& player : allPlayers) {
+        if (!player.isBankrupt()) {
+            ++activePlayers;
+            remainingPlayers.append(QString::fromStdString(player.getUsername()));
         }
     }
 
-    showCustomNotice(this, QStringLiteral("Game Selesai"), lines.join('\n'), QStringLiteral("CONTINUE"));
+    const bool maxTurnReached = session.getMaxTurn() > 0 &&
+        session.getCurrentTurn() >= session.getMaxTurn() &&
+        activePlayers > 1;
+
+    QDialog dialog(this, Qt::Dialog | Qt::FramelessWindowHint);
+    dialog.setModal(true);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("finishShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(14);
+
+    auto* title = new QLabel(QStringLiteral("GAME FINISHED"), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("finishTitle"));
+    layout->addWidget(title);
+
+    auto* reason = new QLabel(
+        maxTurnReached
+            ? QStringLiteral("Permainan selesai! Batas giliran tercapai.")
+            : QStringLiteral("Permainan selesai! Semua pemain kecuali satu bangkrut."),
+        shell
+    );
+    reason->setAlignment(Qt::AlignCenter);
+    reason->setWordWrap(true);
+    reason->setObjectName(QStringLiteral("finishReason"));
+    layout->addWidget(reason);
+
+    auto* turnInfo = new QLabel(
+        session.getMaxTurn() > 0
+            ? QStringLiteral("Turn %1 / %2").arg(session.getCurrentTurn()).arg(session.getMaxTurn())
+            : QStringLiteral("Turn %1").arg(session.getCurrentTurn()),
+        shell
+    );
+    turnInfo->setAlignment(Qt::AlignCenter);
+    turnInfo->setObjectName(QStringLiteral("finishTurnInfo"));
+    layout->addWidget(turnInfo);
+
+    auto* scroll = new QScrollArea(shell);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setMinimumHeight(maxTurnReached ? 260 : 170);
+    layout->addWidget(scroll);
+
+    auto* content = new QWidget(scroll);
+    auto* contentLayout = new QVBoxLayout(content);
+    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setSpacing(10);
+
+    if (maxTurnReached) {
+        auto* recapTitle = new QLabel(QStringLiteral("REKAP PEMAIN"), content);
+        recapTitle->setObjectName(QStringLiteral("finishSectionTitle"));
+        contentLayout->addWidget(recapTitle);
+
+        for (const Player& player : allPlayers) {
+            auto* card = new QFrame(content);
+            card->setObjectName(QStringLiteral("finishPlayerCard"));
+            auto* cardLayout = new QVBoxLayout(card);
+            cardLayout->setContentsMargins(14, 12, 14, 12);
+            cardLayout->setSpacing(4);
+
+            auto* nameLabel = new QLabel(QString::fromStdString(player.getUsername()), card);
+            nameLabel->setObjectName(QStringLiteral("finishPlayerName"));
+            cardLayout->addWidget(nameLabel);
+
+            QStringList stats;
+            stats.append(QStringLiteral("Uang      : %1").arg(MonopolyUi::formatCurrency(player.getBalance())));
+            stats.append(QStringLiteral("Properti  : %1").arg(player.getProperties().size()));
+            stats.append(QStringLiteral("Kartu     : %1").arg(player.getHand().size()));
+            if (player.isBankrupt()) {
+                stats.append(QStringLiteral("Status    : BANGKRUT"));
+            }
+
+            auto* statLabel = new QLabel(stats.join('\n'), card);
+            statLabel->setWordWrap(true);
+            statLabel->setObjectName(QStringLiteral("finishPlayerStats"));
+            cardLayout->addWidget(statLabel);
+
+            contentLayout->addWidget(card);
+        }
+    } else {
+        auto* remainingTitle = new QLabel(QStringLiteral("PEMAIN TERSISA"), content);
+        remainingTitle->setObjectName(QStringLiteral("finishSectionTitle"));
+        contentLayout->addWidget(remainingTitle);
+
+        auto* remainingLabel = new QLabel(
+            remainingPlayers.isEmpty()
+                ? QStringLiteral("- Tidak ada")
+                : QStringLiteral("- %1").arg(remainingPlayers.join(QStringLiteral("\n- "))),
+            content
+        );
+        remainingLabel->setWordWrap(true);
+        remainingLabel->setObjectName(QStringLiteral("finishRemaining"));
+        contentLayout->addWidget(remainingLabel);
+    }
+
+    auto* winnerTitle = new QLabel(QStringLiteral("PEMENANG"), content);
+    winnerTitle->setObjectName(QStringLiteral("finishSectionTitle"));
+    contentLayout->addWidget(winnerTitle);
+
+    QStringList winnerNames;
+    for (Player* winner : winners) {
+        if (winner != nullptr) {
+            winnerNames.append(QString::fromStdString(winner->getUsername()));
+        }
+    }
+
+    auto* winnerCard = new QFrame(content);
+    winnerCard->setObjectName(QStringLiteral("finishWinnerCard"));
+    auto* winnerLayout = new QVBoxLayout(winnerCard);
+    winnerLayout->setContentsMargins(16, 14, 16, 14);
+    winnerLayout->setSpacing(6);
+
+    auto* winnerName = new QLabel(
+        winnerNames.isEmpty()
+            ? QStringLiteral("Tidak ada pemenang yang dapat ditentukan.")
+            : winnerNames.join(QStringLiteral(", ")),
+        winnerCard
+    );
+    winnerName->setWordWrap(true);
+    winnerName->setAlignment(Qt::AlignCenter);
+    winnerName->setObjectName(QStringLiteral("finishWinnerName"));
+    winnerLayout->addWidget(winnerName);
+
+    if (maxTurnReached && !winners.empty()) {
+        QStringList tiebreakInfo;
+        for (Player* winner : winners) {
+            if (winner == nullptr) {
+                continue;
+            }
+            tiebreakInfo.append(QStringLiteral(
+                "%1 | Uang: %2 | Properti: %3 | Kartu: %4 | Wealth: %5")
+                .arg(QString::fromStdString(winner->getUsername()))
+                .arg(MonopolyUi::formatCurrency(winner->getBalance()))
+                .arg(winner->getProperties().size())
+                .arg(winner->getHand().size())
+                .arg(MonopolyUi::formatCurrency(winner->getTotalWealth())));
+        }
+
+        auto* winnerInfo = new QLabel(tiebreakInfo.join('\n'), winnerCard);
+        winnerInfo->setWordWrap(true);
+        winnerInfo->setAlignment(Qt::AlignCenter);
+        winnerInfo->setObjectName(QStringLiteral("finishWinnerInfo"));
+        winnerLayout->addWidget(winnerInfo);
+    }
+
+    contentLayout->addWidget(winnerCard);
+    contentLayout->addStretch(1);
+    scroll->setWidget(content);
+
+    auto* continueButton = new QPushButton(QStringLiteral("CONTINUE"), shell);
+    continueButton->setObjectName(QStringLiteral("finishPrimaryButton"));
+    continueButton->setCursor(Qt::PointingHandCursor);
+    continueButton->setMinimumHeight(44);
+    layout->addWidget(continueButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#finishShell { background:#fffef8; border:2px solid #111; border-radius:2px; }"
+        "#finishTitle { color:#090909; font:900 17pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#finishReason { color:#17232d; font:800 11pt 'Trebuchet MS'; }"
+        "#finishTurnInfo { color:#45606f; font:800 9pt 'Trebuchet MS'; }"
+        "#finishSectionTitle { color:#111; font:900 9pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#finishPlayerCard { background:white; border:1px solid #111; }"
+        "#finishPlayerName { color:#111; font:900 11pt 'Trebuchet MS'; }"
+        "#finishPlayerStats { color:#253744; font:800 9.2pt 'Trebuchet MS'; }"
+        "#finishRemaining { background:white; border:1px solid #111; color:#253744; font:800 9.5pt 'Trebuchet MS'; padding:14px; }"
+        "#finishWinnerCard { background:#111; border:1px solid #111; }"
+        "#finishWinnerName { color:white; font:900 13pt 'Trebuchet MS'; }"
+        "#finishWinnerInfo { color:#d7e6f1; font:800 8.8pt 'Trebuchet MS'; }"
+        "#finishPrimaryButton { background:#111; color:white; border:none; border-radius:4px; font:900 9pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#finishPrimaryButton:hover { background:#2a2a2a; }"
+    ));
+
+    connect(continueButton, &QPushButton::clicked, &dialog, &QDialog::accept);
+    dialog.resize(520, maxTurnReached ? 700 : 500);
+    centerDialog(dialog, this);
+    animateDialog(dialog);
+    dialog.exec();
     refreshActionAvailability();
 }
 
@@ -1498,6 +1685,308 @@ void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& pr
 
     connect(okButton, &QPushButton::clicked, &dialog, &QDialog::accept);
     dialog.exec();
+}
+
+bool GameWindow::promptLiquidationPlan(
+    const Player& player,
+    int targetAmount,
+    const std::vector<LiquidationCandidate>& candidates,
+    std::vector<LiquidationDecision>& decisions
+)
+{
+    decisions.clear();
+    if (candidates.empty()) {
+        return false;
+    }
+
+    selectedPlayerUsername = QString::fromStdString(player.getUsername());
+    refreshScene(QStringLiteral("%1 harus melakukan likuidasi aset.").arg(QString::fromStdString(player.getUsername())));
+
+    QDialog dialog(this, Qt::Dialog | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint);
+    dialog.setAttribute(Qt::WA_TranslucentBackground);
+    dialog.setModal(false);
+
+    auto* root = new QVBoxLayout(&dialog);
+    root->setContentsMargins(20, 20, 20, 20);
+
+    auto* shell = new QFrame(&dialog);
+    shell->setObjectName(QStringLiteral("liquidationShell"));
+    root->addWidget(shell);
+
+    auto* layout = new QVBoxLayout(shell);
+    layout->setContentsMargins(24, 18, 24, 18);
+    layout->setSpacing(12);
+
+    auto* title = new QLabel(QStringLiteral("ASSET LIQUIDATION"), shell);
+    title->setAlignment(Qt::AlignCenter);
+    title->setObjectName(QStringLiteral("liquidationTitle"));
+    layout->addWidget(title);
+
+    auto* subtitle = new QLabel(
+        QStringLiteral("%1 harus menutup kewajiban sebesar %2.")
+            .arg(QString::fromStdString(player.getUsername()))
+            .arg(MonopolyUi::formatCurrency(targetAmount)),
+        shell
+    );
+    subtitle->setAlignment(Qt::AlignCenter);
+    subtitle->setWordWrap(true);
+    subtitle->setObjectName(QStringLiteral("liquidationBody"));
+    layout->addWidget(subtitle);
+
+    auto* balanceLabel = new QLabel(shell);
+    balanceLabel->setAlignment(Qt::AlignCenter);
+    balanceLabel->setObjectName(QStringLiteral("liquidationMeta"));
+    layout->addWidget(balanceLabel);
+
+    auto* plannedLabel = new QLabel(shell);
+    plannedLabel->setAlignment(Qt::AlignCenter);
+    plannedLabel->setObjectName(QStringLiteral("liquidationMeta"));
+    layout->addWidget(plannedLabel);
+
+    auto* shortageLabel = new QLabel(shell);
+    shortageLabel->setAlignment(Qt::AlignCenter);
+    shortageLabel->setObjectName(QStringLiteral("liquidationShortage"));
+    layout->addWidget(shortageLabel);
+
+    auto* hintLabel = new QLabel(QStringLiteral("Pilih properti langsung dari board. Rencana baru akan dieksekusi saat FINALIZE."), shell);
+    hintLabel->setAlignment(Qt::AlignCenter);
+    hintLabel->setWordWrap(true);
+    hintLabel->setObjectName(QStringLiteral("liquidationHint"));
+    layout->addWidget(hintLabel);
+
+    auto* scroll = new QScrollArea(shell);
+    scroll->setWidgetResizable(true);
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setMinimumHeight(170);
+    layout->addWidget(scroll);
+
+    auto* listHost = new QWidget(scroll);
+    auto* listLayout = new QVBoxLayout(listHost);
+    listLayout->setContentsMargins(0, 0, 0, 0);
+    listLayout->setSpacing(10);
+    scroll->setWidget(listHost);
+
+    auto* planListLabel = new QLabel(listHost);
+    planListLabel->setWordWrap(true);
+    planListLabel->setTextFormat(Qt::RichText);
+    planListLabel->setObjectName(QStringLiteral("liquidationPlanList"));
+    listLayout->addWidget(planListLabel);
+    listLayout->addStretch(1);
+    scroll->setWidget(listHost);
+
+    auto* actionRow = new QHBoxLayout();
+    actionRow->setSpacing(10);
+    layout->addLayout(actionRow);
+
+    auto* sellButton = new QPushButton(QStringLiteral("SELL TO BANK"), shell);
+    sellButton->setObjectName(QStringLiteral("liquidationSecondaryButton"));
+    sellButton->setCursor(Qt::PointingHandCursor);
+    sellButton->setMinimumHeight(44);
+    actionRow->addWidget(sellButton);
+
+    auto* mortgageButton = new QPushButton(QStringLiteral("MORTGAGE"), shell);
+    mortgageButton->setObjectName(QStringLiteral("liquidationSecondaryButton"));
+    mortgageButton->setCursor(Qt::PointingHandCursor);
+    mortgageButton->setMinimumHeight(44);
+    actionRow->addWidget(mortgageButton);
+
+    auto* footerRow = new QHBoxLayout();
+    footerRow->setSpacing(10);
+    layout->addLayout(footerRow);
+
+    auto* cancelButton = new QPushButton(QStringLiteral("CANCEL ALL"), shell);
+    cancelButton->setObjectName(QStringLiteral("liquidationDangerButton"));
+    cancelButton->setCursor(Qt::PointingHandCursor);
+    cancelButton->setMinimumHeight(46);
+    footerRow->addWidget(cancelButton);
+
+    auto* finalizeButton = new QPushButton(QStringLiteral("FINALIZE"), shell);
+    finalizeButton->setObjectName(QStringLiteral("liquidationPrimaryButton"));
+    finalizeButton->setCursor(Qt::PointingHandCursor);
+    finalizeButton->setMinimumHeight(46);
+    footerRow->addWidget(finalizeButton);
+
+    dialog.setStyleSheet(QStringLiteral(
+        "#liquidationShell {"
+        "  background:#fffef8;"
+        "  border:2px solid #111;"
+        "  border-radius:2px;"
+        "}"
+        "#liquidationTitle { color:#090909; font:900 16pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#liquidationBody { color:#17232d; font:800 10.5pt 'Trebuchet MS'; }"
+        "#liquidationMeta { color:#2d4757; font:800 9.5pt 'Trebuchet MS'; }"
+        "#liquidationShortage { font:900 13pt 'Trebuchet MS'; }"
+        "#liquidationHint { color:#5d6670; font:700 8.8pt 'Trebuchet MS'; }"
+        "#liquidationPlanList { color:#17232d; font:800 9.2pt 'Trebuchet MS'; background:white; border:1px solid #111; padding:12px; }"
+        "QPushButton { border-radius:4px; font:900 9pt 'Trebuchet MS'; letter-spacing:1px; }"
+        "#liquidationPrimaryButton { background:#111; color:white; border:none; }"
+        "#liquidationPrimaryButton:hover { background:#2a2a2a; }"
+        "#liquidationPrimaryButton:disabled { background:#c9c5b9; color:#777; }"
+        "#liquidationSecondaryButton { background:#e7e2d4; color:#111; border:1px solid #111; }"
+        "#liquidationSecondaryButton:hover { background:#f4efe2; }"
+        "#liquidationSecondaryButton:disabled { background:#ebe7dc; color:#8a8176; border:1px solid #c7bfb0; }"
+        "#liquidationDangerButton { background:#7e1f24; color:white; border:none; }"
+        "#liquidationDangerButton:hover { background:#94272c; }"
+    ));
+
+    QMap<int, LiquidationActionKind> plannedActions;
+    QVector<int> plannedOrder;
+    bool accepted = false;
+
+    auto candidateForTile = [&](int tileIndex) -> const LiquidationCandidate* {
+        for (const LiquidationCandidate& candidate : candidates) {
+            if (candidate.tileIndex == tileIndex) {
+                return &candidate;
+            }
+        }
+        return nullptr;
+    };
+
+    auto plannedGain = [&]() -> int {
+        int total = 0;
+        for (int tileIndex : plannedOrder) {
+            const LiquidationCandidate* candidate = candidateForTile(tileIndex);
+            if (candidate == nullptr) {
+                continue;
+            }
+            total += plannedActions.value(tileIndex) == LiquidationActionKind::Sell
+                ? candidate->sellValue
+                : candidate->mortgageValue;
+        }
+        return total;
+    };
+
+    auto eligibleTiles = [&](LiquidationActionKind action) -> QVector<int> {
+        QVector<int> result;
+        for (const LiquidationCandidate& candidate : candidates) {
+            if (plannedActions.contains(candidate.tileIndex)) {
+                continue;
+            }
+
+            const int value = action == LiquidationActionKind::Sell
+                ? candidate.sellValue
+                : candidate.mortgageValue;
+            if (value > 0) {
+                result.append(candidate.tileIndex);
+            }
+        }
+        return result;
+    };
+
+    auto refreshPlanner = [&]() {
+        const int gain = plannedGain();
+        const int shortage = targetAmount - (player.getBalance() + gain);
+
+        balanceLabel->setText(QStringLiteral("Saldo sekarang: %1").arg(MonopolyUi::formatCurrency(player.getBalance())));
+        plannedLabel->setText(QStringLiteral("Total dana rencana likuidasi: %1").arg(MonopolyUi::formatCurrency(gain)));
+
+        if (shortage > 0) {
+            shortageLabel->setText(QStringLiteral("SISA KEKURANGAN: -%1").arg(MonopolyUi::formatCurrency(shortage)));
+            shortageLabel->setStyleSheet(QStringLiteral("color:#c62828;font:900 13pt 'Trebuchet MS';"));
+        } else {
+            shortageLabel->setText(QStringLiteral("TARGET TERPENUHI: +%1").arg(MonopolyUi::formatCurrency(-shortage)));
+            shortageLabel->setStyleSheet(QStringLiteral("color:#2f8c2f;font:900 13pt 'Trebuchet MS';"));
+        }
+
+        QStringList lines;
+        if (plannedOrder.isEmpty()) {
+            lines.append(QStringLiteral("<b>Belum ada aset yang direncanakan.</b><br><span style='color:#6a737c;'>Pilih SELL TO BANK atau MORTGAGE lalu klik tile di board.</span>"));
+        } else {
+            for (int tileIndex : plannedOrder) {
+                const LiquidationCandidate* candidate = candidateForTile(tileIndex);
+                if (candidate == nullptr) {
+                    continue;
+                }
+
+                const bool isSell = plannedActions.value(tileIndex) == LiquidationActionKind::Sell;
+                const int value = isSell ? candidate->sellValue : candidate->mortgageValue;
+                lines.append(QStringLiteral(
+                    "<b>%1</b><br><span style='color:#475866;'>%2 (%3)</span><br><span style='color:#1262c5;'>%4</span>")
+                    .arg(isSell ? QStringLiteral("JUAL KE BANK") : QStringLiteral("MORTGAGE"))
+                    .arg(QString::fromStdString(candidate->name))
+                    .arg(QString::fromStdString(candidate->code))
+                    .arg(MonopolyUi::formatCurrency(value)));
+            }
+        }
+        planListLabel->setText(lines.join(QStringLiteral("<br><br>")));
+
+        sellButton->setEnabled(!eligibleTiles(LiquidationActionKind::Sell).isEmpty());
+        mortgageButton->setEnabled(!eligibleTiles(LiquidationActionKind::Mortgage).isEmpty());
+        finalizeButton->setEnabled(shortage <= 0 && !plannedOrder.isEmpty());
+    };
+
+    auto setPlannerButtonsEnabled = [&](bool enabled) {
+        sellButton->setEnabled(enabled && !eligibleTiles(LiquidationActionKind::Sell).isEmpty());
+        mortgageButton->setEnabled(enabled && !eligibleTiles(LiquidationActionKind::Mortgage).isEmpty());
+        cancelButton->setEnabled(enabled);
+        finalizeButton->setEnabled(enabled && (targetAmount - (player.getBalance() + plannedGain()) <= 0) && !plannedOrder.isEmpty());
+    };
+
+    auto queueSelection = [&](LiquidationActionKind action, const QString& titleText) {
+        QVector<int> selectable = eligibleTiles(action);
+        if (selectable.isEmpty()) {
+            return;
+        }
+
+        setPlannerButtonsEnabled(false);
+        const int selectedTileIndex = promptBoardTileSelection(titleText, selectable, true);
+        setPlannerButtonsEnabled(true);
+        dialog.raise();
+        dialog.activateWindow();
+
+        if (selectedTileIndex < 0 || plannedActions.contains(selectedTileIndex)) {
+            refreshPlanner();
+            return;
+        }
+
+        plannedActions.insert(selectedTileIndex, action);
+        plannedOrder.append(selectedTileIndex);
+        const LiquidationCandidate* candidate = candidateForTile(selectedTileIndex);
+        if (candidate != nullptr) {
+            setSelectedProperty(selectedTileIndex + 1, false);
+        }
+        refreshPlanner();
+    };
+
+    connect(sellButton, &QPushButton::clicked, &dialog, [&]() {
+        queueSelection(LiquidationActionKind::Sell, QStringLiteral("Pilih properti yang ingin dijual ke Bank."));
+    });
+    connect(mortgageButton, &QPushButton::clicked, &dialog, [&]() {
+        queueSelection(LiquidationActionKind::Mortgage, QStringLiteral("Pilih properti yang ingin digadaikan."));
+    });
+
+    QEventLoop loop;
+    connect(cancelButton, &QPushButton::clicked, &dialog, [&]() {
+        accepted = false;
+        decisions.clear();
+        dialog.close();
+        loop.quit();
+    });
+    connect(finalizeButton, &QPushButton::clicked, &dialog, [&]() {
+        if (targetAmount - (player.getBalance() + plannedGain()) > 0 || plannedOrder.isEmpty()) {
+            return;
+        }
+
+        decisions.clear();
+        for (int tileIndex : plannedOrder) {
+            decisions.push_back({tileIndex, plannedActions.value(tileIndex)});
+        }
+        accepted = true;
+        dialog.close();
+        loop.quit();
+    });
+
+    refreshPlanner();
+    dialog.resize(500, 560);
+    centerDialog(dialog, this);
+    animateDialog(dialog);
+    dialog.show();
+    dialog.raise();
+    dialog.activateWindow();
+    loop.exec();
+
+    refreshScene(lastStatusText);
+    return accepted;
 }
 
 int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int>& validTileIndices, bool allowCancel)

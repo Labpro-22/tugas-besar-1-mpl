@@ -39,7 +39,12 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         if (!otherPlayer->canAfford(amountToPay)) {
             BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
             if (bankruptcyHandler != nullptr) {
-                bankruptcyHandler->handleBankruptcy(*otherPlayer, &player, amountToPay, gameContext);
+                const bool settled = bankruptcyHandler->handleBankruptcy(*otherPlayer, &player, amountToPay, gameContext);
+                if (!settled && gameContext.getIO() != nullptr) {
+                    gameContext.getIO()->showMessage(
+                        "Pembayaran ulang tahun dari " + otherPlayer->getUsername() +
+                        " dibatalkan. Tidak ada transfer dana.");
+                }
             } else {
                 *otherPlayer -= amountToPay;
                 player += amountToPay;

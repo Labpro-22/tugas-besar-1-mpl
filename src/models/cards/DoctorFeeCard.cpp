@@ -60,7 +60,10 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
 
     BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
     if (bankruptcyHandler != nullptr) {
-        bankruptcyHandler->handleBankruptcy(player, nullptr, amountToPay, gameContext);
+        const bool settled = bankruptcyHandler->handleBankruptcy(player, nullptr, amountToPay, gameContext);
+        if (!settled && gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showMessage("Pembayaran biaya dokter dibatalkan. Tagihan belum terselesaikan.");
+        }
         return;
     }
 

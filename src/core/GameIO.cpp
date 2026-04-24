@@ -88,6 +88,96 @@ int GameIO::promptTaxPaymentOption(
     return choice;
 }
 
+bool GameIO::promptLiquidationPlan(
+    const Player& player,
+    int targetAmount,
+    const std::vector<LiquidationCandidate>& candidates,
+    std::vector<LiquidationDecision>& decisions
+)
+{
+    decisions.clear();
+    if (player.getBalance() >= targetAmount) {
+        return true;
+    }
+
+    std::vector<bool> used(candidates.size(), false);
+    int plannedGain = 0;
+
+    while (player.getBalance() + plannedGain < targetAmount) {
+        const int shortage = targetAmount - (player.getBalance() + plannedGain);
+        showMessage(
+            "Likuidasi aset dibutuhkan. Kekurangan dana: M" + std::to_string(shortage) + ".");
+
+        std::vector<int> visibleIndices;
+        for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
+            if (used[i]) {
+                continue;
+            }
+
+            const LiquidationCandidate& candidate = candidates[i];
+            if (candidate.sellValue > 0) {
+                visibleIndices.push_back(i);
+                showMessage(
+                    std::to_string(static_cast<int>(visibleIndices.size())) +
+                    ". Jual ke Bank " + candidate.name +
+                    " (" + candidate.code + ") - M" + std::to_string(candidate.sellValue));
+            }
+            if (candidate.mortgageValue > 0) {
+                visibleIndices.push_back(i);
+                showMessage(
+                    std::to_string(static_cast<int>(visibleIndices.size())) +
+                    ". Gadai " + candidate.name +
+                    " (" + candidate.code + ") - M" + std::to_string(candidate.mortgageValue));
+            }
+        }
+
+        if (visibleIndices.empty()) {
+            decisions.clear();
+            return false;
+        }
+
+        showMessage("0. Batal dan kosongkan seluruh rencana likuidasi");
+        const int choice = promptIntInRange(
+            "Pilih opsi likuidasi: ",
+            0,
+            static_cast<int>(visibleIndices.size()));
+
+        if (choice == 0) {
+            decisions.clear();
+            return false;
+        }
+
+        int currentDisplay = 0;
+        for (int i = 0; i < static_cast<int>(candidates.size()); ++i) {
+            if (used[i]) {
+                continue;
+            }
+
+            const LiquidationCandidate& candidate = candidates[i];
+            if (candidate.sellValue > 0) {
+                ++currentDisplay;
+                if (currentDisplay == choice) {
+                    used[i] = true;
+                    plannedGain += candidate.sellValue;
+                    decisions.push_back({candidate.tileIndex, LiquidationActionKind::Sell});
+                    break;
+                }
+            }
+            if (candidate.mortgageValue > 0) {
+                ++currentDisplay;
+                if (currentDisplay == choice) {
+                    used[i] = true;
+                    plannedGain += candidate.mortgageValue;
+                    decisions.push_back({candidate.tileIndex, LiquidationActionKind::Mortgage});
+                    break;
+                }
+            }
+        }
+    }
+
+    return true;
+}
+
 int GameIO::promptTileSelection(const std::string& title, const std::vector<int>& validTileIndices)
 {
     return promptTileSelection(title, validTileIndices, false);
