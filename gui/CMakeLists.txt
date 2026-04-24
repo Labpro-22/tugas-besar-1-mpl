@@ -23,6 +23,8 @@ if(WIN32 AND NOT DEFINED CMAKE_PREFIX_PATH)
         "C:/Qt/6.7.0/mingw_64"
         "C:/Qt/6.6.0/mingw_64"
         "C:/Qt/5.15.2/mingw81_64"
+        "C:/msys64/ucrt64"
+        "C:/msys64/mingw64"
         "$ENV{QTDIR}"
     )
 
@@ -40,6 +42,7 @@ project(NimonspoliQtUi VERSION 0.2 LANGUAGES CXX)
 set(CMAKE_AUTOUIC OFF)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

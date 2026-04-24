@@ -100,9 +100,9 @@ void configureActionButton(QToolButton* button, const QString& text, const QIcon
     button->setIconSize(QSize(26, 26));
     button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     button->setCursor(Qt::PointingHandCursor);
-    button->setMinimumHeight(68);
+    button->setMinimumHeight(56);
     button->setObjectName(primary ? QStringLiteral("actionButtonPrimary") : QStringLiteral("actionButton"));
-    button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 }
 
 bool isUsernameDuplicate(const QStringList& names, const QString& candidate)
@@ -536,12 +536,11 @@ GameWindow::GameWindow(QWidget* parent)
         "  border: 2px solid #347cb7;"
         "}"
         "#actionButtonPrimary, #actionButton {"
-        "  padding: 6px 12px;"
+        "  padding: 4px 8px;"
         "  border-radius: 10px;"
         "  border: 1px solid rgba(134,152,166,0.9);"
         "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #dfe7ec);"
         "  color: #162432;"
-        "  font: 900 9.5pt 'Trebuchet MS';"
         "}"
         "#actionButtonPrimary {"
         "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #dbefff);"
@@ -1800,12 +1799,13 @@ void GameWindow::updateResponsiveLayout()
     const int shellSpacing = std::clamp(windowWidth / 90, 12, 22);
     const int sidebarWidth = std::clamp(static_cast<int>(windowWidth * 0.29), 320, 460);
     const int avatarSize = std::clamp(windowHeight / 10, 56, 82);
-    const int portfolioMinHeight = std::clamp(windowHeight / 4, 170, 260);
-    const int portfolioMaxHeight = std::clamp(windowHeight / 3, 210, 320);
-    const int historyMinHeight = std::clamp(windowHeight / 4, 180, 290);
-    const int actionHeight = std::clamp(windowHeight / 10, 62, 96);
-    const int actionIcon = std::clamp(actionHeight / 3, 20, 34);
-    const int actionFont = std::clamp(actionHeight / 7, 9, 13);
+    const bool compactSidebar = windowHeight < 820;
+    const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 6 : 4), compactSidebar ? 112 : 170, compactSidebar ? 170 : 260);
+    const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 5 : 3), compactSidebar ? 132 : 210, compactSidebar ? 198 : 320);
+    const int historyMinHeight = std::clamp(windowHeight / (compactSidebar ? 7 : 4), compactSidebar ? 88 : 180, compactSidebar ? 150 : 290);
+    const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 17 : 12), compactSidebar ? 40 : 54, compactSidebar ? 52 : 78);
+    const int actionIcon = std::clamp(actionHeight / 3, compactSidebar ? 16 : 20, compactSidebar ? 20 : 30);
+    const int actionFont = std::clamp(actionHeight / 6, compactSidebar ? 7 : 9, compactSidebar ? 9 : 12);
     const int playerNameFont = std::clamp(windowWidth / 80, 11, 18);
     const int moneyFont = std::clamp(windowWidth / 64, 13, 22);
     const int switchFont = std::clamp(windowWidth / 110, 8, 11);
@@ -1859,11 +1859,17 @@ void GameWindow::updateResponsiveLayout()
 
     if (actionsLayout != nullptr) {
         const int horizontalGap = std::clamp(sidebarWidth / 28, 10, 20);
-        const int verticalGap = std::clamp(windowHeight / 60, 10, 18);
-        const int actionsPadding = std::clamp(sidebarWidth / 20, 16, 28);
-        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, std::clamp(actionsPadding - 2, 10, 22));
+        const int verticalGap = std::clamp(windowHeight / (compactSidebar ? 110 : 70), compactSidebar ? 6 : 9, compactSidebar ? 10 : 16);
+        const int actionsPadding = std::clamp(sidebarWidth / 24, compactSidebar ? 10 : 14, compactSidebar ? 18 : 24);
+        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, std::clamp(actionsPadding - 4, compactSidebar ? 6 : 10, compactSidebar ? 12 : 20));
         actionsLayout->setHorizontalSpacing(horizontalGap);
         actionsLayout->setVerticalSpacing(verticalGap);
+
+        if (QWidget* actionsSection = actionsLayout->parentWidget()) {
+            const int actionsRowsHeight = (actionHeight * 4) + (verticalGap * 3) + actionsLayout->contentsMargins().bottom();
+            actionsSection->setMinimumHeight(actionsRowsHeight);
+            actionsSection->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+        }
     }
 
     const QList<QToolButton*> actionButtons = {
@@ -1875,7 +1881,7 @@ void GameWindow::updateResponsiveLayout()
             continue;
         }
         button->setMinimumHeight(actionHeight);
-        button->setMaximumHeight(actionHeight + 8);
+        button->setMaximumHeight(QWIDGETSIZE_MAX);
         button->setIconSize(QSize(actionIcon, actionIcon));
         QFont font(QStringLiteral("Trebuchet MS"), actionFont, QFont::Black);
         button->setFont(font);

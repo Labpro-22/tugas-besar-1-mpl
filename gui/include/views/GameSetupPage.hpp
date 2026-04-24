@@ -7,6 +7,7 @@ class QLabel;
 class QLineEdit;
 class QPushButton;
 class QGridLayout;
+class QScrollArea;
 class QVBoxLayout;
 
 class GameSetupPage : public QWidget
@@ -47,6 +48,8 @@ private:
     QList<QWidget*> playerCards;
     QList<QLineEdit*> playerInputs;
     QWidget* setupCard = nullptr;
+    QScrollArea* setupScrollArea = nullptr;
+    QWidget* scrollContent = nullptr;
     QVBoxLayout* outerLayout = nullptr;
     QVBoxLayout* cardLayout = nullptr;
     QGridLayout* playerGrid = nullptr;

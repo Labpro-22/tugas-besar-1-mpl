@@ -13,6 +13,7 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QResizeEvent>
+#include <QScrollArea>
 #include <QVBoxLayout>
 
 namespace {
@@ -47,14 +48,26 @@ GameSetupPage::GameSetupPage(QWidget* parent)
     rootLayout->setContentsMargins(0, 0, 0, 0);
     rootLayout->setSpacing(0);
 
-    outerLayout = new QVBoxLayout();
+    setupScrollArea = new QScrollArea(this);
+    setupScrollArea->setObjectName(QStringLiteral("setupScrollArea"));
+    setupScrollArea->setFrameShape(QFrame::NoFrame);
+    setupScrollArea->setWidgetResizable(true);
+    setupScrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    setupScrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    rootLayout->addWidget(setupScrollArea, 1);
+
+    scrollContent = new QWidget(setupScrollArea);
+    scrollContent->setObjectName(QStringLiteral("setupScrollContent"));
+    scrollContent->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
+    setupScrollArea->setWidget(scrollContent);
+
+    outerLayout = new QVBoxLayout(scrollContent);
     outerLayout->setContentsMargins(0, 32, 0, 32);
     outerLayout->setAlignment(Qt::AlignCenter);
-    rootLayout->addLayout(outerLayout, 1);
 
-    setupCard = new QFrame(this);
+    setupCard = new QFrame(scrollContent);
     setupCard->setObjectName(QStringLiteral("setupCard"));
-    setupCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Preferred);
+    setupCard->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
     outerLayout->addWidget(setupCard, 0, Qt::AlignCenter);
 
     cardLayout = new QVBoxLayout(setupCard);
@@ -171,6 +184,9 @@ GameSetupPage::GameSetupPage(QWidget* parent)
 
     setStyleSheet(
         "#gameSetupPage { background: transparent; }"
+        "#setupScrollArea { background: transparent; border: none; }"
+        "#setupScrollArea > QWidget { background: transparent; }"
+        "#setupScrollContent { background: transparent; }"
         "#setupCard {"
         "  background: rgba(255,255,255,0.92);"
         "  border: 1px solid rgba(217, 224, 233, 0.95);"
@@ -282,27 +298,37 @@ void GameSetupPage::applyPlayerCount(int count)
     for (int index = 0; index < playerCards.size(); ++index) {
         playerCards[index]->setVisible(index < count);
     }
+    if (playerGrid != nullptr) {
+        playerGrid->invalidate();
+    }
+    updateResponsiveLayout();
 }
 
 void GameSetupPage::updateResponsiveLayout()
 {
-    const int pageWidth = qMax(width(), minimumWidth());
-    const int pageHeight = qMax(height(), minimumHeight());
+    const int pageWidth = qMax(width(), 1);
+    const int pageHeight = qMax(height(), 1);
+    const bool compactHeight = pageHeight < 820;
     const int setupWidth = std::clamp(static_cast<int>(pageWidth * 0.78), 520, 1120);
-    const int sectionGap = std::clamp(pageHeight / 40, 14, 28);
+    const int sectionGap = std::clamp(pageHeight / (compactHeight ? 58 : 44), compactHeight ? 8 : 12, compactHeight ? 14 : 24);
     const int cardPaddingX = std::clamp(pageWidth / 28, 26, 68);
-    const int cardPaddingY = std::clamp(pageHeight / 24, 24, 52);
+    const int cardPaddingY = std::clamp(pageHeight / (compactHeight ? 42 : 30), compactHeight ? 16 : 22, compactHeight ? 26 : 46);
     const int titleSize = std::clamp(pageWidth / 34, 18, 30);
     const int subtitleSize = std::clamp(pageWidth / 64, 10, 15);
     const int sectionTitleSize = std::clamp(pageWidth / 90, 9, 12);
-    const int countButtonHeight = std::clamp(pageHeight / 11, 50, 74);
-    const int inputHeight = std::clamp(pageHeight / 10, 48, 66);
-    const int startHeight = std::clamp(pageHeight / 9, 58, 78);
+    const int countButtonHeight = std::clamp(pageHeight / (compactHeight ? 17 : 14), compactHeight ? 40 : 48, compactHeight ? 48 : 64);
+    const int inputHeight = std::clamp(pageHeight / (compactHeight ? 18 : 15), compactHeight ? 40 : 46, compactHeight ? 48 : 58);
+    const int startHeight = std::clamp(pageHeight / (compactHeight ? 16 : 13), compactHeight ? 46 : 54, compactHeight ? 56 : 70);
     const int startWidth = std::clamp(static_cast<int>(setupWidth * 0.28), 220, 320);
     const int labelDotSize = std::clamp(pageWidth / 60, 14, 18);
 
+    if (setupScrollArea != nullptr && scrollContent != nullptr && setupScrollArea->viewport() != nullptr) {
+        scrollContent->setMinimumHeight(setupScrollArea->viewport()->height());
+    }
+
     if (outerLayout != nullptr) {
-        outerLayout->setContentsMargins(0, std::clamp(pageHeight / 18, 18, 42), 0, std::clamp(pageHeight / 18, 18, 42));
+        const int outerMarginY = std::clamp(pageHeight / (compactHeight ? 42 : 26), compactHeight ? 10 : 18, compactHeight ? 20 : 42);
+        outerLayout->setContentsMargins(0, outerMarginY, 0, outerMarginY);
     }
 
     if (setupCard != nullptr) {
@@ -398,5 +424,15 @@ void GameSetupPage::updateResponsiveLayout()
         startButton->setMinimumSize(startWidth, startHeight);
         QFont font(QStringLiteral("Trebuchet MS"), std::clamp(startHeight / 5, 11, 15), QFont::Black);
         startButton->setFont(font);
+    }
+
+    if (cardLayout != nullptr) {
+        cardLayout->activate();
+    }
+
+    if (setupCard != nullptr) {
+        setupCard->setMinimumHeight(0);
+        setupCard->setMinimumHeight(setupCard->minimumSizeHint().height());
+        setupCard->updateGeometry();
     }
 }

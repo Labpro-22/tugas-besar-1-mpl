@@ -3,11 +3,11 @@
 #include <array>
 
 #include <QFont>
-#include <QFontMetrics>
 #include <QPaintEvent>
 #include <QPainter>
 #include <QPixmap>
 #include <QRectF>
+#include <QtGui/QFontMetrics>
 
 #include "utils/UiCommon.hpp"
 #include "models/Enums.hpp"

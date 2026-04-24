@@ -19,11 +19,13 @@ ifeq ($(OS),Windows_NT)
 	MKDIR_P := cmake -E make_directory
 	RM_RF := cmake -E rm -rf
 	PLATFORM := windows
+	CMAKE_GUI_GENERATOR := -G "MinGW Makefiles"
 else
 	EXE_EXT :=
 	MKDIR_P := mkdir -p
 	RM_RF := rm -rf
 	PLATFORM := linux
+	CMAKE_GUI_GENERATOR :=
 endif
 
 PLATFORM_OBJ_DIR := $(OBJ_DIR)/$(PLATFORM)
@@ -74,7 +76,7 @@ check-cmake:
 endif
 
 gui-configure: check-cmake
-	cmake -S gui -B $(GUI_BUILD_DIR)
+	cmake -S gui -B $(GUI_BUILD_DIR) $(CMAKE_GUI_GENERATOR)
 
 gui-build: gui-configure
 	cmake --build $(GUI_BUILD_DIR) --target $(QT_UI_TARGET) --parallel
