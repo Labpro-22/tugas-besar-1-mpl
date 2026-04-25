@@ -372,20 +372,6 @@ namespace CliOutputFormatter {
 
         if (maxTurnReached) {
             lines.push_back("Permainan selesai! (Batas giliran tercapai)");
-            lines.push_back("");
-            lines.push_back("Rekap pemain:");
-            lines.push_back("");
-
-            for (const Player& player : players) {
-                lines.push_back(player.getUsername());
-                lines.push_back("Uang      : " + TextFormatter::formatMoney(player.getBalance()));
-                lines.push_back("Properti  : " + std::to_string(player.getProperties().size()));
-                lines.push_back("Kartu     : " + std::to_string(player.getHand().size()));
-                if (player.isBankrupt()) {
-                    lines.push_back("Status    : BANKRUPT");
-                }
-                lines.push_back("");
-            }
         } else {
             lines.push_back("Permainan selesai! (Semua pemain kecuali satu bangkrut)");
             lines.push_back("");
@@ -408,6 +394,21 @@ namespace CliOutputFormatter {
                     continue;
                 }
                 lines.push_back("- " + player->getUsername());
+            }
+            lines.push_back("");
+        }
+
+        lines.push_back("");
+        lines.push_back("Rekap pemain:");
+        lines.push_back("");
+
+        for (const Player& player : players) {
+            lines.push_back(player.getUsername());
+            lines.push_back("Uang      : " + TextFormatter::formatMoney(player.getBalance()));
+            lines.push_back("Properti  : " + std::to_string(player.getProperties().size()));
+            lines.push_back("Kartu     : " + std::to_string(player.getHand().size()));
+            if (player.isBankrupt()) {
+                lines.push_back("Status    : BANKRUPT");
             }
             lines.push_back("");
         }
