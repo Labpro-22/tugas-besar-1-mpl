@@ -169,7 +169,7 @@ namespace {
             return targetLevel == minLevel;
         }
 
-        return targetLevel == 4 && minLevel >= 4 && maxLevel <= 4;
+        return targetLevel == 4 && minLevel >= 4;
     }
 
     std::vector<int> buildTileIndexList(const std::vector<PropertyTile*>& properties) {
