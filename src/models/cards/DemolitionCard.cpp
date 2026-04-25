@@ -108,15 +108,12 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
     StreetTile* targetProperty = targetProperties[choice];
     Player* owner = targetOwners[choice];
     int destroyedLevel = targetProperty->getBuildingLevel();
-
     targetProperty->setBuildingLevel(0);
-    targetProperty->setFestivalState(1, 0);
 
     gameContext.showMessage(
         "BOOOMMMM!!! Semua bangunan di " + targetProperty->getName()
             + " (" + targetProperty->getCode() + ") milik "
-            + owner->getUsername() + " sudah rata dengan tanah. "
-            + "Status kepemilikan tetap milik " + owner->getUsername() + ".");
+            + owner->getUsername() + " sudah rata dengan tanah.");
     gameContext.logEvent(
         "KARTU",
         player.getUsername() + " menggunakan DemolitionCard untuk menghancurkan " +

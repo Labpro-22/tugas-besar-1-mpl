@@ -269,6 +269,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
     }
 
     player.setHasRolledThisTurn(true);
+    player.setHasRolledMovementDiceThisTurn(true);
     player.setActionTakenThisTurn(true);
 
     if (dice.getDie1() == dice.getDie2()) {
@@ -344,13 +345,8 @@ void CommandProcessor::processSkillCommand(Player& player) {
         return;
     }
 
-    if (player.hasRolledThisTurn()) {
+    if (player.hasRolledThisTurn() || player.hasRolledMovementDiceThisTurn()) {
         ui.showMessage("Kartu kemampuan hanya bisa digunakan SEBELUM melempar dadu.");
-        return;
-    }
-
-    if (player.hasTakenActionThisTurn()) {
-        ui.showMessage("Kartu kemampuan hanya bisa digunakan di awal giliran sebelum menjalankan aksi apapun.");
         return;
     }
 

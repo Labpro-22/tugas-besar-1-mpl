@@ -224,6 +224,13 @@ namespace {
         return false;
     }
 
+    bool canUseSkillBeforeMovementDice(const Player& player) {
+        return !player.hasUsedSkillThisTurn() &&
+               !player.hasRolledThisTurn() &&
+               !player.hasRolledMovementDiceThisTurn() &&
+               hasUsableSkillCard(player);
+    }
+
     bool containsPlayer(const std::vector<Player*>& players, const Player* candidate) {
         return std::find(players.begin(), players.end(), candidate) != players.end();
     }
@@ -284,7 +291,7 @@ namespace CliOutputFormatter {
     }
 
     std::vector<std::string> formatHelpCommands(const Player& player) {
-        const bool canUseSkillCard = hasUsableSkillCard(player);
+        const bool canUseSkillCard = canUseSkillBeforeMovementDice(player);
         std::vector<std::string> lines = {
             "",
             makeBorder(HELP_INNER_WIDTH, '-'),
@@ -299,7 +306,7 @@ namespace CliOutputFormatter {
 
         if (player.isJailed()) {
             lines.push_back(makeHelpCommandRow("BAYAR_DENDA", "keluar dari penjara dengan denda"));
-            if (!player.hasUsedSkillThisTurn() && !player.hasTakenActionThisTurn() && canUseSkillCard) {
+            if (canUseSkillCard) {
                 lines.push_back(makeHelpCommandRow("GUNAKAN_KEMAMPUAN", "pakai kartu non-pergerakan"));
             }
             if (!player.hasRolledThisTurn() && player.getJailTurns() <= 3) {
@@ -310,7 +317,7 @@ namespace CliOutputFormatter {
             if (!player.hasRolledThisTurn()) {
                 lines.push_back(makeHelpCommandRow("LEMPAR_DADU", "lempar dadu"));
                 lines.push_back(makeHelpCommandRow("ATUR_DADU X Y", "set nilai dadu manual"));
-                if (!player.hasUsedSkillThisTurn() && !player.hasTakenActionThisTurn() && canUseSkillCard) {
+                if (canUseSkillCard) {
                     lines.push_back(makeHelpCommandRow("GUNAKAN_KEMAMPUAN", "pakai kartu skill"));
                 }
             }

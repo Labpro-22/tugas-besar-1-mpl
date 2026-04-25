@@ -23,6 +23,7 @@ Player::Player()
       discountPercent(0),
       usedSkillThisTurn(false),
       rolledThisTurn(false),
+      movementDiceRolledThisTurn(false),
       actionTakenThisTurn(false) {}
 
 Player::Player(const std::string& username, int initialBalance)
@@ -36,6 +37,7 @@ Player::Player(const std::string& username, int initialBalance)
       discountPercent(0),
       usedSkillThisTurn(false),
       rolledThisTurn(false),
+      movementDiceRolledThisTurn(false),
       actionTakenThisTurn(false) {}
 
 // OPERATOR OVERLOADING
@@ -191,6 +193,7 @@ void Player::resetTurnState() {
     clearTemporarySkillEffects();
     usedSkillThisTurn = false;
     rolledThisTurn = false;
+    movementDiceRolledThisTurn = false;
     actionTakenThisTurn = false;
 }
 
@@ -243,6 +246,10 @@ bool Player::hasRolledThisTurn() const {
     return rolledThisTurn;
 }
 
+bool Player::hasRolledMovementDiceThisTurn() const {
+    return movementDiceRolledThisTurn;
+}
+
 bool Player::hasTakenActionThisTurn() const {
     return actionTakenThisTurn;
 }
@@ -282,6 +289,10 @@ void Player::setUsedSkillThisTurn(bool usedSkillThisTurn) {
     
 void Player::setHasRolledThisTurn(bool hasRolledThisTurn) {
     this->rolledThisTurn = hasRolledThisTurn;
+}
+
+void Player::setHasRolledMovementDiceThisTurn(bool hasRolledMovementDiceThisTurn) {
+    this->movementDiceRolledThisTurn = hasRolledMovementDiceThisTurn;
 }
 
 void Player::setActionTakenThisTurn(bool actionTakenThisTurn) {

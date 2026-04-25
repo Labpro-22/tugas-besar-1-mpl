@@ -135,6 +135,7 @@ void GameEngine::loadGame(const ConfigData& configData, const GameState& gameSta
         player.setDiscountPercent(0);
         player.setUsedSkillThisTurn(false);
         player.setHasRolledThisTurn(false);
+        player.setHasRolledMovementDiceThisTurn(false);
         player.setActionTakenThisTurn(false);
 
         for (const std::string& cardName : state.getCardHand()) {
