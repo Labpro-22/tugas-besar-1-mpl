@@ -44,6 +44,7 @@ public:
     int getSellValueToBank() const override;
     PropertyType getPropertyType() const override;
 
+    int getDevelopmentValue() const override;
     int getHouseCost() const override;
     int getHotelCost() const override;
     int getRentAtLevel(int level) const override;

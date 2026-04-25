@@ -269,13 +269,7 @@ std::vector<Player*> GameEngine::determineWinner() const
     }
 
     std::sort(candidates.begin(), candidates.end(), [](const Player* left, const Player* right) {
-        if (left->getTotalWealth() != right->getTotalWealth()) {
-            return left->getTotalWealth() > right->getTotalWealth();
-        }
-        if (left->getProperties().size() != right->getProperties().size()) {
-            return left->getProperties().size() > right->getProperties().size();
-        }
-        return left->getHand().size() > right->getHand().size();
+        return *left > *right;
     });
 
     std::vector<Player*> winners;
@@ -287,9 +281,7 @@ std::vector<Player*> GameEngine::determineWinner() const
     for (std::size_t index = 1; index < candidates.size(); ++index) {
         const Player* best = winners.front();
         const Player* current = candidates[index];
-        if (best->getTotalWealth() == current->getTotalWealth() &&
-            best->getProperties().size() == current->getProperties().size() &&
-            best->getHand().size() == current->getHand().size()) {
+        if (!(*best < *current) && !(*current < *best)) {
             winners.push_back(candidates[index]);
         } else {
             break;

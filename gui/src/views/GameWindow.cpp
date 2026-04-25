@@ -1242,11 +1242,9 @@ void GameWindow::showGameFinishedDialogIfNeeded()
                 continue;
             }
             tiebreakInfo.append(QStringLiteral(
-                "%1 | Uang: %2 | Properti: %3 | Kartu: %4")
+                "%1 | Kekayaan: %2")
                 .arg(QString::fromStdString(winner->getUsername()))
-                .arg(MonopolyUi::formatCurrency(winner->getBalance()))
-                .arg(winner->getProperties().size())
-                .arg(winner->getHand().size()));
+                .arg(MonopolyUi::formatCurrency(winner->getTotalWealth())));
         }
 
         auto* winnerInfo = new QLabel(tiebreakInfo.join('\n'), winnerCard);

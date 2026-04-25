@@ -102,6 +102,14 @@ int PropertyTile::getBuyPrice() const{
     return buyPrice;
 }
 
+int PropertyTile::getDevelopmentValue() const {
+    return 0;
+}
+
+int PropertyTile::getAssetValue() const {
+    return buyPrice + getDevelopmentValue();
+}
+
 ColorGroup PropertyTile::getColorGroup() const {
     return ColorGroup::DEFAULT;
 }

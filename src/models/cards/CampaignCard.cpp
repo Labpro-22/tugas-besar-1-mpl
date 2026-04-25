@@ -58,7 +58,7 @@ void CampaignCard::execute(Player& player, GameContext& gameContext) {
     if (!player.canAfford(totalAmountToPay)) {
         BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
         if (bankruptcyHandler != nullptr) {
-            if (bankruptcyHandler->calculateLiquidationMax(player) < totalAmountToPay) {
+            if (player.getLiquidationMax() < totalAmountToPay) {
                 bankruptcyHandler->handleBankruptcy(player, nullptr, totalAmountToPay, gameContext);
                 return;
             }

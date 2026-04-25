@@ -97,6 +97,16 @@ PropertyType StreetTile::getPropertyType() const {
     return PropertyType::STREET;
 }
 
+int StreetTile::getDevelopmentValue() const {
+    if (buildingLevel > 0 && buildingLevel <= 4) {
+        return buildingLevel * houseCost;
+    }
+    if (buildingLevel == 5) {
+        return (4 * houseCost) + hotelCost;
+    }
+    return 0;
+}
+
 int StreetTile::getHouseCost() const {
     return houseCost;
 }

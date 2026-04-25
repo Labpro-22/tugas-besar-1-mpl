@@ -128,15 +128,7 @@ int Player::getTotalWealth() const {
             continue;
         }
 
-        total += prop->getBuyPrice();
-        if (prop->getPropertyType() == PropertyType::STREET) {
-            int level = prop->getBuildingLevel();
-            if (level > 0 && level <= 4) {
-                total += level * prop->getHouseCost();
-            } else if (level == 5) {
-                total += (4 * prop->getHouseCost()) + prop->getHotelCost();
-            }
-        }
+        total += prop->getAssetValue();
     }
     return total;
 }

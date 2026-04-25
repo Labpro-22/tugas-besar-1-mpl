@@ -9,7 +9,6 @@ private:
     int flatAmount;
     int percentage;
 
-    int calculateWealth(const Player& player) const;
     void applyTax(Player& player, GameContext& gameContext, int amountToPay, int choice) const;
 
 public:

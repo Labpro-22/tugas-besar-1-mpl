@@ -185,26 +185,6 @@ namespace {
         return property == nullptr ? 0 : property->getBuyPrice();
     }
 
-    int propertyWealthValue(const PropertyTile* property) {
-        if (property == nullptr) {
-            return 0;
-        }
-
-        int total = property->getBuyPrice();
-        if (property->getPropertyType() != PropertyType::STREET) {
-            return total;
-        }
-
-        int level = property->getBuildingLevel();
-        if (level >= 1 && level <= 4) {
-            total += level * property->getHouseCost();
-        } else if (level == 5) {
-            total += (4 * property->getHouseCost()) + property->getHotelCost();
-        }
-
-        return total;
-    }
-
     std::string formatPropertyRow(const PropertyTile* property) {
         std::ostringstream row;
         const std::string name = property->getName() + " (" + property->getCode() + ")";
@@ -405,6 +385,7 @@ namespace CliOutputFormatter {
         for (const Player& player : players) {
             lines.push_back(player.getUsername());
             lines.push_back("Uang      : " + TextFormatter::formatMoney(player.getBalance()));
+            lines.push_back("Kekayaan  : " + TextFormatter::formatMoney(player.getTotalWealth()));
             lines.push_back("Properti  : " + std::to_string(player.getProperties().size()));
             lines.push_back("Kartu     : " + std::to_string(player.getHand().size()));
             if (player.isBankrupt()) {
@@ -553,7 +534,7 @@ namespace CliOutputFormatter {
             if (property->getFestivalDuration() > 0) {
                 lines.push_back("    * " + festivalSummary(property));
             }
-            totalPropertyWealth += propertyWealthValue(property);
+            totalPropertyWealth += property->getAssetValue();
         }
 
         lines.push_back("");

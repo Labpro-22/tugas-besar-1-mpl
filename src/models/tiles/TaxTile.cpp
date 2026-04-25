@@ -22,7 +22,7 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
 
     if (taxType == TaxType::PPH && io != nullptr) {
         if (io->usesRichGuiPresentation()) {
-            const int wealth = calculateWealth(player);
+            const int wealth = player.getTotalWealth();
             const int percentageAmount = (wealth * percentage) / 100;
             choice = io->promptTaxPaymentOption(
                 player,
@@ -52,15 +52,7 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
             }
 
             propertyBuyWealth += property->getBuyPrice();
-
-            if (property->getPropertyType() == PropertyType::STREET) {
-                int level = property->getBuildingLevel();
-                if (level > 0 && level <= 4) {
-                    buildingWealth += level * property->getHouseCost();
-                } else if (level == 5) {
-                    buildingWealth += (4 * property->getHouseCost()) + property->getHotelCost();
-                }
-            }
+            buildingWealth += property->getDevelopmentValue();
         }
 
         gameContext.showMessage("");
@@ -68,7 +60,7 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
         gameContext.showMessage("- Uang tunai          : " + TextFormatter::formatMoney(cashWealth));
         gameContext.showMessage("- Harga beli properti : " + TextFormatter::formatMoney(propertyBuyWealth) + " (termasuk yang digadaikan)");
         gameContext.showMessage("- Harga beli bangunan : " + TextFormatter::formatMoney(buildingWealth));
-        gameContext.showMessage("Total                 : " + TextFormatter::formatMoney(calculateWealth(player)));
+        gameContext.showMessage("Total                 : " + TextFormatter::formatMoney(player.getTotalWealth()));
         gameContext.showMessage("Pajak " + std::to_string(percentage) + "%             : " + TextFormatter::formatMoney(amountToPay));
     } else if (taxType == TaxType::PBM && gameContext.hasIO()) {
         gameContext.showMessage("Pajak sebesar " + TextFormatter::formatMoney(amountToPay) + " langsung dipotong.");
@@ -147,29 +139,7 @@ void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay
 
 int TaxTile::calculateTaxAmount(const Player& player, int choice) const {
     if (taxType == TaxType::PPH && choice == 2) {
-        return (calculateWealth(player) * percentage) / 100;
+        return (player.getTotalWealth() * percentage) / 100;
     }
     return flatAmount;
-}
-
-int TaxTile::calculateWealth(const Player& player) const {
-    int total = player.getBalance();
-    
-    for (auto* property : player.getProperties()) {
-        if (property == nullptr) {
-            continue;
-        }
-
-        total += property->getBuyPrice();
-        
-        if (property->getPropertyType() == PropertyType::STREET) {
-            int level = property->getBuildingLevel();
-            if (level > 0 && level <= 4) {
-                total += level * property->getHouseCost();
-            } else if (level == 5) {
-                total += (4 * property->getHouseCost()) + property->getHotelCost();
-            }
-        }
-    }
-    return total;
 }

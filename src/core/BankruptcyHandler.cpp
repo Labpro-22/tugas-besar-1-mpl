@@ -338,7 +338,7 @@ namespace {
 
 bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int amount, GameContext& context) {
     GameIO* io = context.getIO();
-    int totalAvailable = calculateLiquidationMax(player);
+    int totalAvailable = player.getLiquidationMax();
 
     if (io != nullptr) {
         io->showMessage("");
@@ -473,10 +473,6 @@ bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
                 (creditor == nullptr ? " ke Bank." : " kepada " + creditor->getUsername() + "."));
     }
     return true;
-}
-
-int BankruptcyHandler::calculateLiquidationMax(Player& player) const {
-    return player.getLiquidationMax();
 }
 
 bool BankruptcyHandler::liquidateAssets(Player& player, int amount, GameContext& context) {
