@@ -24,5 +24,4 @@ public:
     const RailroadTile* asRailroadTile() const override;
     int getSellValueToBank() const override;
     PropertyType getPropertyType() const override;
-    std::string getDisplayLabel() const override;
 };

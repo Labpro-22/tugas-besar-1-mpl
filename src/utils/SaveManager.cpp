@@ -9,6 +9,7 @@
 #include "models/state/LogEntry.hpp"
 #include "models/state/PlayerState.hpp"
 #include "models/state/PropertyState.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 
 std::string SaveManager::resolveDataPath(const std::string& filename) const {
     std::string normalized = filename;
@@ -19,7 +20,7 @@ std::string SaveManager::resolveDataPath(const std::string& filename) const {
     }
 
     if (normalized.empty()) {
-        throw std::runtime_error("SaveManager: save filename cannot be empty");
+        throw SaveLoadException("memproses nama", "", "nama file tidak boleh kosong");
     }
 
     const std::string dataPrefix = "data/";
@@ -38,6 +39,10 @@ std::string SaveManager::resolveDataPath(const std::string& filename) const {
 
 std::string SaveManager::getResolvedDataPath(const std::string& filename) const {
     return resolveDataPath(filename);
+}
+
+bool SaveManager::fileExists(const std::string& filename) const {
+    return std::filesystem::exists(resolveDataPath(filename));
 }
 
 std::string SaveManager::statusToString(PlayerStatus status) const {
@@ -87,7 +92,7 @@ std::string SaveManager::serializeCard(const std::string& encodedCard) const {
 std::string SaveManager::readLineOrThrow(std::istream& input, const std::string& section) const {
     std::string line;
     if (!std::getline(input, line)) {
-        throw std::runtime_error("SaveManager: unexpected end while reading " + section);
+        throw ParseException(filePath, section, "data berakhir lebih cepat dari yang diharapkan");
     }
     return line;
 }
@@ -97,11 +102,11 @@ int SaveManager::parseIntStrict(const std::string& value, const std::string& fie
         size_t parsed = 0;
         int number = std::stoi(value, &parsed);
         if (parsed != value.size()) {
-            throw std::runtime_error("invalid suffix");
+            throw std::invalid_argument("invalid suffix");
         }
         return number;
     } catch (const std::exception&) {
-        throw std::runtime_error("SaveManager: invalid integer for " + fieldName + " -> '" + value + "'");
+        throw ParseException(filePath, fieldName, "nilai integer tidak valid '" + value + "'");
     }
 }
 
@@ -118,12 +123,12 @@ std::vector<std::string> SaveManager::splitWhitespace(const std::string& value) 
 std::string SaveManager::parseCard(const std::string& line) const {
     std::vector<std::string> parts = splitWhitespace(line);
     if (parts.empty()) {
-        throw std::runtime_error("SaveManager: invalid card line");
+        throw ParseException(filePath, "kartu pemain", "baris kartu kosong");
     }
 
     if (parts[0] == "MoveCard" || parts[0] == "DiscountCard") {
         if (parts.size() < 2) {
-            throw std::runtime_error("SaveManager: missing card value for " + parts[0]);
+            throw ParseException(filePath, "kartu pemain", "nilai kartu hilang untuk " + parts[0]);
         }
         parseIntStrict(parts[1], "card.value");
         return parts[0] + ":" + parts[1];
@@ -139,7 +144,7 @@ LogEntry SaveManager::parseLog(const std::string& line) const {
     std::string actionType;
 
     if (!(stream >> turnText >> username >> actionType)) {
-        throw std::runtime_error("SaveManager: invalid log line");
+        throw ParseException(filePath, "log", "baris log tidak valid");
     }
 
     std::string detail;
@@ -155,7 +160,7 @@ PlayerState SaveManager::parsePlayer(std::istream& input) const {
     std::string header = readLineOrThrow(input, "player state");
     std::vector<std::string> parts = splitWhitespace(header);
     if (parts.size() != 4) {
-        throw std::runtime_error("SaveManager: invalid PLAYER header -> '" + header + "'");
+        throw ParseException(filePath, "player state", "header pemain tidak valid");
     }
 
     PlayerStatus status = PlayerStatus::ACTIVE;
@@ -164,12 +169,12 @@ PlayerState SaveManager::parsePlayer(std::istream& input) const {
     } else if (parts[3] == "BANKRUPT") {
         status = PlayerStatus::BANKRUPT;
     } else if (parts[3] != "ACTIVE") {
-        throw std::runtime_error("SaveManager: invalid PlayerStatus '" + parts[3] + "'");
+        throw ParseException(filePath, "player state", "status pemain tidak valid '" + parts[3] + "'");
     }
 
     int cardCount = parseIntStrict(readLineOrThrow(input, "player card count"), "player.cardCount");
     if (cardCount < 0) {
-        throw std::runtime_error("SaveManager: negative player card count");
+        throw ParseException(filePath, "player card count", "jumlah kartu pemain tidak boleh negatif");
     }
 
     std::vector<std::string> cardHand;
@@ -192,7 +197,7 @@ PlayerState SaveManager::parsePlayer(std::istream& input) const {
 PropertyState SaveManager::parseProperty(const std::string& line) const {
     std::vector<std::string> parts = splitWhitespace(line);
     if (parts.size() != 7) {
-        throw std::runtime_error("SaveManager: invalid PROPERTY line -> '" + line + "'");
+        throw ParseException(filePath, "property line", "baris properti tidak valid");
     }
 
     PropertyType propertyType = PropertyType::STREET;
@@ -201,7 +206,7 @@ PropertyState SaveManager::parseProperty(const std::string& line) const {
     } else if (parts[1] == "utility" || parts[1] == "UTILITY") {
         propertyType = PropertyType::UTILITY;
     } else if (parts[1] != "street" && parts[1] != "STREET") {
-        throw std::runtime_error("SaveManager: invalid PropertyType '" + parts[1] + "'");
+        throw ParseException(filePath, "property type", "tipe properti tidak valid '" + parts[1] + "'");
     }
 
     PropertyStatus propertyStatus = PropertyStatus::BANK;
@@ -210,20 +215,20 @@ PropertyState SaveManager::parseProperty(const std::string& line) const {
     } else if (parts[3] == "MORTGAGED") {
         propertyStatus = PropertyStatus::MORTGAGED;
     } else if (parts[3] != "BANK") {
-        throw std::runtime_error("SaveManager: invalid PropertyStatus '" + parts[3] + "'");
+        throw ParseException(filePath, "property status", "status properti tidak valid '" + parts[3] + "'");
     }
 
     int festivalMultiplier = parseIntStrict(parts[4], "property.festivalMultiplier");
     int festivalDuration = parseIntStrict(parts[5], "property.festivalDuration");
     if (festivalMultiplier < 1 || festivalDuration < 0) {
-        throw std::runtime_error("SaveManager: invalid festival state");
+        throw ParseException(filePath, "festival state", "state festival tidak valid");
     }
 
     if (propertyType == PropertyType::STREET) {
         if (parts[6] != "H") {
             int buildingLevel = parseIntStrict(parts[6], "property.buildingLevel");
             if (buildingLevel < 0 || buildingLevel > 5) {
-                throw std::runtime_error("SaveManager: invalid building level");
+                throw ParseException(filePath, "building level", "level bangunan harus berada pada rentang 0..5");
             }
         }
     }
@@ -242,9 +247,10 @@ PropertyState SaveManager::parseProperty(const std::string& line) const {
 void SaveManager::saveGame(const std::string& filename, const GameState& gameState) const {
     std::filesystem::create_directories("data");
     std::string path = resolveDataPath(filename);
+    filePath = path;
     std::ofstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("SaveManager: cannot open '" + path + "' for writing");
+        throw SaveLoadException("menyimpan", path, "file tidak dapat dibuka untuk ditulis");
     }
 
     file << gameState.getCurrentTurn() << " " << gameState.getMaxTurn() << "\n";
@@ -304,21 +310,22 @@ void SaveManager::saveGame(const std::string& filename, const GameState& gameSta
 
 GameState SaveManager::loadGame(const std::string& filename) const {
     std::string path = resolveDataPath(filename);
+    filePath = path;
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw std::runtime_error("SaveManager: cannot open '" + path + "' for reading");
+        throw SaveLoadException("memuat", path, "file tidak ditemukan atau tidak dapat dibuka");
     }
 
     std::vector<std::string> turnParts = splitWhitespace(readLineOrThrow(file, "turn header"));
     if (turnParts.size() != 2) {
-        throw std::runtime_error("SaveManager: invalid turn header");
+        throw ParseException(filePath, "turn header", "header giliran harus berisi currentTurn dan maxTurn");
     }
     int currentTurn = parseIntStrict(turnParts[0], "currentTurn");
     int maxTurn = parseIntStrict(turnParts[1], "maxTurn");
 
     int playerCount = parseIntStrict(readLineOrThrow(file, "player count"), "playerCount");
     if (playerCount < 0) {
-        throw std::runtime_error("SaveManager: negative playerCount");
+        throw ParseException(filePath, "player count", "jumlah pemain tidak boleh negatif");
     }
 
     std::vector<PlayerState> players;
@@ -332,7 +339,7 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 
     int propertyCount = parseIntStrict(readLineOrThrow(file, "property count"), "propertyCount");
     if (propertyCount < 0) {
-        throw std::runtime_error("SaveManager: negative propertyCount");
+        throw ParseException(filePath, "property count", "jumlah properti tidak boleh negatif");
     }
 
     std::vector<PropertyState> properties;
@@ -343,7 +350,7 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 
     int deckCount = parseIntStrict(readLineOrThrow(file, "deck count"), "deckCount");
     if (deckCount < 0) {
-        throw std::runtime_error("SaveManager: negative deckCount");
+        throw ParseException(filePath, "deck count", "jumlah kartu deck tidak boleh negatif");
     }
 
     std::vector<std::string> deckState;
@@ -357,7 +364,7 @@ GameState SaveManager::loadGame(const std::string& filename) const {
 
     int logCount = parseIntStrict(readLineOrThrow(file, "log count"), "logCount");
     if (logCount < 0) {
-        throw std::runtime_error("SaveManager: negative logCount");
+        throw ParseException(filePath, "log count", "jumlah log tidak boleh negatif");
     }
 
     std::vector<LogEntry> logs;
@@ -376,9 +383,4 @@ GameState SaveManager::loadGame(const std::string& filename) const {
         deckState,
         logs
     );
-}
-
-bool SaveManager::fileExists(const std::string& filename) const {
-    std::ifstream file(resolveDataPath(filename));
-    return file.good();
 }

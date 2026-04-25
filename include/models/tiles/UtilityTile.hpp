@@ -22,5 +22,4 @@ public:
     int calculateRent(int diceTotal, const GameContext& gameContext) override;
     int getSellValueToBank() const override;
     PropertyType getPropertyType() const override;
-    std::string getDisplayLabel() const override;
 };

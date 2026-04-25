@@ -1,7 +1,5 @@
 #include "models/state/LogEntry.hpp"
 
-#include <sstream>
-
 LogEntry::LogEntry() : turn(0), username(""), actionType(""), detail("") {}
 
 LogEntry::LogEntry(
@@ -25,10 +23,4 @@ const std::string& LogEntry::getActionType() const {
 
 const std::string& LogEntry::getDetail() const {
     return detail;
-}
-
-std::string LogEntry::toString() const {
-    std::ostringstream oss;
-    oss << "[Turn " << turn << "] " << username << " | " << actionType << " | " << detail;
-    return oss.str();
 }

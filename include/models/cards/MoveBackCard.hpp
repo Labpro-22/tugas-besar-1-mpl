@@ -10,6 +10,5 @@ public:
     MoveBackCard();
     explicit MoveBackCard(int steps);
 
-    int getSteps() const;
     void execute(Player& player, GameContext& gameContext) override;
 };

@@ -8,6 +8,10 @@
 #include "models/tiles/StreetTile.hpp"
 #include "models/cards/SkillCard.hpp"
 
+namespace {
+    const int DEFAULT_BOARD_TILE_COUNT = 40;
+}
+
 Player::Player()
     : username(""),
       balance(0),
@@ -19,6 +23,7 @@ Player::Player()
       discountPercent(0),
       usedSkillThisTurn(false),
       rolledThisTurn(false),
+      movementDiceRolledThisTurn(false),
       actionTakenThisTurn(false) {}
 
 Player::Player(const std::string& username, int initialBalance)
@@ -32,6 +37,7 @@ Player::Player(const std::string& username, int initialBalance)
       discountPercent(0),
       usedSkillThisTurn(false),
       rolledThisTurn(false),
+      movementDiceRolledThisTurn(false),
       actionTakenThisTurn(false) {}
 
 // OPERATOR OVERLOADING
@@ -69,11 +75,11 @@ bool Player::operator>(const Player& other) const {
 // Navigasi Move
 bool Player::moveTo(int newIndex) {
     bool passedGo = false;
-    if (newIndex >= 40) {
+    if (newIndex >= DEFAULT_BOARD_TILE_COUNT) {
         passedGo = true;
-        newIndex = newIndex % 40;
+        newIndex = newIndex % DEFAULT_BOARD_TILE_COUNT;
     } else if (newIndex < 0) {
-        newIndex = ((newIndex % 40) + 40) % 40;
+        newIndex = ((newIndex % DEFAULT_BOARD_TILE_COUNT) + DEFAULT_BOARD_TILE_COUNT) % DEFAULT_BOARD_TILE_COUNT;
     } else if (newIndex == 0 && position != 0) {
         passedGo = true;
     }
@@ -118,8 +124,11 @@ void Player::clearHand() {
 int Player::getTotalWealth() const {
     int total = balance;
     for (const PropertyTile* prop : properties) {
-        total += prop->getBuyPrice();
-        total += (prop->getSellValueToBank() - prop->getBuyPrice());
+        if (prop == nullptr) {
+            continue;
+        }
+
+        total += prop->getAssetValue();
     }
     return total;
 }
@@ -146,11 +155,9 @@ int Player::getDiscountedAmount(int amount) const {
 }
 
 int Player::consumeDiscountedAmount(int amount) {
-    int discountedAmount = getDiscountedAmount(amount);
-    if (amount > 0 && discountPercent > 0) {
-        discountPercent = 0;
-    }
-    return discountedAmount;
+    // DiscountCard berlaku selama giliran aktif, jadi nilainya baru di-reset
+    // saat turn berikutnya dimulai melalui resetTurnState().
+    return getDiscountedAmount(amount);
 }
 
 bool Player::canAfford(int amount) const {
@@ -169,29 +176,16 @@ bool Player::isBankrupt() const {
     return status == PlayerStatus::BANKRUPT;
 }
 
-bool Player::isMonopolizing(ColorGroup colorGroup, const std::vector<StreetTile*>& allTiles) const {
-    for (const StreetTile* tile : allTiles) {
-        if (tile->getColorGroup() != colorGroup) continue;
-
-        bool owned = false;
-        for (const PropertyTile* prop : properties) {
-            if (prop == tile) {
-                owned = true;
-                break;
-            }
-        }
-
-        if (!owned) return false;
-    }
-
-    return !allTiles.empty();
+void Player::clearTemporarySkillEffects() {
+    shieldActive = false;
+    discountPercent = 0;
 }
 
 void Player::resetTurnState() {
-    shieldActive = false;
-    discountPercent = 0;
+    clearTemporarySkillEffects();
     usedSkillThisTurn = false;
     rolledThisTurn = false;
+    movementDiceRolledThisTurn = false;
     actionTakenThisTurn = false;
 }
 
@@ -244,6 +238,10 @@ bool Player::hasRolledThisTurn() const {
     return rolledThisTurn;
 }
 
+bool Player::hasRolledMovementDiceThisTurn() const {
+    return movementDiceRolledThisTurn;
+}
+
 bool Player::hasTakenActionThisTurn() const {
     return actionTakenThisTurn;
 }
@@ -283,6 +281,10 @@ void Player::setUsedSkillThisTurn(bool usedSkillThisTurn) {
     
 void Player::setHasRolledThisTurn(bool hasRolledThisTurn) {
     this->rolledThisTurn = hasRolledThisTurn;
+}
+
+void Player::setHasRolledMovementDiceThisTurn(bool hasRolledMovementDiceThisTurn) {
+    this->movementDiceRolledThisTurn = hasRolledMovementDiceThisTurn;
 }
 
 void Player::setActionTakenThisTurn(bool actionTakenThisTurn) {

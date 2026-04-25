@@ -1,5 +1,6 @@
 #include "core/GameContext.hpp"
 #include "core/Board.hpp"
+#include "core/GameIO.hpp"
 #include "core/PropertyTransactionService.hpp"
 #include "core/TurnManager.hpp"
 #include "utils/TransactionLogger.hpp"
@@ -65,6 +66,42 @@ CardDeck<ActionCard>* GameContext::getCommunityDeck() const {
 
 CardDeck<SkillCard>* GameContext::getSkillDeck() const {
     return skillDeck;
+}
+
+bool GameContext::hasIO() const {
+    return io != nullptr;
+}
+
+void GameContext::showMessage(const std::string& message) const {
+    if (io != nullptr) {
+        io->showMessage(message);
+    }
+}
+
+int GameContext::promptIntInRange(const std::string& prompt, int minValue, int maxValue) const {
+    if (io == nullptr) {
+        return minValue;
+    }
+    return io->promptIntInRange(prompt, minValue, maxValue);
+}
+
+void GameContext::showActionCard(CardType cardType, const ActionCard& card) const {
+    if (io != nullptr) {
+        io->showActionCard(cardType, card);
+    }
+}
+
+void GameContext::showError(const std::exception& exception, const std::string& username) const {
+    if (io == nullptr) {
+        return;
+    }
+
+    int currentTurn = 0;
+    if (turnManager != nullptr) {
+        currentTurn = turnManager->getCurrentTurn();
+    }
+
+    io->showError(exception, logger, currentTurn, username);
 }
 
 void GameContext::triggerStreetEvent(Player& player, PropertyTile& tile) {

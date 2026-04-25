@@ -5,17 +5,30 @@
 #include "core/GameIO.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
+#include "utils/TextFormatter.hpp"
+#include "utils/TransactionLogger.hpp"
+
+namespace {
+    void logBirthdayPayment(GameContext& gameContext, const Player& payer, const Player& recipient, int amount) {
+        TransactionLogger* logger = gameContext.getLogger();
+        TurnManager* turnManager = gameContext.getTurnManager();
+        if (logger != nullptr && turnManager != nullptr) {
+            logger->log(
+                turnManager->getCurrentTurn(),
+                payer.getUsername(),
+                "KARTU",
+                payer.getUsername() + " membayar BirthdayCard " +
+                    TextFormatter::formatMoney(amount) + " kepada " + recipient.getUsername() + ".");
+        }
+    }
+}
 
 BirthdayCard::BirthdayCard()
     : BirthdayCard(100) {}
 
 BirthdayCard::BirthdayCard(int amount)
-    : ActionCard("Ini adalah hari ulang tahun Anda. Dapatkan M100 dari setiap pemain."),
+    : ActionCard("SELAMAT ULANG TAHUNNN!!!. Dapatkan " + TextFormatter::formatMoney(amount) + " dari setiap pemain."),
       amount(amount) {}
-
-int BirthdayCard::getAmount() const {
-    return amount;
-}
 
 void BirthdayCard::execute(Player& player, GameContext& gameContext) {
     TurnManager* turnManager = gameContext.getTurnManager();
@@ -25,21 +38,26 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
 
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive() || otherPlayer->isShieldActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt() || otherPlayer->isShieldActive()) {
             continue;
         }
 
         int amountToPay = otherPlayer->consumeDiscountedAmount(amount);
-        if (amountToPay != amount && gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Diskon " + otherPlayer->getUsername() + " diterapkan dari M" +
-                std::to_string(amount) + " menjadi M" + std::to_string(amountToPay) + ".");
+        if (amountToPay != amount) {
+            gameContext.showMessage(
+                "Diskon " + otherPlayer->getUsername() + " diterapkan dari " +
+                TextFormatter::formatMoney(amount) + " menjadi " + TextFormatter::formatMoney(amountToPay) + ".");
         }
 
         if (!otherPlayer->canAfford(amountToPay)) {
             BankruptcyHandler* bankruptcyHandler = gameContext.getBankruptcyHandler();
             if (bankruptcyHandler != nullptr) {
-                bankruptcyHandler->handleBankruptcy(*otherPlayer, &player, amountToPay, gameContext);
+                const bool settled = bankruptcyHandler->handleBankruptcy(*otherPlayer, &player, amountToPay, gameContext);
+                if (!settled && gameContext.getIO() != nullptr) {
+                    gameContext.getIO()->showMessage(
+                        "Pembayaran ulang tahun dari " + otherPlayer->getUsername() +
+                        " dibatalkan. Tidak ada transfer dana.");
+                }
             } else {
                 *otherPlayer -= amountToPay;
                 player += amountToPay;
@@ -50,9 +68,15 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
         *otherPlayer -= amountToPay;
         player += amountToPay;
         if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                otherPlayer->getUsername() + " memberi M" + std::to_string(amountToPay) +
-                    " kepada " + player.getUsername() + ".");
+            gameContext.getIO()->showPaymentNotification(
+                "PAYMENT",
+                otherPlayer->getUsername() + " membayar " +
+                    TextFormatter::formatMoney(amountToPay) + " kepada " +
+                    player.getUsername() + ".");
         }
+        gameContext.showMessage(
+            otherPlayer->getUsername() + " memberi " + TextFormatter::formatMoney(amountToPay) +
+                " kepada " + player.getUsername() + ".");
+        logBirthdayPayment(gameContext, *otherPlayer, player, amountToPay);
     }
 }

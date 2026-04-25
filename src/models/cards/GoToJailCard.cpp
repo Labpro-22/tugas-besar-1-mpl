@@ -11,35 +11,30 @@ GoToJailCard::GoToJailCard()
 
 void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     if (player.isShieldActive()) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari kartu masuk penjara.");
-        }
+        gameContext.showMessage("[SHIELD ACTIVE]: Alhamdulillah, ShieldCard melindungimu dari masuk Penjara!");
         gameContext.logEvent(
             "KARTU",
             player.getUsername() + " terlindungi ShieldCard dari GoToJailCard.");
         return;
     }
 
-    if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage("Bidak dipindahkan ke Penjara.");
-    }
+    gameContext.showMessage("Bidak dipindahkan ke Penjara.");
 
     Board* board = gameContext.getBoard();
-    if (board == nullptr) {
-        player.setStatus(PlayerStatus::JAILED);
-        player.setJailTurns(0);
-        return;
-    }
-
-    Tile* jailTileBase = board->getTile("PEN");
-
+    Tile* jailTileBase = board == nullptr ? nullptr : board->getTile("PEN");
     if (jailTileBase != nullptr) {
-        player.moveTo(jailTileBase->getIndex());
-        player.setStatus(PlayerStatus::JAILED);
-        player.setJailTurns(0);
-        player.setConsecutiveDoubles(0);
+        jailTileBase->applyJailStatus(player);
+        if (gameContext.getIO() != nullptr) {
+            gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
+        }
         return;
     }
+
+    player.setPosition(10);
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);
+    player.setConsecutiveDoubles(0);
+    if (gameContext.getIO() != nullptr && jailTileBase != nullptr) {
+        gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
+    }
 }

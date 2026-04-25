@@ -5,7 +5,7 @@
 class MoveCard : public SkillCard {
 public:
     MoveCard();
-    MoveCard(int value, int remainingDuration);
+    explicit MoveCard(int value);
 
     std::string getTypeName() const override;
     bool canUseWhileJailed() const override;

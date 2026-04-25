@@ -1,13 +1,16 @@
 #include "models/cards/LassoCard.hpp"
 
+#include <string>
 #include <vector>
 
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
 
 LassoCard::LassoCard()
     : SkillCard() {}
@@ -52,24 +55,31 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
     }
 
     if (target == nullptr) {
-        if (io != nullptr) {
-            io->showMessage("Tidak ada pemain lawan di depan posisi Anda yang dapat ditarik.");
-        }
-        return;
+        throw SkillUseFailedException(
+            getTypeName(),
+            "tidak ada pemain lawan di depan posisi kamu yang dapat ditarik.");
     }
 
     int destinationIndex = player.getPosition();
     Tile* destinationTile = board->getTile(destinationIndex);
 
     target->moveTo(destinationIndex);
-    player.setUsedSkillThisTurn(true);
 
     if (io != nullptr) {
-        io->showMessage(target->getUsername() + " ditarik ke posisi " +
-                        player.getUsername() + ".");
+        io->showPawnStep(*target, destinationIndex);
     }
+    gameContext.showMessage(target->getUsername() + " ditarik ke posisi " +
+                    player.getUsername() + ".");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan LassoCard menarik " +
+            target->getUsername() + " ke posisi " + std::to_string(destinationIndex + 1) + ".");
 
     if (destinationTile != nullptr) {
+        if (MovementService::shouldSkipGoLandingSalary(destinationTile)) {
+            gameContext.showMessage("Tarikan ke GO tidak memberikan gaji.");
+            return;
+        }
         destinationTile->onLanded(*target, gameContext);
     }
 }

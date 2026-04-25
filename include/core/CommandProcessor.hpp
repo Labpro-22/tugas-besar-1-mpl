@@ -10,7 +10,7 @@ class Board;
 class Dice;
 class GameContext;
 class GameState;
-class GameUI;
+class GameIO;
 class Player;
 class TransactionLogger;
 class TurnManager;
@@ -22,15 +22,14 @@ private:
     std::vector<Player>& players;
     Dice& dice;
     TurnManager& turnManager;
-    GameUI& ui;
+    GameIO& ui;
     TransactionLogger* logger;
     GameContext*& context;
     std::function<GameState()> createGameState;
 
     bool parseIntStrict(const std::string& text, int& value) const;
-    bool isRecognizedCommand(const std::string& keyword) const;
     int getJailFine() const;
-    void resolveMovement(Player& player, int totalMove);
+    class Tile* resolveMovement(Player& player, int totalMove);
     CommandResult payJailFine(Player& player);
     CommandResult processJailDiceAttempt(const Command& command, Player& player);
     CommandResult processDiceCommand(const Command& command, Player& player);
@@ -43,7 +42,7 @@ public:
         std::vector<Player>& players,
         Dice& dice,
         TurnManager& turnManager,
-        GameUI& ui,
+        GameIO& ui,
         TransactionLogger* logger,
         GameContext*& context,
         std::function<GameState()> createGameState

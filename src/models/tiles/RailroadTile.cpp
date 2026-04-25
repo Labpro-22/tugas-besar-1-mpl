@@ -13,12 +13,15 @@ RailroadTile::RailroadTile(
 void RailroadTile::onLanded(Player& player, GameContext& gameContext) {
     GameIO* io = gameContext.getIO();
     if (getStatus() == PropertyStatus::BANK) {
-        transferTo(player);
         if (io != nullptr) {
-            io->showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
-            io->showMessage("Belum ada yang menginjaknya duluan, stasiun ini kini menjadi milikmu!");
+            io->showPropertyNotice(player, *this);
         }
-        gameContext.logEvent("RAILROAD", player.getUsername() + " mendapatkan " + getName() + " secara otomatis.");
+        transferTo(player);
+        gameContext.showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
+        gameContext.showMessage("Belum ada yang menginjaknya duluan, stasiun ini kini menjadi milikmu!");
+        gameContext.logEvent(
+            "RAILROAD",
+            getName() + " (" + getCode() + ") kini milik " + player.getUsername() + " (otomatis)");
     } else {
         gameContext.triggerRentEvent(player, *this);
     }
@@ -44,13 +47,9 @@ const RailroadTile* RailroadTile::asRailroadTile() const {
 }
 
 int RailroadTile::getSellValueToBank() const {
-    return 0; 
+    return getMortgageValue();
 }
 
 PropertyType RailroadTile::getPropertyType() const {
     return PropertyType::RAILROAD;
-}
-
-std::string RailroadTile::getDisplayLabel() const {
-    return "[RAILROAD] " + getName();
 }

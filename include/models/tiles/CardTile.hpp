@@ -1,5 +1,6 @@
 #pragma once
 
+#include "models/Enums.hpp"
 #include "ActionTile.hpp"
 
 class CardTile : public ActionTile {
@@ -11,6 +12,4 @@ public:
     CardTile(int index, const std::string& code, const std::string& name, CardType cardType);
 
     void onLanded(Player& player, GameContext& gameContext) override;
-    std::string getDisplayLabel() const override;
-    CardType getCardType() const;
 };

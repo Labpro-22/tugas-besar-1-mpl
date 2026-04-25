@@ -1,5 +1,6 @@
 #pragma once
 
+#include "models/Enums.hpp"
 #include "Tile.hpp"
 
 class RailroadTile;
@@ -43,6 +44,8 @@ public:
     PropertyStatus getStatus() const;
     int getMortgageValue() const;
     int getBuyPrice() const;
+    virtual int getDevelopmentValue() const;
+    virtual int getAssetValue() const;
     virtual ColorGroup getColorGroup() const;
     virtual int getBuildingLevel() const;
     virtual int getFestivalMultiplier() const;

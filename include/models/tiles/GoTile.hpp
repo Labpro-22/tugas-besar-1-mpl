@@ -12,7 +12,6 @@ public:
 
     void onLanded(Player& player, GameContext& gameContext) override;
     void onPassed(Player& player, GameContext& gameContext) override;
-    std::string getDisplayLabel() const override;
     void awardSalary(Player& player);
     int getSalary() const;
 };

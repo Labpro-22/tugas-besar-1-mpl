@@ -10,6 +10,5 @@ public:
     CampaignCard();
     explicit CampaignCard(int amount);
 
-    int getAmount() const;
     void execute(Player& player, GameContext& gameContext) override;
 };

@@ -74,10 +74,10 @@ void DeckFactory::buildActionDecks(
 void DeckFactory::buildSkillDeck(CardDeck<SkillCard>& skillDeck) {
     std::vector<SkillCard*> skillCards;
     for (int i = 0; i < 4; ++i) {
-        skillCards.push_back(new MoveCard(randomInt(1, 12), 0));
+        skillCards.push_back(new MoveCard(randomInt(1, 12)));
     }
     for (int i = 0; i < 3; ++i) {
-        skillCards.push_back(new DiscountCard(randomInt(1, 100), 1));
+        skillCards.push_back(new DiscountCard(randomInt(1, 100)));
     }
     for (int i = 0; i < 2; ++i) {
         skillCards.push_back(new ShieldCard());
@@ -112,10 +112,10 @@ void DeckFactory::buildSkillDeckFromState(
 SkillCard* DeckFactory::createSkillCardByName(const std::string& typeName) {
     std::string type = getCardType(typeName);
     if (type == "MoveCard") {
-        return new MoveCard(getEncodedValue(typeName, randomInt(1, 12)), 0);
+        return new MoveCard(getEncodedValue(typeName, randomInt(1, 12)));
     }
     if (type == "DiscountCard") {
-        return new DiscountCard(getEncodedValue(typeName, randomInt(10, 50)), 1);
+        return new DiscountCard(getEncodedValue(typeName, randomInt(10, 50)));
     }
     if (type == "ShieldCard") return new ShieldCard();
     if (type == "TeleportCard") return new TeleportCard();
@@ -141,10 +141,12 @@ std::string DeckFactory::describeSkillCard(const SkillCard* card) {
 
     const std::string typeName = card->getTypeName();
     if (typeName == "MoveCard") return "Maju " + std::to_string(card->getValue()) + " petak";
-    if (typeName == "DiscountCard") return "Diskon pembayaran " + std::to_string(card->getValue()) + "%";
+    if (typeName == "DiscountCard") {
+        return "Diskon " + std::to_string(card->getValue()) + "% selama 1 turn";
+    }
     if (typeName == "ShieldCard") return "Kebal tagihan atau sanksi selama 1 turn";
     if (typeName == "TeleportCard") return "Pindah ke petak manapun";
     if (typeName == "LassoCard") return "Menarik lawan terdekat di depan";
-    if (typeName == "DemolitionCard") return "Menghancurkan properti lawan";
+    if (typeName == "DemolitionCard") return "Menghancurkan bangunan properti lawan";
     return "Kartu kemampuan";
 }

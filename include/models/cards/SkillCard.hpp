@@ -8,16 +8,13 @@ class Player;
 class SkillCard {
 private:
     int value;
-    int remainingDuration;
 
 public:
     SkillCard();
-    SkillCard(int value, int remainingDuration);
+    explicit SkillCard(int value);
     virtual ~SkillCard() = default;
 
     int getValue() const;
-    int getRemainingDuration() const;
-    void setRemainingDuration(int remainingDuration);
 
     virtual bool canUseWhileJailed() const;
     virtual std::string getTypeName() const = 0;

@@ -12,7 +12,7 @@ PropertyTile::PropertyTile(int index,
                            const std::string& name,
                            int buyPrice,
                            int mortgageValue)
-    : Tile(index, code, name, TileCategory::PROPERTY),
+    : Tile(index, code, name),
       owner(nullptr),
       status(PropertyStatus::BANK),
       mortgageValue(mortgageValue),
@@ -100,6 +100,14 @@ int PropertyTile::getMortgageValue() const {
 
 int PropertyTile::getBuyPrice() const{
     return buyPrice;
+}
+
+int PropertyTile::getDevelopmentValue() const {
+    return 0;
+}
+
+int PropertyTile::getAssetValue() const {
+    return buyPrice + getDevelopmentValue();
 }
 
 ColorGroup PropertyTile::getColorGroup() const {

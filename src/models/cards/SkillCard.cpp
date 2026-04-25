@@ -1,23 +1,13 @@
 #include "models/cards/SkillCard.hpp"
 
 SkillCard::SkillCard()
-    : value(0),
-      remainingDuration(0) {}
+    : value(0) {}
 
-SkillCard::SkillCard(int value, int remainingDuration)
-    : value(value),
-      remainingDuration(remainingDuration < 0 ? 0 : remainingDuration) {}
+SkillCard::SkillCard(int value)
+    : value(value) {}
 
 int SkillCard::getValue() const {
     return value;
-}
-
-int SkillCard::getRemainingDuration() const {
-    return remainingDuration;
-}
-
-void SkillCard::setRemainingDuration(int remainingDuration) {
-    this->remainingDuration = (remainingDuration < 0 ? 0 : remainingDuration);
 }
 
 bool SkillCard::canUseWhileJailed() const {

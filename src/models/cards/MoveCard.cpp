@@ -3,14 +3,15 @@
 #include "core/Board.hpp"
 #include "core/GameContext.hpp"
 #include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/Tile.hpp"
 
 MoveCard::MoveCard()
     : SkillCard() {}
 
-MoveCard::MoveCard(int value, int remainingDuration)
-    : SkillCard(value, remainingDuration) {}
+MoveCard::MoveCard(int value)
+    : SkillCard(value) {}
 
 std::string MoveCard::getTypeName() const {
     return "MoveCard";
@@ -31,28 +32,33 @@ void MoveCard::use(Player& player, GameContext& gameContext) {
     int targetIndex = (player.getPosition() + getValue()) % tileCount;
     bool passedGo = oldPosition + getValue() >= tileCount;
     player.moveTo(targetIndex);
-    player.setUsedSkillThisTurn(true);
 
     if (gameContext.getIO() != nullptr) {
-        gameContext.getIO()->showMessage(
-            "MoveCard digunakan! " + player.getUsername() +
-                " maju " + std::to_string(getValue()) + " petak.");
+        gameContext.getIO()->showPawnStep(player, targetIndex);
     }
+    gameContext.showMessage(
+        "MoveCard digunakan! " + player.getUsername() +
+            " maju " + std::to_string(getValue()) + " petak.");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan MoveCard maju " +
+            std::to_string(getValue()) + " petak.");
 
-    if (passedGo && targetIndex != 0) {
-        Tile* goTile = board->getTile("GO");
-        if (goTile != nullptr) {
-            goTile->onPassed(player, gameContext);
-        }
+    if (passedGo) {
+        MovementService::awardGoSalaryForForwardMovement(
+            *board,
+            player,
+            gameContext,
+            oldPosition,
+            targetIndex
+        );
     }
 
     Tile* targetTile = board->getTile(targetIndex);
     if (targetTile != nullptr) {
-        if (gameContext.getIO() != nullptr) {
-            gameContext.getIO()->showMessage(
-                "Bidak mendarat di: " + targetTile->getName() +
-                    " (" + targetTile->getCode() + ").");
-        }
+        gameContext.showMessage(
+            "Bidak mendarat di: " + targetTile->getName() +
+                " (" + targetTile->getCode() + ").");
         targetTile->onLanded(player, gameContext);
     }
 }

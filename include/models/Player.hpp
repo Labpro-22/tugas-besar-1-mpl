@@ -23,6 +23,7 @@ private:
     int discountPercent;
     bool usedSkillThisTurn;
     bool rolledThisTurn;
+    bool movementDiceRolledThisTurn;
     bool actionTakenThisTurn;
 
 public:
@@ -50,7 +51,7 @@ public:
     bool isActive() const;
     bool isJailed() const;
     bool isBankrupt() const;
-    bool isMonopolizing(ColorGroup colorGroup, const std::vector<StreetTile*>& allTiles) const;
+    void clearTemporarySkillEffects();
     void resetTurnState();
 
     const std::string& getUsername() const;
@@ -65,6 +66,7 @@ public:
     int getDiscountPercent() const;
     bool hasUsedSkillThisTurn() const;
     bool hasRolledThisTurn() const;
+    bool hasRolledMovementDiceThisTurn() const;
     bool hasTakenActionThisTurn() const;
 
     void setBalance(int balance);
@@ -76,5 +78,6 @@ public:
     void setDiscountPercent(int discountPercent);
     void setUsedSkillThisTurn(bool usedSkillThisTurn);
     void setHasRolledThisTurn(bool hasRolledThisTurn);
+    void setHasRolledMovementDiceThisTurn(bool hasRolledMovementDiceThisTurn);
     void setActionTakenThisTurn(bool actionTakenThisTurn);
 };

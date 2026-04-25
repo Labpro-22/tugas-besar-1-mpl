@@ -1,12 +1,5 @@
 #pragma once
 
-enum class TileCategory {
-    PROPERTY,
-    ACTION,
-    SPECIAL,
-    DEFAULT
-};
-
 enum class PropertyType {
     STREET,
     RAILROAD,

@@ -7,6 +7,17 @@
 #include "core/TurnManager.hpp"
 #include "models/Player.hpp"
 #include "models/tiles/PropertyTile.hpp"
+#include "models/tiles/StreetTile.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
+
+namespace {
+    std::string buildingLabel(int level) {
+        if (level == 5) {
+            return "hotel";
+        }
+        return std::to_string(level) + " rumah";
+    }
+}
 
 DemolitionCard::DemolitionCard()
     : SkillCard() {}
@@ -22,12 +33,12 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
         return;
     }
 
-    std::vector<PropertyTile*> targetProperties;
+    std::vector<StreetTile*> targetProperties;
     std::vector<Player*> targetOwners;
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
 
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt()) {
             continue;
         }
 
@@ -37,45 +48,75 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
 
         const std::vector<PropertyTile*>& properties = otherPlayer->getProperties();
         for (PropertyTile* property : properties) {
-            if (property == nullptr) {
+            StreetTile* street = property == nullptr ? nullptr : property->asStreetTile();
+            if (street == nullptr || street->getBuildingLevel() <= 0) {
                 continue;
             }
 
-            targetProperties.push_back(property);
+            targetProperties.push_back(street);
             targetOwners.push_back(otherPlayer);
         }
     }
 
     if (targetProperties.empty()) {
-        io->showMessage("Tidak ada properti lawan yang dapat dihancurkan.");
+        throw SkillUseFailedException(
+            getTypeName(),
+            "tidak ada bangunan milik lawan yang dapat dihancurkan.");
+    }
+
+    int choice = -1;
+    if (io->usesRichGuiPresentation()) {
+        std::vector<int> validTileIndices;
+        validTileIndices.reserve(targetProperties.size());
+        for (StreetTile* property : targetProperties) {
+            if (property != nullptr) {
+                validTileIndices.push_back(property->getIndex());
+            }
+        }
+
+        const int selectedTileIndex = io->promptTileSelection(
+            "Pilih properti lawan yang bangunannya ingin dihancurkan langsung dari board.",
+            validTileIndices);
+
+        for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+            if (targetProperties[i] != nullptr && targetProperties[i]->getIndex() == selectedTileIndex) {
+                choice = i;
+                break;
+            }
+        }
+    } else {
+        gameContext.showMessage("Pilih properti lawan yang bangunannya ingin dihancurkan:");
+        for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
+            gameContext.showMessage(
+                std::to_string(i + 1) + ". "
+                    + targetOwners[i]->getUsername()
+                    + " - " + targetProperties[i]->getName()
+                    + " (" + targetProperties[i]->getCode() + ")"
+                    + " - " + buildingLabel(targetProperties[i]->getBuildingLevel()));
+        }
+
+        choice = gameContext.promptIntInRange(
+            "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
+            1,
+            static_cast<int>(targetProperties.size())) - 1;
+    }
+
+    if (choice < 0) {
         return;
     }
 
-    io->showMessage("Pilih properti lawan yang ingin dihancurkan:");
-    for (int i = 0; i < static_cast<int>(targetProperties.size()); ++i) {
-        io->showMessage(
-            std::to_string(i + 1) + ". "
-                + targetOwners[i]->getUsername()
-                + " - " + targetProperties[i]->getName()
-                + " (" + targetProperties[i]->getCode() + ")");
-    }
-
-    int choice = io->promptIntInRange(
-        "Pilihan (1-" + std::to_string(targetProperties.size()) + "): ",
-        1,
-        static_cast<int>(targetProperties.size()));
-
-    PropertyTile* targetProperty = targetProperties[choice - 1];
-    Player* owner = targetOwners[choice - 1];
-
+    StreetTile* targetProperty = targetProperties[choice];
+    Player* owner = targetOwners[choice];
+    int destroyedLevel = targetProperty->getBuildingLevel();
     targetProperty->setBuildingLevel(0);
-    targetProperty->setFestivalState(1, 0);
-    targetProperty->returnToBank();
-    player.setUsedSkillThisTurn(true);
 
-    io->showMessage(
-        targetProperty->getName()
+    gameContext.showMessage(
+        "BOOOMMMM!!! Semua bangunan di " + targetProperty->getName()
             + " (" + targetProperty->getCode() + ") milik "
-            + owner->getUsername()
-            + " telah dihancurkan dan dikembalikan ke Bank.");
+            + owner->getUsername() + " sudah rata dengan tanah.");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan DemolitionCard untuk menghancurkan " +
+            buildingLabel(destroyedLevel) +
+            " di " + targetProperty->getCode() + " milik " + owner->getUsername() + ".");
 }

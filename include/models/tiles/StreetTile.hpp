@@ -43,8 +43,8 @@ public:
     bool canBuildNext() const override;
     int getSellValueToBank() const override;
     PropertyType getPropertyType() const override;
-    std::string getDisplayLabel() const override;
 
+    int getDevelopmentValue() const override;
     int getHouseCost() const override;
     int getHotelCost() const override;
     int getRentAtLevel(int level) const override;

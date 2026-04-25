@@ -1,5 +1,6 @@
 #pragma once
 
+#include <exception>
 #include <string>
 #include "models/Player.hpp"
 
@@ -51,6 +52,11 @@ public:
     CardDeck<ActionCard>* getChanceDeck() const;
     CardDeck<ActionCard>* getCommunityDeck() const;
     CardDeck<SkillCard>* getSkillDeck() const;
+    bool hasIO() const;
+    void showMessage(const std::string& message) const;
+    int promptIntInRange(const std::string& prompt, int minValue, int maxValue) const;
+    void showActionCard(CardType cardType, const ActionCard& card) const;
+    void showError(const std::exception& exception, const std::string& username = "SYSTEM") const;
 
     void triggerStreetEvent(Player& player, PropertyTile& tile);
     void triggerRentEvent(Player& player, PropertyTile& tile);
