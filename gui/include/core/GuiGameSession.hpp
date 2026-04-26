@@ -47,6 +47,7 @@ public:
     bool redeem(QString* errorMessage = nullptr);
     bool useSkill(QString* errorMessage = nullptr);
     bool payJailFine(QString* errorMessage = nullptr);
+    bool surrender(QString* errorMessage = nullptr);
 
     bool isReady() const;
     bool isGameEnded() const;

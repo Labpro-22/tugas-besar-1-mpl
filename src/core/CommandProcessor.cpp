@@ -544,6 +544,16 @@ CommandResult CommandProcessor::process(const Command& command, Player& player) 
         return CommandResult();
     }
 
+    if (keyword == "SURREND" || keyword == "SURRENDER") {
+        ui.showMessage(player.getUsername() + " menyerah dan keluar dari permainan.");
+        if (context != nullptr && context->getBankruptcyHandler() != nullptr) {
+            context->getBankruptcyHandler()->declareBankrupt(player, *context);
+        } else {
+            player.setStatus(PlayerStatus::BANKRUPT);
+        }
+        return CommandResult();
+    }
+
     if (keyword == "MUAT") {
         throw InvalidCommandException(
             keyword,

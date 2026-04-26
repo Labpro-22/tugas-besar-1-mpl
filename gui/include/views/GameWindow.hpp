@@ -165,6 +165,7 @@ private:
     QToolButton* mortgageButton = nullptr;
     QToolButton* redeemButton = nullptr;
     QToolButton* saveButton = nullptr;
+    QToolButton* surrenderButton = nullptr;
     QVBoxLayout* historyEntriesLayout = nullptr;
     QDialog* propertyCardDialog = nullptr;
     PropertyCardWidget* propertyCardWidget = nullptr;

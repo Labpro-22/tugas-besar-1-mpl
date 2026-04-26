@@ -117,12 +117,11 @@ QColor playerAccent(int index)
     }
 }
 
-void configureActionButton(QToolButton* button, const QString& text, const QIcon& icon, bool primary = false)
+void configureActionButton(QToolButton* button, const QString& text, const QIcon&, bool primary = false)
 {
     button->setText(text);
-    button->setIcon(icon);
-    button->setIconSize(QSize(20, 20));
-    button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
+    button->setIcon(QIcon());
+    button->setToolButtonStyle(Qt::ToolButtonTextOnly);
     button->setCursor(Qt::PointingHandCursor);
     button->setMinimumHeight(primary ? 44 : 36);
     button->setObjectName(primary ? QStringLiteral("actionButtonPrimary") : QStringLiteral("actionButton"));
@@ -667,18 +666,18 @@ GameWindow::GameWindow(QWidget* parent)
         "  background: #e8eef6;"
         "}"
         "#actionButtonPrimary, #actionButton {"
-        "  padding: 8px 12px;"
-        "  border-radius: 12px;"
+        "  padding: 6px 12px;"
+        "  border-radius: 10px;"
         "  border: 1px solid #d8e2ef;"
         "  background: #ffffff;"
         "  color: #020617;"
-        "  font: 900 11pt 'Trebuchet MS';"
+        "  font: 900 10.5pt 'Trebuchet MS';"
         "}"
         "#actionButtonPrimary {"
         "  background: #eef4ff;"
         "  color: #2563eb;"
         "  border-color: #bfdbfe;"
-        "  border-radius: 12px;"
+        "  border-radius: 10px;"
         "}"
         "#actionButtonPrimary:hover, #actionButton:hover {"
         "  background: #f8fafc;"
@@ -688,6 +687,23 @@ GameWindow::GameWindow(QWidget* parent)
         "  color: #9aa4ad;"
         "  background: #f8fafc;"
         "  border-color: #e6edf5;"
+        "}"
+        "#actionButtonDanger {"
+        "  padding: 6px 12px;"
+        "  border-radius: 10px;"
+        "  border: 1px solid #b91c1c;"
+        "  background: #dc2626;"
+        "  color: #ffffff;"
+        "  font: 900 10.5pt 'Trebuchet MS';"
+        "}"
+        "#actionButtonDanger:hover {"
+        "  background: #b91c1c;"
+        "  border-color: #991b1b;"
+        "}"
+        "#actionButtonDanger:disabled {"
+        "  color: #ffe4e6;"
+        "  background: #fca5a5;"
+        "  border-color: #fecaca;"
         "}"
         "QDialog { background: #d9d4c5; }"
     );
@@ -931,6 +947,7 @@ QWidget* GameWindow::buildGamePage()
     mortgageButton = new QToolButton(actionsSection);
     redeemButton = new QToolButton(actionsSection);
     saveButton = new QToolButton(actionsSection);
+    surrenderButton = new QToolButton(actionsSection);
 
     configureActionButton(rollButton, QStringLiteral("Roll Dice"), style()->standardIcon(QStyle::SP_DialogHelpButton), true);
     configureActionButton(setDiceButton, QStringLiteral("Set Dice"), style()->standardIcon(QStyle::SP_BrowserReload));
@@ -940,6 +957,8 @@ QWidget* GameWindow::buildGamePage()
     configureActionButton(mortgageButton, QStringLiteral("Mortgage"), style()->standardIcon(QStyle::SP_DialogApplyButton));
     configureActionButton(redeemButton, QStringLiteral("Unmortgage"), style()->standardIcon(QStyle::SP_DialogResetButton));
     configureActionButton(saveButton, QStringLiteral("Save Game"), style()->standardIcon(QStyle::SP_DialogSaveButton));
+    configureActionButton(surrenderButton, QStringLiteral("Surrend"), style()->standardIcon(QStyle::SP_DialogCloseButton));
+    surrenderButton->setObjectName(QStringLiteral("actionButtonDanger"));
 
     actionsLayout->addWidget(rollButton, 0, 0, 1, 2);
     actionsLayout->addWidget(setDiceButton, 1, 0);
@@ -948,13 +967,15 @@ QWidget* GameWindow::buildGamePage()
     actionsLayout->addWidget(buildButton, 2, 1);
     actionsLayout->addWidget(mortgageButton, 3, 0);
     actionsLayout->addWidget(redeemButton, 3, 1);
-    actionsLayout->addWidget(saveButton, 4, 0, 1, 2);
+    actionsLayout->addWidget(saveButton, 4, 0);
+    actionsLayout->addWidget(surrenderButton, 4, 1);
     sidebarLayout->addWidget(actionsSection, 0);
+    sidebarLayout->addSpacing(12);
 
     auto* historySection = new QFrame(sidebarPanel);
     historySection->setObjectName(QStringLiteral("historySection"));
     auto* historySectionLayout = new QVBoxLayout(historySection);
-    historySectionLayout->setContentsMargins(12, 10, 12, 10);
+    historySectionLayout->setContentsMargins(12, 22, 12, 10);
     historySectionLayout->setSpacing(6);
 
     historyHeaderFrame = new QFrame(historySection);
@@ -963,14 +984,10 @@ QWidget* GameWindow::buildGamePage()
     historyHeaderLayout->setContentsMargins(0, 0, 0, 0);
     historyHeaderLayout->setSpacing(6);
 
-    auto* historyTitle = new QLabel(QStringLiteral("HISTORY"), historyHeaderFrame);
+    auto* historyTitle = new QLabel(QStringLiteral("History"), historyHeaderFrame);
     historyTitle->setObjectName(QStringLiteral("historyTitle"));
     historyHeaderLayout->addWidget(historyTitle);
     historyHeaderLayout->addStretch(1);
-
-    auto* historyFilter = new QLabel(QStringLiteral("LIVE"), historyHeaderFrame);
-    historyFilter->setObjectName(QStringLiteral("historyFilter"));
-    historyHeaderLayout->addWidget(historyFilter);
     historySectionLayout->addWidget(historyHeaderFrame, 0);
 
     historyScroll = new QScrollArea(historySection);
@@ -1091,6 +1108,29 @@ void GameWindow::configureConnections()
 
     connect(saveButton, &QToolButton::clicked, this, [this]() {
         saveCurrentGame();
+    });
+
+    connect(surrenderButton, &QToolButton::clicked, this, [this]() {
+        const Player* currentPlayer = session.getCurrentPlayer();
+        const QString username = currentPlayer == nullptr
+            ? QStringLiteral("Pemain aktif")
+            : QString::fromStdString(currentPlayer->getUsername());
+        const bool confirmed = showCustomQuestion(
+            this,
+            QStringLiteral("Surrend"),
+            QStringLiteral("%1 akan menyerah dan langsung keluar dari permainan. Lanjutkan?")
+                .arg(username),
+            QStringLiteral("Surrend"),
+            QStringLiteral("Cancel")
+        );
+        if (!confirmed) {
+            return;
+        }
+
+        executeSessionAction(
+            QStringLiteral("%1 menyerah dan keluar dari permainan.").arg(username),
+            [this](QString* errorMessage) { return session.surrender(errorMessage); }
+        );
     });
 }
 
@@ -2094,6 +2134,7 @@ void GameWindow::refreshActionAvailability()
     mortgageButton->setEnabled(canManageAssets);
     redeemButton->setEnabled(canRedeem);
     saveButton->setEnabled(hasGame && !currentPlayerOverview->hasTakenActionThisTurn);
+    surrenderButton->setEnabled(hasGame);
 }
 
 void GameWindow::syncSelectedPlayer()
@@ -2971,9 +3012,8 @@ void GameWindow::updateResponsiveLayout()
     const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 5 : 4), compactSidebar ? 145 : 170, compactSidebar ? 185 : 250);
     const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 4 : 3), compactSidebar ? 180 : 220, compactSidebar ? 230 : 310);
     const int historyViewportHeight = std::clamp(windowHeight / (compactSidebar ? 6 : 5), compactSidebar ? 124 : 138, compactSidebar ? 142 : 158);
-    const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 22 : 18), compactSidebar ? 34 : 38, compactSidebar ? 40 : 48);
-    const int actionIcon = std::clamp(actionHeight / 3, compactSidebar ? 13 : 15, compactSidebar ? 16 : 19);
-    const int actionFont = std::clamp(actionHeight / 8, compactSidebar ? 7 : 8, compactSidebar ? 8 : 9);
+    const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 22 : 18), compactSidebar ? 38 : 40, compactSidebar ? 42 : 48);
+    const int actionFont = std::clamp(actionHeight / 4, compactSidebar ? 10 : 11, compactSidebar ? 12 : 13);
     const int playerNameFont = std::clamp(windowWidth / 95, 10, 14);
     const int moneyFont = std::clamp(windowWidth / 92, 16, 20);
     const int switchFont = std::clamp(windowWidth / 110, 8, 11);
@@ -3024,34 +3064,47 @@ void GameWindow::updateResponsiveLayout()
         historyScroll->setFixedHeight(historyViewportHeight);
     }
 
-    if (actionsLayout != nullptr) {
-        const int horizontalGap = std::clamp(sidebarWidth / 44, 6, 9);
-        const int verticalGap = std::clamp(windowHeight / (compactSidebar ? 145 : 120), 5, 8);
-        const int actionsPadding = std::clamp(sidebarWidth / 36, 6, 10);
-        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, 0);
-        actionsLayout->setHorizontalSpacing(horizontalGap);
-        actionsLayout->setVerticalSpacing(verticalGap);
-
-        if (QWidget* actionsSection = actionsLayout->parentWidget()) {
-            const int actionsRowsHeight = (actionHeight * 5) + (verticalGap * 4) + actionsLayout->contentsMargins().top() + actionsLayout->contentsMargins().bottom();
-            actionsSection->setMinimumHeight(actionsRowsHeight);
-            actionsSection->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
-        }
-    }
-
     const QList<QToolButton*> actionButtons = {
         rollButton, setDiceButton, useSkillButton, payFineButton,
-        buildButton, mortgageButton, redeemButton, saveButton
+        buildButton, mortgageButton, redeemButton, saveButton, surrenderButton
     };
+
+    int resolvedActionHeight = actionHeight;
+    const QFont actionButtonFont(QStringLiteral("Trebuchet MS"), actionFont, QFont::Black);
     for (QToolButton* button : actionButtons) {
         if (button == nullptr) {
             continue;
         }
+        button->setFont(actionButtonFont);
         button->setMinimumHeight(actionHeight);
         button->setMaximumHeight(QWIDGETSIZE_MAX);
-        button->setIconSize(QSize(actionIcon, actionIcon));
-        QFont font(QStringLiteral("Trebuchet MS"), actionFont, QFont::Black);
-        button->setFont(font);
+        resolvedActionHeight = qMax(resolvedActionHeight, button->sizeHint().height() + 4);
+    }
+
+    for (QToolButton* button : actionButtons) {
+        if (button == nullptr) {
+            continue;
+        }
+        button->setFixedHeight(resolvedActionHeight);
+    }
+
+    if (actionsLayout != nullptr) {
+        const int horizontalGap = std::clamp(sidebarWidth / 44, 6, 9);
+        const int verticalGap = std::clamp(windowHeight / (compactSidebar ? 145 : 120), 5, 8);
+        const int actionsPadding = std::clamp(sidebarWidth / 36, 6, 10);
+        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, actionsPadding);
+        actionsLayout->setHorizontalSpacing(horizontalGap);
+        actionsLayout->setVerticalSpacing(verticalGap);
+        for (int row = 0; row < 5; ++row) {
+            actionsLayout->setRowMinimumHeight(row, resolvedActionHeight);
+        }
+
+        if (QWidget* actionsSection = actionsLayout->parentWidget()) {
+            actionsSection->setMinimumHeight(actionsLayout->sizeHint().height());
+            actionsSection->setMaximumHeight(QWIDGETSIZE_MAX);
+            actionsSection->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
+            actionsSection->updateGeometry();
+        }
     }
 
     refreshPlayerHeader();

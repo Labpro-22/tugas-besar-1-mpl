@@ -152,6 +152,11 @@ bool GuiGameSession::payJailFine(QString* errorMessage)
     return executeCommand(Command("BAYAR_DENDA", {}), errorMessage);
 }
 
+bool GuiGameSession::surrender(QString* errorMessage)
+{
+    return executeCommand(Command("SURREND", {}), errorMessage);
+}
+
 bool GuiGameSession::isReady() const
 {
     return coreSession.isReady();

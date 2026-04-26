@@ -27,6 +27,8 @@ namespace {
                keyword == "UNMORTGAGE" ||
                keyword == "BANGUN" ||
                keyword == "SIMPAN" ||
+               keyword == "SURREND" ||
+               keyword == "SURRENDER" ||
                keyword == "MUAT" ||
                keyword == "CETAK_LOG" ||
                keyword == "BAYAR_DENDA" ||
@@ -70,6 +72,10 @@ namespace {
 
         if (keyword == "SIMPAN") {
             return "SIMPAN filename";
+        }
+
+        if (keyword == "SURREND" || keyword == "SURRENDER") {
+            return keyword;
         }
 
         if (keyword == "MUAT") {
@@ -134,6 +140,10 @@ namespace {
 
         if (keyword == "SIMPAN") {
             return argCount == 1;
+        }
+
+        if (keyword == "SURREND" || keyword == "SURRENDER") {
+            return argCount == 0;
         }
 
         if (keyword == "MUAT") {
