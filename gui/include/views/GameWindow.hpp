@@ -136,6 +136,8 @@ private:
     QLabel* playerAvatarLabel = nullptr;
     QLabel* playerNameLabel = nullptr;
     QLabel* playerMoneyLabel = nullptr;
+    QLabel* roomPlayersLabel = nullptr;
+    QLabel* propertyOwnedLabel = nullptr;
     QToolButton* playerSwitchButton = nullptr;
     PropertyPortfolioWidget* portfolioWidget = nullptr;
     QFrame* historyHeaderFrame = nullptr;

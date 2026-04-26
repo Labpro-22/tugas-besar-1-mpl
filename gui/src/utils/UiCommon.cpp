@@ -119,14 +119,14 @@ QString findImageDirectory()
 QColor colorFromGroup(ColorGroup colorGroup, const QColor& fallback)
 {
     switch (colorGroup) {
-    case ColorGroup::COKLAT: return QColor(149, 84, 54);
-    case ColorGroup::BIRU_MUDA: return QColor(169, 220, 244);
-    case ColorGroup::MERAH_MUDA: return QColor(217, 58, 150);
-    case ColorGroup::ORANGE: return QColor(247, 148, 29);
-    case ColorGroup::MERAH: return QColor(237, 28, 36);
-    case ColorGroup::KUNING: return QColor(254, 242, 0);
-    case ColorGroup::HIJAU: return QColor(31, 178, 90);
-    case ColorGroup::BIRU_TUA: return QColor(0, 114, 187);
+    case ColorGroup::COKLAT: return QColor(186, 156, 240);
+    case ColorGroup::BIRU_MUDA: return QColor(98, 153, 238);
+    case ColorGroup::MERAH_MUDA: return QColor(154, 84, 236);
+    case ColorGroup::ORANGE: return QColor(255, 127, 120);
+    case ColorGroup::MERAH: return QColor(255, 76, 34);
+    case ColorGroup::KUNING: return QColor(255, 211, 28);
+    case ColorGroup::HIJAU: return QColor(16, 174, 91);
+    case ColorGroup::BIRU_TUA: return QColor(82, 76, 255);
     case ColorGroup::ABU_ABU: return QColor(170, 170, 170);
     case ColorGroup::DEFAULT: return fallback;
     }
