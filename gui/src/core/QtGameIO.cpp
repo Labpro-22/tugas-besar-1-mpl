@@ -966,21 +966,38 @@ int QtGameIO::promptAuctionBid(
         return selectedBid;
     }
 
-    bool accepted = false;
-    const int bid = showNumberPrompt(
-        dialogParent,
-        QStringLiteral("BID"),
-        QStringLiteral("Masukkan bid untuk %1.\n%2\nBid harus minimal M%3.")
-            .arg(toQString(bidder.getUsername()))
-            .arg(highestBidText)
-            .arg(minimumBid),
-        minimumBid,
-        bidder.getBalance(),
-        minimumBid,
-        &accepted
-    );
+    while (true) {
+        bool accepted = false;
+        const int bid = showNumberPrompt(
+            dialogParent,
+            QStringLiteral("BID"),
+            QStringLiteral("Masukkan bid untuk %1.\n%2\nBid harus minimal M%3.")
+                .arg(toQString(bidder.getUsername()))
+                .arg(highestBidText)
+                .arg(minimumBid),
+            0,
+            bidder.getBalance(),
+            minimumBid,
+            &accepted
+        );
 
-    return accepted ? bid : -1;
+        if (!accepted) {
+            return -1;
+        }
+
+        if (bid < minimumBid) {
+            showNoticeCard(
+                dialogParent,
+                QStringLiteral("BID TIDAK VALID"),
+                QStringLiteral("Bid harus lebih besar dari bid tertinggi saat ini. Masukkan minimal M%1.")
+                    .arg(minimumBid),
+                QStringLiteral("ULANGI")
+            );
+            continue;
+        }
+
+        return bid;
+    }
 }
 
 int QtGameIO::promptTaxPaymentOption(

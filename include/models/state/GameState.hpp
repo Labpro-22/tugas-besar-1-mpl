@@ -17,6 +17,7 @@ private:
     std::vector<PropertyState> propertyStates;
     std::vector<std::string> deckState;
     std::vector<LogEntry> logEntries;
+    std::string configPath;
 
 public:
     GameState();
@@ -28,7 +29,8 @@ public:
         const std::string& activePlayerUsername,
         const std::vector<PropertyState>& propertyStates,
         const std::vector<std::string>& deckState,
-        const std::vector<LogEntry>& logEntries
+        const std::vector<LogEntry>& logEntries,
+        const std::string& configPath = ""
     );
 
     int getCurrentTurn() const;
@@ -44,4 +46,5 @@ public:
     const std::vector<std::string>& getDeckState() const;
     std::vector<LogEntry>& getLogEntries();
     const std::vector<LogEntry>& getLogEntries() const;
+    const std::string& getConfigPath() const;
 };

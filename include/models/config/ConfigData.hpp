@@ -1,6 +1,7 @@
 #pragma once
 
 #include <map>
+#include <string>
 #include <vector>
 
 #include "models/config/ActionTileConfig.hpp"
@@ -15,6 +16,8 @@ private:
     std::vector<ActionTileConfig> actionTileConfigs;
     std::map<int, int> railroadRents;
     std::map<int, int> utilityMultipliers;
+    std::vector<std::string> boardLayoutCodes;
+    std::string sourcePath;
     TaxConfig taxConfig;
     SpecialConfig specialConfig;
     MiscConfig miscConfig;
@@ -26,6 +29,8 @@ public:
         const std::vector<ActionTileConfig>& actionTileConfigs,
         const std::map<int, int>& railroadRents,
         const std::map<int, int>& utilityMultipliers,
+        const std::vector<std::string>& boardLayoutCodes,
+        const std::string& sourcePath,
         const TaxConfig& taxConfig,
         const SpecialConfig& specialConfig,
         const MiscConfig& miscConfig
@@ -35,6 +40,8 @@ public:
     const std::vector<ActionTileConfig>& getActionTileConfigs() const;
     const std::map<int, int>& getRailroadRents() const;
     const std::map<int, int>& getUtilityMultipliers() const;
+    const std::vector<std::string>& getBoardLayoutCodes() const;
+    const std::string& getSourcePath() const;
     const TaxConfig& getTaxConfig() const;
     const SpecialConfig& getSpecialConfig() const;
     const MiscConfig& getMiscConfig() const;

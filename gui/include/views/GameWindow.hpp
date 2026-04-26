@@ -8,6 +8,7 @@
 #include <QWidget>
 
 #include <functional>
+#include <string>
 #include <vector>
 
 #include "core/GuiGameSession.hpp"
@@ -113,6 +114,7 @@ private:
 
     const PlayerOverview* playerOverviewByUsername(const QString& username) const;
     const PropertyConfig* propertyConfigForId(int propertyId) const;
+    const PropertyConfig* propertyConfigForCode(const std::string& code) const;
     const PropertyViewState* propertyStateForId(int propertyId) const;
     QVector<PortfolioPropertyView> buildPortfolioForPlayer(const QString& username) const;
     QString pawnAssetNameForPlayer(const QString& username) const;

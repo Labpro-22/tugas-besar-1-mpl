@@ -8,10 +8,36 @@
 #include "models/config/TaxConfig.hpp"
 #include "utils/exceptions/NimonspoliException.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cctype>
+#include <filesystem>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
+
+namespace {
+    std::ifstream openRequiredConfigFile(const std::string& path) {
+        const std::filesystem::path filePath(path);
+        const std::string filename = filePath.filename().string();
+        std::error_code filesystemError;
+
+        if (!std::filesystem::exists(filePath, filesystemError) || filesystemError) {
+            throw ConfigException(path, "file wajib \"" + filename + "\" tidak ditemukan");
+        }
+
+        if (!std::filesystem::is_regular_file(filePath, filesystemError) || filesystemError) {
+            throw ConfigException(path, "path \"" + filename + "\" bukan file konfigurasi");
+        }
+
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            throw ConfigException(path, "file wajib \"" + filename + "\" tidak dapat dibuka");
+        }
+
+        return file;
+    }
+}
 
 PropertyType ConfigLoader::stringToType(const std::string& s) {
     if (s == "STREET") return PropertyType::STREET;
@@ -41,23 +67,30 @@ ConfigLoader::ConfigLoader(const std::string& configPath) : configPath(configPat
 }
 
 ConfigData ConfigLoader::loadAll() const {
+    const std::filesystem::path basePath(configPath.empty() ? "." : configPath);
+    std::error_code filesystemError;
+    if (!std::filesystem::exists(basePath, filesystemError) || filesystemError) {
+        throw ConfigException(configPath, "folder config tidak ditemukan");
+    }
+    if (!std::filesystem::is_directory(basePath, filesystemError) || filesystemError) {
+        throw ConfigException(configPath, "path bukan folder config");
+    }
+
     std::vector<PropertyConfig> properties = parsePropertyFile(configPath + "property.txt");
     std::vector<ActionTileConfig> actionTiles = parseActionTileFile(configPath + "aksi.txt");
+    std::vector<std::string> boardLayout = parseBoardLayoutFile(configPath + "papan.txt");
     std::map<int, int> railroads = parseRailroadFile(configPath + "railroad.txt");
     std::map<int, int> utilities = parseUtilityFile(configPath + "utility.txt");
     TaxConfig tax = parseTaxFile(configPath + "tax.txt");
     SpecialConfig special = parseSpecialFile(configPath + "special.txt");
     MiscConfig misc = parseMiscFile(configPath + "misc.txt");
  
-    return ConfigData(properties, actionTiles, railroads, utilities, tax, special, misc);
+    return ConfigData(properties, actionTiles, railroads, utilities, boardLayout, configPath, tax, special, misc);
 }
 
 std::vector<PropertyConfig>
 ConfigLoader::parsePropertyFile(const std::string& path) const {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
-    }
+    std::ifstream file = openRequiredConfigFile(path);
     std::vector<PropertyConfig> result;
     std::string line;
     bool isHeader = true;
@@ -102,10 +135,7 @@ ConfigLoader::parsePropertyFile(const std::string& path) const {
 
 std::vector<ActionTileConfig>
 ConfigLoader::parseActionTileFile(const std::string& path) const {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
-    }
+    std::ifstream file = openRequiredConfigFile(path);
 
     std::vector<ActionTileConfig> result;
     std::string line;
@@ -133,12 +163,56 @@ ConfigLoader::parseActionTileFile(const std::string& path) const {
     return result;
 }
 
-std::map<int, int>
-ConfigLoader::parseRailroadFile(const std::string& path) const {
+std::vector<std::string> ConfigLoader::parseBoardLayoutFile(const std::string& path) const {
     std::ifstream file(path);
     if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
+        return {};
     }
+
+    std::vector<std::string> result;
+    std::string line;
+    bool isHeader = true;
+
+    while (std::getline(file, line)) {
+        const std::size_t commentStart = line.find('#');
+        if (commentStart != std::string::npos) {
+            line = line.substr(0, commentStart);
+        }
+
+        std::istringstream ss(line);
+        std::vector<std::string> tokens;
+        std::string token;
+        while (ss >> token) {
+            tokens.push_back(token);
+        }
+        if (tokens.empty()) {
+            continue;
+        }
+
+        std::string code = tokens.front();
+        const bool firstTokenIsNumber = !code.empty() &&
+            std::all_of(code.begin(), code.end(), [](unsigned char ch) {
+                return std::isdigit(ch) != 0;
+            });
+        if (firstTokenIsNumber && tokens.size() >= 2) {
+            code = tokens[1];
+        }
+
+        if (isHeader && (code == "KODE" || code == "CODE" || code == "PAPAN" || code == "BOARD")) {
+            isHeader = false;
+            continue;
+        }
+        isHeader = false;
+
+        result.push_back(code);
+    }
+
+    return result;
+}
+
+std::map<int, int>
+ConfigLoader::parseRailroadFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
  
     std::map<int, int> result;
     std::string line;
@@ -159,10 +233,7 @@ ConfigLoader::parseRailroadFile(const std::string& path) const {
 
 std::map<int,int>
 ConfigLoader::parseUtilityFile(const std::string& path) const {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
-    }
+    std::ifstream file = openRequiredConfigFile(path);
     std::map<int, int> result;
     std::string line;
 
@@ -179,10 +250,7 @@ ConfigLoader::parseUtilityFile(const std::string& path) const {
 }
 
 TaxConfig ConfigLoader::parseTaxFile(const std::string& path) const{
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
-    }
+    std::ifstream file = openRequiredConfigFile(path);
  
     int pphFlat = 0, pphPct = 0, pbmFlat = 0;
     std::string line;
@@ -198,10 +266,7 @@ TaxConfig ConfigLoader::parseTaxFile(const std::string& path) const{
 }
 
 SpecialConfig ConfigLoader::parseSpecialFile(const std::string& path) const {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
-    }
+    std::ifstream file = openRequiredConfigFile(path);
  
     int goSalary = 0, jailFine = 0;
     std::string line;
@@ -217,10 +282,7 @@ SpecialConfig ConfigLoader::parseSpecialFile(const std::string& path) const {
 }
 
 MiscConfig ConfigLoader::parseMiscFile(const std::string& path) const {
-    std::ifstream file(path);
-    if (!file.is_open()) {
-        throw ConfigException(path, "file konfigurasi tidak dapat dibuka");
-    }
+    std::ifstream file = openRequiredConfigFile(path);
  
     int maxTurn = 0, initialBalance = 0;
     std::string line;

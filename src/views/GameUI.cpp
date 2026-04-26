@@ -171,7 +171,7 @@ int GameUI::showMainMenu() {
 
     int choice = 0;
     while (true) {
-        std::cout << "Pilih menu (1-2): ";
+        std::cout << "\nPilih menu (1-2): ";
         std::string input;
         readLineOrThrow(input);
         input = trimWhitespace(input);
@@ -322,12 +322,8 @@ std::string GameUI::promptText(const std::string& prompt) {
     return trimWhitespace(input);
 }
 
-int GameUI::promptAuctionBid(const std::string& playerName, int highestBid, int balance) {
-    return promptAuctionBidInput(playerName, balance, highestBid, "");
-}
-
 int GameUI::promptAuctionBid(const PropertyTile&, const Player& bidder, int highestBid) {
-    return promptAuctionBid(bidder.getUsername(), highestBid, bidder.getBalance());
+    return promptAuctionBidInput(bidder.getUsername(), bidder.getBalance(), highestBid, "");
 }
 
 int GameUI::promptAuctionBid(

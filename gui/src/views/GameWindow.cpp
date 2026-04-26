@@ -10,6 +10,7 @@
 #include <QDialog>
 #include <QDir>
 #include <QEventLoop>
+#include <QFileDialog>
 #include <QFileInfo>
 #include <QFont>
 #include <QFrame>
@@ -978,11 +979,6 @@ void GameWindow::configureSession()
         QApplication::processEvents(QEventLoop::AllEvents);
     });
 
-    QString errorMessage;
-    if (session.loadConfig(&errorMessage)) {
-        properties = session.getConfigData().getPropertyConfigs();
-        propertyCardWidget->setConfigData(session.getConfigData());
-    }
 }
 
 void GameWindow::startNewGame()
@@ -1020,8 +1016,17 @@ void GameWindow::startNewGame()
         playerNames.push_back(name.toStdString());
     }
 
+    const QString defaultConfigDir = MonopolyUi::findConfigDirectory();
+    const QString configDir = QFileDialog::getExistingDirectory(
+        this,
+        QStringLiteral("Pilih Folder Config"),
+        defaultConfigDir.isEmpty() ? QDir::currentPath() : defaultConfigDir);
+    if (configDir.isEmpty()) {
+        return;
+    }
+
     QString errorMessage;
-    if (!session.startNewGame(playerNames, &errorMessage)) {
+    if (!session.startNewGame(configDir, playerNames, &errorMessage)) {
         if (!errorMessage.isEmpty()) {
             showCustomNotice(this, QStringLiteral("Game Baru"), errorMessage);
         }
@@ -1030,6 +1035,7 @@ void GameWindow::startNewGame()
 
     properties = session.getConfigData().getPropertyConfigs();
     propertyCardWidget->setConfigData(session.getConfigData());
+    boardWidget->setConfigData(session.getConfigData());
     finishDialogShown = false;
     selectedPropertyId = 0;
     selectedPlayerUsername.clear();
@@ -1057,6 +1063,7 @@ void GameWindow::loadGameFromPicker()
 
     properties = session.getConfigData().getPropertyConfigs();
     propertyCardWidget->setConfigData(session.getConfigData());
+    boardWidget->setConfigData(session.getConfigData());
     finishDialogShown = false;
     selectedPropertyId = 0;
     selectedPlayerUsername.clear();
@@ -1631,7 +1638,7 @@ void GameWindow::refreshBoardPawns()
         if (it.value().buildingLevel <= 0) {
             continue;
         }
-        buildingData.append({it.key() - 1, it.value().buildingLevel});
+        buildingData.append({boardWidget->tileIndexForPropertyId(it.key()), it.value().buildingLevel});
     }
     boardWidget->setBuildings(buildingData);
 
@@ -1643,7 +1650,7 @@ void GameWindow::refreshBoardPawns()
             continue;
         }
         ownerData.append({
-            it.key() - 1,
+            boardWidget->tileIndexForPropertyId(it.key()),
             ownerUsername,
             accentColorForPlayer(ownerUsername),
             it.value().mortgaged,
@@ -1717,7 +1724,7 @@ void GameWindow::syncSelectedProperty()
 
     const Player* currentPlayer = session.getCurrentPlayer();
     if (currentPlayer != nullptr) {
-        const int propertyId = currentPlayer->getPosition() + 1;
+        const int propertyId = boardWidget->propertyIdForTileIndex(currentPlayer->getPosition());
         if (propertyConfigForId(propertyId) != nullptr) {
             selectedPropertyId = propertyId;
             return;
@@ -1774,10 +1781,11 @@ void GameWindow::showPropertyCard(int propertyId)
 
 void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& property)
 {
-    const int propertyId = property.getIndex() + 1;
-    if (propertyConfigForId(propertyId) == nullptr) {
+    const PropertyConfig* config = propertyConfigForCode(property.getCode());
+    if (config == nullptr) {
         return;
     }
+    const int propertyId = config->getId();
 
     selectedPlayerUsername = QString::fromStdString(player.getUsername());
     setSelectedProperty(propertyId, false);
@@ -2187,8 +2195,9 @@ int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int
     }
 
     QSet<int> selectable;
+    const int boardTileCount = boardWidget == nullptr ? 0 : boardWidget->tileCount();
     for (int index : validTileIndices) {
-        if (index >= 0 && index < 40) {
+        if (index >= 0 && index < boardTileCount) {
             selectable.insert(index);
         }
     }
@@ -2233,13 +2242,14 @@ int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int
 
 bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile& property)
 {
-    const int propertyId = property.getIndex() + 1;
     const int originalPrice = property.getBuyPrice();
     const int finalPrice = player.getDiscountedAmount(originalPrice);
 
-    if (propertyConfigForId(propertyId) == nullptr) {
+    const PropertyConfig* config = propertyConfigForCode(property.getCode());
+    if (config == nullptr) {
         return player.canAfford(finalPrice);
     }
+    const int propertyId = config->getId();
 
     selectedPlayerUsername = QString::fromStdString(player.getUsername());
     setSelectedProperty(propertyId, false);
@@ -2352,6 +2362,16 @@ const PropertyConfig* GameWindow::propertyConfigForId(int propertyId) const
 {
     for (const PropertyConfig& property : properties) {
         if (property.getId() == propertyId) {
+            return &property;
+        }
+    }
+    return nullptr;
+}
+
+const PropertyConfig* GameWindow::propertyConfigForCode(const std::string& code) const
+{
+    for (const PropertyConfig& property : properties) {
+        if (property.getCode() == code) {
             return &property;
         }
     }

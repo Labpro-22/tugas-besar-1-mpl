@@ -253,6 +253,9 @@ void SaveManager::saveGame(const std::string& filename, const GameState& gameSta
         throw SaveLoadException("menyimpan", path, "file tidak dapat dibuka untuk ditulis");
     }
 
+    if (!gameState.getConfigPath().empty()) {
+        file << "CONFIG " << gameState.getConfigPath() << "\n";
+    }
     file << gameState.getCurrentTurn() << " " << gameState.getMaxTurn() << "\n";
 
     const std::vector<PlayerState>& players = gameState.getPlayerStates();
@@ -316,7 +319,14 @@ GameState SaveManager::loadGame(const std::string& filename) const {
         throw SaveLoadException("memuat", path, "file tidak ditemukan atau tidak dapat dibuka");
     }
 
-    std::vector<std::string> turnParts = splitWhitespace(readLineOrThrow(file, "turn header"));
+    std::string firstLine = readLineOrThrow(file, "turn header");
+    std::string configPath;
+    if (firstLine.rfind("CONFIG ", 0) == 0) {
+        configPath = firstLine.substr(7);
+        firstLine = readLineOrThrow(file, "turn header");
+    }
+
+    std::vector<std::string> turnParts = splitWhitespace(firstLine);
     if (turnParts.size() != 2) {
         throw ParseException(filePath, "turn header", "header giliran harus berisi currentTurn dan maxTurn");
     }
@@ -381,6 +391,7 @@ GameState SaveManager::loadGame(const std::string& filename) const {
         activePlayerUsername,
         properties,
         deckState,
-        logs
+        logs,
+        configPath
     );
 }

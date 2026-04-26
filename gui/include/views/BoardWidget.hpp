@@ -13,6 +13,7 @@
 
 class QPainter;
 class QMouseEvent;
+class ConfigData;
 
 class BoardWidget : public QWidget
 {
@@ -50,6 +51,10 @@ public:
     void setSelectedPropertyId(int propertyId);
     void setTileSelectionMode(const QSet<int>& validTileIndices, const QString& promptText, bool allowCancel = false);
     void clearTileSelectionMode();
+    int tileCount() const;
+    void setConfigData(const ConfigData& config);
+    int tileIndexForPropertyId(int propertyId) const;
+    int propertyIdForTileIndex(int tileIndex) const;
 
 signals:
     void propertySelected(int propertyId);
@@ -86,6 +91,7 @@ private:
         QColor    stripColor;
         bool      hasStrip;
         QColor    accentColor;
+        int       propertyId;
     };
 
     QVector<CellData>           cells;
@@ -99,6 +105,7 @@ private:
     bool                        tileSelectionAllowCancel = false;
     QSet<int>                   selectableTileIndices;
     QString                     selectionPromptText;
+    const ConfigData*           configData = nullptr;
 
     QVector<CellData> createCells() const;
     QRect    boardBounds() const;

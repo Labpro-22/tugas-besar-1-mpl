@@ -29,7 +29,6 @@ void GoToJailTile::onLanded(Player& player, GameContext& gameContext) {
     if (jailTile != nullptr) {
         jailTile->applyJailStatus(player);
     } else {
-        player.setPosition(10);
         player.setStatus(PlayerStatus::JAILED);
         player.setJailTurns(0);
         player.setConsecutiveDoubles(0);

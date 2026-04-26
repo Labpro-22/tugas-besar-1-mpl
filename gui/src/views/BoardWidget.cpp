@@ -15,13 +15,14 @@
 #include <QtGui/QFontMetrics>
 #include <QtMath>
 
+#include <algorithm>
 #include <exception>
+#include <map>
 
 #include "utils/UiCommon.hpp"
 #include "models/Enums.hpp"
 #include "models/config/ConfigData.hpp"
 #include "models/config/PropertyConfig.hpp"
-#include "utils/ConfigLoader.hpp"
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PALETTE  (exact Figma hex values)
@@ -108,26 +109,6 @@ QString findUpwardDirectory(const QString& startPath, const QString& directoryNa
 
         if (!cursor.cdUp()) {
             break;
-        }
-    }
-
-    return {};
-}
-
-QString findConfigDirectory()
-{
-    const QString appDir = QCoreApplication::applicationDirPath();
-    const QStringList startPaths = {QDir::currentPath(), appDir};
-
-    for (const QString& startPath : startPaths) {
-        const QString found = findUpwardDirectory(
-            startPath,
-            QStringLiteral("config"),
-            {QStringLiteral("property.txt"), QStringLiteral("tax.txt"), QStringLiteral("special.txt")}
-        );
-
-        if (!found.isEmpty()) {
-            return found;
         }
     }
 
@@ -291,6 +272,36 @@ void BoardWidget::clearTileSelectionMode()
     selectionPromptText.clear();
     unsetCursor();
     update();
+}
+
+int BoardWidget::tileCount() const
+{
+    return cells.size();
+}
+
+void BoardWidget::setConfigData(const ConfigData& config)
+{
+    configData = &config;
+    cells = createCells();
+    update();
+}
+
+int BoardWidget::tileIndexForPropertyId(int propertyId) const
+{
+    for (int index = 0; index < cells.size(); ++index) {
+        if (cells[index].propertyId == propertyId) {
+            return index;
+        }
+    }
+    return propertyId - 1;
+}
+
+int BoardWidget::propertyIdForTileIndex(int tileIndex) const
+{
+    if (tileIndex < 0 || tileIndex >= cells.size()) {
+        return 0;
+    }
+    return cells[tileIndex].propertyId;
 }
 
 void BoardWidget::setPawns(const QVector<PawnData>& pawnData)
@@ -600,11 +611,11 @@ QVector<BoardWidget::CellData> BoardWidget::createCells() const
 
     // Shorthands
     auto prop = [&](int i,const QString &price,const QString &name,const QColor &strip){
-        d[i]={TileKind::Property, price, name, strip, true, strip};
+        d[i]={TileKind::Property, price, name, strip, true, strip, i + 1};
     };
     auto spec = [&](int i,TileKind k,const QString &price,const QString &name,
                     const QColor &accent=Pal::line){
-        d[i]={k, price, name, {}, false, accent};
+        d[i]={k, price, name, {}, false, accent, 0};
     };
 
     // ── BOTTOM (indices 0–9, right→left) ──
@@ -655,61 +666,140 @@ QVector<BoardWidget::CellData> BoardWidget::createCells() const
     spec(38, TileKind::LuxuryTax,         "M150",      "PPNBM",         Pal::line);
     prop(39, "M400",  "IKN",              Pal::darkBlue);
 
-    const QString configDir = findConfigDirectory();
-    if (!configDir.isEmpty()) {
+    if (configData != nullptr) {
         try {
-            ConfigLoader loader(configDir.toStdString());
-            const ConfigData config = loader.loadAll();
+            const ConfigData& config = *configData;
 
-            const TaxConfig& taxConfig = config.getTaxConfig();
-            const SpecialConfig& specialConfig = config.getSpecialConfig();
-
-            if (specialConfig.getGoSalary() > 0) {
-                d[0].price = formatCurrency(specialConfig.getGoSalary());
-            }
-
-            if (taxConfig.getPphFlat() > 0) {
-                d[4].price = QStringLiteral("BAYAR %1").arg(formatCurrency(taxConfig.getPphFlat()));
-            }
-
-            if (taxConfig.getPbmFlat() > 0) {
-                d[38].price = QStringLiteral("BAYAR %1").arg(formatCurrency(taxConfig.getPbmFlat()));
-            }
-
-            for (const PropertyConfig& property : config.getPropertyConfigs()) {
-                const int index = property.getId() - 1;
-                if (index < 0 || index >= d.size()) {
-                    continue;
-                }
-
-                CellData& cell = d[index];
+            auto propertyCell = [](const PropertyConfig& property) {
+                CellData cell;
                 cell.name = formatTileName(property.getName());
+                cell.stripColor = colorFromGroup(property.getColorGroup(), Pal::line);
+                cell.accentColor = cell.stripColor;
+                cell.hasStrip = property.getPropertyType() == PropertyType::STREET;
+                cell.propertyId = property.getId();
+                cell.price = property.getBuyPrice() > 0 ? formatCurrency(property.getBuyPrice()) : QString();
 
                 switch (property.getPropertyType()) {
                 case PropertyType::STREET:
                     cell.kind = TileKind::Property;
-                    cell.hasStrip = true;
-                    cell.stripColor = colorFromGroup(property.getColorGroup(), cell.stripColor);
-                    cell.accentColor = cell.stripColor;
-                    if (property.getBuyPrice() > 0) {
-                        cell.price = formatCurrency(property.getBuyPrice());
-                    }
                     break;
                 case PropertyType::RAILROAD:
                     cell.kind = TileKind::Railroad;
-                    cell.hasStrip = false;
                     cell.stripColor = QColor();
                     cell.accentColor = Pal::line;
-                    cell.price = property.getBuyPrice() > 0 ? formatCurrency(property.getBuyPrice()) : QString();
                     break;
                 case PropertyType::UTILITY:
                     cell.kind = (property.getCode() == "PLN") ? TileKind::UtilityElec : TileKind::UtilityWater;
-                    cell.hasStrip = false;
                     cell.stripColor = QColor();
                     cell.accentColor = Pal::line;
-                    cell.price = property.getBuyPrice() > 0 ? formatCurrency(property.getBuyPrice()) : QString();
                     break;
                 }
+
+                return cell;
+            };
+
+            auto actionCell = [&config](const ActionTileConfig& action) {
+                CellData cell;
+                cell.name = formatTileName(action.getName());
+                cell.stripColor = QColor();
+                cell.hasStrip = false;
+                cell.accentColor = colorFromGroup(action.getColorGroup(), Pal::line);
+                cell.propertyId = 0;
+                cell.price = QString();
+
+                const QString code = QString::fromStdString(action.getCode());
+                const std::string& tileType = action.getTileType();
+                if (tileType == "KARTU") {
+                    cell.kind = code == QStringLiteral("DNU") ? TileKind::CommunityChest : TileKind::Chance;
+                } else if (tileType == "PAJAK") {
+                    if (code == QStringLiteral("PPH")) {
+                        cell.kind = TileKind::IncomeTax;
+                        cell.price = QStringLiteral("BAYAR %1").arg(formatCurrency(config.getTaxConfig().getPphFlat()));
+                    } else {
+                        cell.kind = TileKind::LuxuryTax;
+                        cell.price = QStringLiteral("BAYAR %1").arg(formatCurrency(config.getTaxConfig().getPbmFlat()));
+                    }
+                } else if (tileType == "FESTIVAL") {
+                    cell.kind = TileKind::Festival;
+                    cell.accentColor = Pal::pink;
+                } else if (tileType == "SPESIAL") {
+                    if (code == QStringLiteral("GO")) {
+                        cell.kind = TileKind::CornerGo;
+                        cell.price = config.getSpecialConfig().getGoSalary() > 0
+                            ? formatCurrency(config.getSpecialConfig().getGoSalary())
+                            : QString();
+                    } else if (code == QStringLiteral("PEN")) {
+                        cell.kind = TileKind::CornerJail;
+                    } else if (code == QStringLiteral("PPJ")) {
+                        cell.kind = TileKind::CornerGoToJail;
+                    } else {
+                        cell.kind = TileKind::CornerFreeParking;
+                    }
+                } else {
+                    cell.kind = TileKind::Festival;
+                }
+
+                return cell;
+            };
+
+            std::map<int, const PropertyConfig*> propertyById;
+            std::map<std::string, const PropertyConfig*> propertyByCode;
+            for (const PropertyConfig& property : config.getPropertyConfigs()) {
+                propertyById[property.getId()] = &property;
+                propertyByCode[property.getCode()] = &property;
+            }
+
+            std::map<int, const ActionTileConfig*> actionById;
+            std::map<std::string, const ActionTileConfig*> actionByCode;
+            for (const ActionTileConfig& action : config.getActionTileConfigs()) {
+                actionById[action.getId()] = &action;
+                if (actionByCode.find(action.getCode()) == actionByCode.end()) {
+                    actionByCode[action.getCode()] = &action;
+                }
+            }
+
+            QVector<CellData> configured;
+            const std::vector<std::string>& layoutCodes = config.getBoardLayoutCodes();
+            if (!layoutCodes.empty()) {
+                configured.reserve(static_cast<int>(layoutCodes.size()));
+                for (const std::string& code : layoutCodes) {
+                    const auto propertyIt = propertyByCode.find(code);
+                    if (propertyIt != propertyByCode.end()) {
+                        configured.push_back(propertyCell(*propertyIt->second));
+                        continue;
+                    }
+
+                    const auto actionIt = actionByCode.find(code);
+                    if (actionIt != actionByCode.end()) {
+                        configured.push_back(actionCell(*actionIt->second));
+                    }
+                }
+            } else {
+                int boardSize = 0;
+                for (const auto& entry : propertyById) {
+                    boardSize = std::max(boardSize, entry.first);
+                }
+                for (const auto& entry : actionById) {
+                    boardSize = std::max(boardSize, entry.first);
+                }
+
+                configured.resize(boardSize);
+                for (int id = 1; id <= boardSize; ++id) {
+                    const auto actionIt = actionById.find(id);
+                    if (actionIt != actionById.end()) {
+                        configured[id - 1] = actionCell(*actionIt->second);
+                        continue;
+                    }
+
+                    const auto propertyIt = propertyById.find(id);
+                    if (propertyIt != propertyById.end()) {
+                        configured[id - 1] = propertyCell(*propertyIt->second);
+                    }
+                }
+            }
+
+            if (configured.size() >= 20 && configured.size() <= 60 && configured.size() % 4 == 0) {
+                return configured;
             }
         } catch (const std::exception&) {
             // Keep fallback static board data when config files are unavailable.
@@ -730,23 +820,26 @@ QRect BoardWidget::boardBounds() const
 }
 BoardWidget::EdgeSide BoardWidget::sideForIndex(int i) const
 {
-    if (i%10==0) return EdgeSide::Corner;
-    if (i< 10)   return EdgeSide::Bottom;
-    if (i< 20)   return EdgeSide::Left;
-    if (i< 30)   return EdgeSide::Top;
+    const int sideTileCount = qMax(1, cells.size() / 4);
+    if (i % sideTileCount == 0) return EdgeSide::Corner;
+    if (i < sideTileCount) return EdgeSide::Bottom;
+    if (i < 2 * sideTileCount) return EdgeSide::Left;
+    if (i < 3 * sideTileCount) return EdgeSide::Top;
     return EdgeSide::Right;
 }
 QRect BoardWidget::tileRect(int i, const QRect &b, int cs, int es) const
 {
     int x=b.x(), y=b.y();
-    if (i==0)              return {x+cs+9*es, y+cs+9*es, cs, cs};
-    if (i>=1  && i<=9)    return {x+cs+(9-i)*es, y+cs+9*es, es, cs};
-    if (i==10)             return {x, y+cs+9*es, cs, cs};
-    if (i>=11 && i<=19)   return {x, y+cs+(19-i)*es, cs, es};
-    if (i==20)             return {x, y, cs, cs};
-    if (i>=21 && i<=29)   return {x+cs+(i-21)*es, y, es, cs};
-    if (i==30)             return {x+cs+9*es, y, cs, cs};
-    return                        {x+cs+9*es, y+cs+(i-31)*es, cs, es};
+    const int sideTileCount = qMax(1, cells.size() / 4);
+    const int edgeSlots = qMax(1, sideTileCount - 1);
+    if (i == 0) return {x + cs + edgeSlots * es, y + cs + edgeSlots * es, cs, cs};
+    if (i >= 1 && i < sideTileCount) return {x + cs + (sideTileCount - i - 1) * es, y + cs + edgeSlots * es, es, cs};
+    if (i == sideTileCount) return {x, y + cs + edgeSlots * es, cs, cs};
+    if (i > sideTileCount && i < 2 * sideTileCount) return {x, y + cs + (2 * sideTileCount - i - 1) * es, cs, es};
+    if (i == 2 * sideTileCount) return {x, y, cs, cs};
+    if (i > 2 * sideTileCount && i < 3 * sideTileCount) return {x + cs + (i - 2 * sideTileCount - 1) * es, y, es, cs};
+    if (i == 3 * sideTileCount) return {x + cs + edgeSlots * es, y, cs, cs};
+    return {x + cs + edgeSlots * es, y + cs + (i - 3 * sideTileCount - 1) * es, cs, es};
 }
 
 QRect BoardWidget::selectionPromptRect(const QRect& centerRect) const
@@ -770,6 +863,9 @@ bool BoardWidget::isInspectableTile(int idx) const
     if (idx < 0 || idx >= cells.size()) {
         return false;
     }
+    if (cells[idx].propertyId <= 0) {
+        return false;
+    }
 
     switch (cells[idx].kind) {
     case TileKind::Property:
@@ -786,29 +882,30 @@ void BoardWidget::mousePressEvent(QMouseEvent *event)
 {
     const QRect board = boardBounds();
     const int cs = qMax(74, int(board.width() * 0.132));
-    const int es = (board.width() - 2 * cs) / 9;
-    const QRect cr(board.x() + cs, board.y() + cs, es * 9, es * 9);
+    const int edgeSlots = qMax(1, cells.size() / 4 - 1);
+    const int es = (board.width() - 2 * cs) / edgeSlots;
+    const QRect cr(board.x() + cs, board.y() + cs, es * edgeSlots, es * edgeSlots);
 
     if (tileSelectionMode && tileSelectionAllowCancel && selectionCancelRect(cr).contains(event->pos())) {
         emit tileSelectionCanceled();
         return;
     }
 
-    for (int index = 0; index < 40; ++index) {
+    for (int index = 0; index < cells.size(); ++index) {
         if (!tileRect(index, board, cs, es).contains(event->pos())) {
             continue;
         }
 
         if (tileSelectionMode) {
             if (selectableTileIndices.contains(index)) {
-                setSelectedPropertyId(index + 1);
+                setSelectedPropertyId(cells[index].propertyId);
                 emit tileSelected(index);
             }
             break;
         }
 
         if (isInspectableTile(index)) {
-            const int propertyId = index + 1;
+            const int propertyId = cells[index].propertyId;
             setSelectedPropertyId(propertyId);
             emit propertySelected(propertyId);
         }
@@ -1286,17 +1383,18 @@ void BoardWidget::drawCell(QPainter &p, int idx, const QRect &r) const
     const EdgeSide side = sideForIndex(idx);
 
     if (side == EdgeSide::Corner) {
-        switch (idx) {
-        case  0: drawCornerGo(p, r);          break;
-        case 10: drawCornerJail(p, r);         break;
-        case 20: drawCornerFreeParking(p, r);  break;
-        case 30: drawCornerGoToJail(p, r);     break;
+        switch (c.kind) {
+        case TileKind::CornerGo: drawCornerGo(p, r); break;
+        case TileKind::CornerJail: drawCornerJail(p, r); break;
+        case TileKind::CornerFreeParking: drawCornerFreeParking(p, r); break;
+        case TileKind::CornerGoToJail: drawCornerGoToJail(p, r); break;
+        default: drawEdgeTile(p, side, r, c); break;
         }
     } else {
         drawEdgeTile(p, side, r, c);
     }
 
-    if (selectedPropertyId == idx + 1 && isInspectableTile(idx)) {
+    if (selectedPropertyId == c.propertyId && isInspectableTile(idx)) {
         p.save();
         p.setRenderHint(QPainter::Antialiasing);
         p.setBrush(Qt::NoBrush);
@@ -1342,25 +1440,25 @@ void BoardWidget::paintEvent(QPaintEvent *event)
     p.fillRect(rect(), Pal::frame);
 
     const QRect board = boardBounds();
-    // Corner tile ~13.8% of board, edge tiles fill the rest in 9 equal slots
+    // Corner tile ~13.8% of board; edge tiles fill the rest on each side.
     const int cs = qMax(74, int(board.width() * 0.132));
-    const int es = (board.width() - 2*cs) / 9;
+    const int edgeSlots = qMax(1, cells.size() / 4 - 1);
+    const int es = (board.width() - 2*cs) / edgeSlots;
 
     // Board background; perimeter cells draw the visible outside border.
     p.fillRect(board, Pal::bg);
 
     // Center
-    const QRect cr(board.x()+cs, board.y()+cs, es*9, es*9);
+    const QRect cr(board.x()+cs, board.y()+cs, es*edgeSlots, es*edgeSlots);
     drawCenter(p, cr);
 
-    // All 40 tiles
-    for (int i = 0; i < 40; ++i)
+    for (int i = 0; i < cells.size(); ++i)
         drawCell(p, i, tileRect(i, board, cs, es));
 
     drawOwners(p, board, cs, es);
     drawBuildings(p, board, cs, es);
 
-    for (int i = 0; i < 40; ++i)
+    for (int i = 0; i < cells.size(); ++i)
         drawSelectionOverlay(p, i, tileRect(i, board, cs, es));
 
     drawPawns(p, board, cs, es);

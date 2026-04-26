@@ -49,11 +49,6 @@ void GameIO::showPropertyNotice(const Player&, const PropertyTile& property)
     showMessage(property.getName());
 }
 
-int GameIO::promptAuctionBid(const std::string&, int, int)
-{
-    return -1;
-}
-
 std::string GameIO::promptText(const std::string&)
 {
     return "";
@@ -329,25 +324,30 @@ int GameIO::promptTileSelection(
 )
 {
     showMessage(title);
-    for (int index : validTileIndices) {
-        showMessage(std::to_string(index + 1) + ". Tile " + std::to_string(index + 1));
+    for (int option = 0; option < static_cast<int>(validTileIndices.size()); ++option) {
+        showMessage(
+            std::to_string(option + 1) + ". Tile " +
+            std::to_string(validTileIndices[static_cast<std::size_t>(option)] + 1));
     }
 
     if (allowCancel) {
         showMessage("0. Batal");
         const int choice = promptIntInRange(
-            "Pilih tile (0-40): ",
+            "Pilih tile (0-" + std::to_string(validTileIndices.size()) + "): ",
             0,
-            40);
-        return choice - 1;
+            static_cast<int>(validTileIndices.size()));
+        if (choice == 0) {
+            return -1;
+        }
+        return validTileIndices[static_cast<std::size_t>(choice - 1)];
     }
 
     const int choice = promptIntInRange(
-        "Pilih tile (1-40): ",
+        "Pilih tile (1-" + std::to_string(validTileIndices.size()) + "): ",
         1,
-        40);
+        static_cast<int>(validTileIndices.size()));
 
-    return choice - 1;
+    return validTileIndices[static_cast<std::size_t>(choice - 1)];
 }
 
 int GameIO::promptSkillCardSelection(
