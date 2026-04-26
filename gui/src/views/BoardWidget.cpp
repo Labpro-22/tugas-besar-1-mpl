@@ -223,8 +223,9 @@ QFont fittedTextFont(
 //  CONSTRUCTION
 // ─────────────────────────────────────────────────────────────────────────────
 BoardWidget::BoardWidget(QWidget *parent)
-    : QWidget(parent), cells(createCells())
+    : QWidget(parent)
 {
+    cells = createCells();
     setMinimumSize(560, 560);
     setAutoFillBackground(false);
 }
