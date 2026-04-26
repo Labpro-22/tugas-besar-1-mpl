@@ -209,14 +209,6 @@ Setiap folder konfigurasi minimal berisi:
 | `special.txt` | Gaji GO dan denda penjara |
 | `misc.txt` | Batas turn dan saldo awal pemain |
 
-Opsional:
-
-| File | Fungsi |
-| --- | --- |
-| `papan.txt` | Urutan kode petak untuk papan dinamis |
-
-Jika `papan.txt` tidak ada, papan dibentuk berdasarkan ID dari `property.txt` dan `aksi.txt`. Jika `papan.txt` ada, urutan petak mengikuti kode dalam file tersebut.
-
 Validasi papan dinamis:
 
 - Jumlah petak minimal 20 dan maksimal 60.
@@ -393,8 +385,3 @@ README ini dapat digunakan sebagai lampiran ringkas untuk laporan M2 karena memu
 - Daftar command.
 - Ringkasan mekanisme utama.
 - Catatan troubleshooting.
-
-Dokumen pendukung yang digunakan saat penyusunan README:
-
-- `Spesifikasi Tugas Besar 1_ Nimonspoli.txt`
-- `IF2010_TB1_Laporan M2_MPL.docx.txt`
