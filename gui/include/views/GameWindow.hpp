@@ -122,6 +122,8 @@ private:
     QColor accentColorForPlayer(const QString& username) const;
     int totalHouseCount(const QString& username) const;
     int totalHotelCount(const QString& username) const;
+    bool hasBuildablePropertyForPlayer(const QString& username) const;
+    bool hasMortgagedPropertyForPlayer(const QString& username) const;
     QString currentTurnStatusText() const;
     QString saveDirectoryPath() const;
 

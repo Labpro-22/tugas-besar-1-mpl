@@ -1990,14 +1990,16 @@ void GameWindow::refreshActionAvailability()
     const bool canRoll = hasGame && !currentPlayerOverview->hasRolledThisTurn &&
         !(currentPlayerOverview->isInJail && currentPlayer->getJailTurns() > 3);
     const bool canManageAssets = hasGame && !currentPlayerOverview->isInJail;
+    const bool canBuild = canManageAssets && hasBuildablePropertyForPlayer(activePlayerUsername);
+    const bool canRedeem = canManageAssets && hasMortgagedPropertyForPlayer(activePlayerUsername);
 
     rollButton->setEnabled(canRoll);
     setDiceButton->setEnabled(canRoll);
     useSkillButton->setEnabled(hasGame && canUseSkillBeforeMovementDice(*currentPlayer));
     payFineButton->setEnabled(hasGame && currentPlayerOverview->isInJail);
-    buildButton->setEnabled(canManageAssets);
+    buildButton->setEnabled(canBuild);
     mortgageButton->setEnabled(canManageAssets);
-    redeemButton->setEnabled(canManageAssets);
+    redeemButton->setEnabled(canRedeem);
     saveButton->setEnabled(hasGame && !currentPlayerOverview->hasTakenActionThisTurn);
 }
 
@@ -2732,6 +2734,72 @@ int GameWindow::totalHotelCount(const QString& username) const
         }
     }
     return hotels;
+}
+
+bool GameWindow::hasBuildablePropertyForPlayer(const QString& username) const
+{
+    if (username.isEmpty()) {
+        return false;
+    }
+
+    QMap<int, QVector<const PropertyConfig*>> streetGroups;
+    for (const PropertyConfig& property : properties) {
+        if (property.getPropertyType() != PropertyType::STREET) {
+            continue;
+        }
+        streetGroups[static_cast<int>(property.getColorGroup())].append(&property);
+    }
+
+    for (const QVector<const PropertyConfig*>& group : streetGroups) {
+        if (group.isEmpty()) {
+            continue;
+        }
+
+        bool ownsCompleteGroup = true;
+        int minLevel = 5;
+        for (const PropertyConfig* property : group) {
+            const PropertyViewState* state = property == nullptr ? nullptr : propertyStateForId(property->getId());
+            if (state == nullptr || state->ownerUsername != username || state->mortgaged) {
+                ownsCompleteGroup = false;
+                break;
+            }
+            minLevel = std::min(minLevel, state->buildingLevel);
+        }
+
+        if (!ownsCompleteGroup) {
+            continue;
+        }
+
+        for (const PropertyConfig* property : group) {
+            const PropertyViewState* state = property == nullptr ? nullptr : propertyStateForId(property->getId());
+            if (state == nullptr || state->buildingLevel >= 5) {
+                continue;
+            }
+            if (state->buildingLevel < 4 && state->buildingLevel == minLevel) {
+                return true;
+            }
+            if (state->buildingLevel == 4 && minLevel >= 4) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool GameWindow::hasMortgagedPropertyForPlayer(const QString& username) const
+{
+    if (username.isEmpty()) {
+        return false;
+    }
+
+    for (auto it = propertyStateById.constBegin(); it != propertyStateById.constEnd(); ++it) {
+        if (it.value().ownerUsername == username && it.value().mortgaged) {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 QString GameWindow::currentTurnStatusText() const
