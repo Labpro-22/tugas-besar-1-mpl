@@ -916,7 +916,7 @@ QWidget* GameWindow::buildGamePage()
     historyEntriesLayout->addStretch(1);
     historyScroll->setWidget(historyContent);
     historySectionLayout->addWidget(historyScroll, 1);
-    sidebarLayout->addWidget(historySection, 1);
+    sidebarLayout->addWidget(historySection, 0);
 
     propertyCardDialog = new QDialog(this, Qt::Dialog | Qt::WindowCloseButtonHint | Qt::WindowTitleHint);
     propertyCardDialog->setModal(false);
@@ -1609,7 +1609,7 @@ void GameWindow::refreshPlayerHeader()
             ).arg(overview.isCurrentTurn ? QStringLiteral("#55e15c") : QStringLiteral("transparent")));
             rowLayout->addWidget(activeMarker, 0, Qt::AlignVCenter);
 
-            auto* avatar = new QLabel(QString::number(overview.turnOrderPosition), row);
+            auto* avatar = new QLabel(shortPlayerLabel(overview.name), row);
             avatar->setAlignment(Qt::AlignCenter);
             avatar->setFixedSize(28, 28);
             const QColor accent = overview.accentColor.isValid() ? overview.accentColor : QColor(90, 190, 240);
@@ -2857,7 +2857,7 @@ void GameWindow::updateResponsiveLayout()
     const bool compactSidebar = windowHeight < 820;
     const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 5 : 4), compactSidebar ? 145 : 170, compactSidebar ? 185 : 250);
     const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 4 : 3), compactSidebar ? 180 : 220, compactSidebar ? 230 : 310);
-    const int historyMinHeight = std::clamp(windowHeight / (compactSidebar ? 9 : 7), compactSidebar ? 86 : 105, compactSidebar ? 115 : 150);
+    const int historyViewportHeight = std::clamp(windowHeight / (compactSidebar ? 6 : 5), compactSidebar ? 124 : 138, compactSidebar ? 142 : 158);
     const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 22 : 18), compactSidebar ? 34 : 38, compactSidebar ? 40 : 48);
     const int actionIcon = std::clamp(actionHeight / 3, compactSidebar ? 13 : 15, compactSidebar ? 16 : 19);
     const int actionFont = std::clamp(actionHeight / 8, compactSidebar ? 7 : 8, compactSidebar ? 8 : 9);
@@ -2908,7 +2908,7 @@ void GameWindow::updateResponsiveLayout()
     }
 
     if (historyScroll != nullptr) {
-        historyScroll->setMinimumHeight(historyMinHeight);
+        historyScroll->setFixedHeight(historyViewportHeight);
     }
 
     if (actionsLayout != nullptr) {
