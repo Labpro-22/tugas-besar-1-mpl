@@ -172,7 +172,26 @@ QString firstLineContaining(const QString& text, const QString& pattern)
 bool shouldShowJailNotice(const QString& statusText)
 {
     const QString normalized = statusText.toLower();
-    return normalized.contains(QStringLiteral("awokwokwowk anda masuk penjara"));
+    return normalized.contains(QStringLiteral("awokwokwowk anda masuk penjara")) ||
+        normalized.contains(QStringLiteral("aowkowkow anda masuk penjara")) ||
+        normalized.contains(QStringLiteral("aowkowkowk anda masuk penjara"));
+}
+
+QString jailNoticeLine(const QString& statusText)
+{
+    const QString normalized = statusText.toLower();
+    if (normalized.contains(QStringLiteral("aowkowkowk anda masuk penjara"))) {
+        return firstLineContaining(statusText, QStringLiteral("aowkowkowk anda masuk penjara"));
+    }
+    if (normalized.contains(QStringLiteral("aowkowkow anda masuk penjara"))) {
+        return firstLineContaining(statusText, QStringLiteral("aowkowkow anda masuk penjara"));
+    }
+    return firstLineContaining(statusText, QStringLiteral("awokwokwowk anda masuk penjara"));
+}
+
+bool shouldShowBankruptcyNotice(const QString& statusText)
+{
+    return statusText.toLower().contains(QStringLiteral("dinyatakan bangkrut"));
 }
 
 bool shouldShowActionBlockedNotice(const QString& statusText)
@@ -1304,11 +1323,17 @@ void GameWindow::executeSessionAction(const QString& successFallback, const std:
 
     applyPendingMessages(success ? successFallback : errorMessage);
     refreshScene(lastStatusText);
-    if (success && shouldShowJailNotice(lastStatusText)) {
+    if (shouldShowBankruptcyNotice(lastStatusText)) {
+        showCustomNotice(
+            this,
+            QStringLiteral("Bangkrut"),
+            QStringLiteral("NOOOOOO, KAMU DINYATAKAN BANGKRUTTT T-T")
+        );
+    } else if (success && shouldShowJailNotice(lastStatusText)) {
         showCustomNotice(
             this,
             QStringLiteral("Penjara"),
-            firstLineContaining(lastStatusText, QStringLiteral("awokwokwowk anda masuk penjara"))
+            jailNoticeLine(lastStatusText)
         );
     } else if (success && shouldShowActionBlockedNotice(lastStatusText)) {
         showCustomNotice(this, QStringLiteral("Aksi Tidak Bisa Dilakukan"), lastStatusText);
@@ -2712,7 +2737,14 @@ void GameWindow::applyPendingMessages(const QString& fallback)
 {
     const QStringList messages = session.takePendingMessages();
     if (!messages.isEmpty()) {
-        lastStatusText = messages.mid(qMax(0, messages.size() - 3)).join('\n');
+        const QString allMessages = messages.join('\n');
+        if (shouldShowBankruptcyNotice(allMessages)) {
+            lastStatusText = firstLineContaining(allMessages, QStringLiteral("dinyatakan bangkrut"));
+        } else if (shouldShowJailNotice(allMessages)) {
+            lastStatusText = jailNoticeLine(allMessages);
+        } else {
+            lastStatusText = messages.mid(qMax(0, messages.size() - 3)).join('\n');
+        }
     } else if (!fallback.isEmpty()) {
         lastStatusText = fallback;
     }

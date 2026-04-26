@@ -18,7 +18,7 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
         return;
     }
 
-    gameContext.showMessage("Awokwokwowk anda masuk penjara.");
+    gameContext.showMessage("AOWKOWKOWK Anda masuk Penjara");
     gameContext.showMessage("Bidak dipindahkan ke Penjara.");
 
     Board* board = gameContext.getBoard();

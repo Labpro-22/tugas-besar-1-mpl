@@ -302,6 +302,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
             ui.showMessage("Kamu mendapat tiga kali double berturut-turut!");
             ui.showMessage("Kamu nggak bisa hoki selamanya, Bung!");
             ui.showMessage("Bidak langsung dipindahkan ke Penjara dan giliran berakhir.");
+            ui.showMessage("AOWKOWKOWK Anda masuk Penjara");
             if (logger != nullptr) {
                 logger->log(
                     turnManager.getCurrentTurn(),
