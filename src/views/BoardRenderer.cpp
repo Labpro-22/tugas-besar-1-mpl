@@ -34,8 +34,6 @@ namespace {
     }
 
     const int CELL_WIDTH = 10;
-    const int SIDE_SIZE = 11;
-    const int JAIL_INDEX = 10;
     const int LEGEND_WIDTH = 38;
 
     void initColorMap(std::map<ColorGroup, std::string>& colorMap) {
@@ -89,6 +87,7 @@ namespace {
     }
 
     std::string buildPawnIndicators(int tileIndex,
+                                    int jailIndex,
                                     const std::vector<Player>& players,
                                     const TurnManager& turnManager) {
         std::string result;
@@ -105,7 +104,7 @@ namespace {
                 continue;
             }
 
-            if (tileIndex == JAIL_INDEX) {
+            if (tileIndex == jailIndex) {
                 result += "V:" + std::to_string(i + 1);
                 continue;
             }
@@ -177,6 +176,10 @@ namespace {
     }
 
     std::string tileHeader(const Tile* tile) {
+        if (tile == nullptr) {
+            return "??";
+        }
+
         std::string displayIndex = std::to_string(tile->getIndex() + 1);
         if (tile->getIndex() + 1 < 10) {
             displayIndex = "0" + displayIndex;
@@ -190,7 +193,9 @@ std::string BoardRenderer::colorize(const std::string& text, const std::string& 
     return ansiCode + text + ANSI::RESET;
 }
 
-void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
+void BoardRenderer::renderLegend(const Board& board, const std::vector<Player>& players) const {
+    (void)board;
+
     std::cout << "\n";
     std::cout << makeLegendBorder() << "\n";
     std::cout << makeLegendRow(" LEGENDA KEPEMILIKAN & STATUS") << "\n";
@@ -213,7 +218,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << "\n";
     std::cout << " ^/^^/^^^/^^^^ : Rumah level 1-4\n";
     std::cout << " *             : Hotel\n";
-    std::cout << " NN KODE       : Nomor petak 1-40 dan kode petak\n";
+    std::cout << " NN KODE       : Nomor dan kode petak\n";
     std::cout << " PN            : Properti milik pemain N\n";
     std::cout << " FN            : Festival aktif xN pada properti\n";
     std::cout << " N / (N)       : Bidak pemain, (N) = giliran aktif\n";
@@ -239,17 +244,23 @@ void BoardRenderer::render(const Board& board,
                            const TurnManager& turnManager) {
     initColorMap(colorMap);
 
-    auto makeSeparator = []() -> std::string {
+    const int tileCount = board.getTileCount();
+    const bool hasSquareTileCount = tileCount >= 20 && tileCount <= 60 && tileCount % 4 == 0;
+    const Tile* jailTile = board.getTile("PEN");
+    const int jailIndex = jailTile == nullptr ? -1 : jailTile->getIndex();
+
+    auto makeRowSeparator = [](int sideTileCount) -> std::string {
         std::string separator = "+";
-        for (int i = 0; i < SIDE_SIZE; ++i) {
+        for (int column = 0; column <= sideTileCount; ++column) {
             separator += std::string(CELL_WIDTH, '-') + "+";
         }
         return separator;
     };
 
-    auto makeSideRowSeparator = [innerWidth = (CELL_WIDTH + 1) * 9 - 1]() -> std::string {
+    auto makeMiddleSeparator = [](int sideTileCount) -> std::string {
+        const int middleWidth = (sideTileCount - 1) * (CELL_WIDTH + 1) - 1;
         return "+" + std::string(CELL_WIDTH, '-') + "+"
-            + std::string(innerWidth, ' ') + "+"
+            + std::string(middleWidth, ' ') + "+"
             + std::string(CELL_WIDTH, '-') + "+";
     };
 
@@ -260,7 +271,7 @@ void BoardRenderer::render(const Board& board,
 
         std::string line1 = padToWidth(tileHeader(tile), CELL_WIDTH);
         std::string propertyStatus = buildPropertyStatus(tile, players);
-        std::string pawns = buildPawnIndicators(tileIndex, players, turnManager);
+        std::string pawns = buildPawnIndicators(tileIndex, jailIndex, players, turnManager);
         std::string line2 = propertyStatus.empty() ? pawns : propertyStatus + " " + pawns;
 
         return std::make_pair(
@@ -269,48 +280,6 @@ void BoardRenderer::render(const Board& board,
         );
     };
 
-    std::vector<int> topRow;
-    std::vector<int> leftCol;
-    std::vector<int> rightCol;
-    std::vector<int> bottomRow;
-
-    for (int i = 20; i <= 30; ++i) {
-        topRow.push_back(i);
-    }
-
-    for (int i = 19; i >= 11; --i) {
-        leftCol.push_back(i);
-    }
-
-    for (int i = 31; i <= 39; ++i) {
-        rightCol.push_back(i);
-    }
-    rightCol.push_back(0);
-
-    for (int i = 10; i >= 0; --i) {
-        bottomRow.push_back(i);
-    }
-
-    std::string separator = makeSeparator();
-    std::string sideRowSeparator = makeSideRowSeparator();
-
-    std::cout << separator << "\n";
-    std::cout << "|";
-    for (int tileIndex : topRow) {
-        std::pair<std::string, std::string> cell = renderCell(tileIndex);
-        std::cout << cell.first << "|";
-    }
-    std::cout << "\n";
-
-    std::cout << "|";
-    for (int tileIndex : topRow) {
-        std::pair<std::string, std::string> cell = renderCell(tileIndex);
-        std::cout << cell.second << "|";
-    }
-    std::cout << "\n";
-    std::cout << separator << "\n";
-
-    int innerWidth = (CELL_WIDTH + 1) * 9 - 1;
     int currentTurn = turnManager.getCurrentTurn();
     int maxTurn = turnManager.getMaxTurn();
     std::string activePlayer = "N/A";
@@ -319,10 +288,22 @@ void BoardRenderer::render(const Board& board,
         activePlayer = turnManager.getCurrentPlayer()->getUsername();
     }
 
-    auto centerText = [innerWidth](const std::string& text) -> std::string {
-        int totalPadding = innerWidth - static_cast<int>(text.size());
+    if (!hasSquareTileCount) {
+        std::cout << "\nBoard CLI dynamic membutuhkan 20-60 petak dan jumlahnya harus kelipatan 4 agar corner dan setiap sisi seimbang. Jumlah petak saat ini: "
+                  << tileCount << "\n";
+        renderLegend(board, players);
+        return;
+    }
+
+    const int sideTileCount = tileCount / 4;
+    const int middleWidth = (sideTileCount - 1) * (CELL_WIDTH + 1) - 1;
+    const std::string fullSeparator = makeRowSeparator(sideTileCount);
+    const std::string middleSeparator = makeMiddleSeparator(sideTileCount);
+
+    auto centerText = [middleWidth](const std::string& text) -> std::string {
+        int totalPadding = middleWidth - static_cast<int>(text.size());
         if (totalPadding < 0) {
-            return text.substr(0, innerWidth);
+            return text.substr(0, middleWidth);
         }
 
         int leftPadding = totalPadding / 2;
@@ -331,11 +312,11 @@ void BoardRenderer::render(const Board& board,
     };
 
     std::vector<std::string> panelLines;
-    panelLines.push_back(std::string(innerWidth, ' '));
+    panelLines.push_back(std::string(middleWidth, ' '));
     panelLines.push_back(centerText("=================================="));
     panelLines.push_back(centerText("||          NIMONSPOLI          ||"));
     panelLines.push_back(centerText("=================================="));
-    panelLines.push_back(std::string(innerWidth, ' '));
+    panelLines.push_back(std::string(middleWidth, ' '));
 
     std::string turnLine = "TURN " + std::to_string(currentTurn);
     if (maxTurn > 0) {
@@ -346,37 +327,63 @@ void BoardRenderer::render(const Board& board,
 
     panelLines.push_back(centerText(turnLine));
     panelLines.push_back(centerText("Giliran: " + activePlayer));
-    panelLines.push_back(std::string(innerWidth, ' '));
-    panelLines.push_back(std::string(innerWidth, ' '));
+    panelLines.push_back(centerText("Jumlah petak: " + std::to_string(tileCount)));
+    panelLines.push_back(std::string(middleWidth, ' '));
 
-    for (int row = 0; row < 9; ++row) {
-        std::pair<std::string, std::string> leftCell = renderCell(leftCol[row]);
-        std::pair<std::string, std::string> rightCell = renderCell(rightCol[row]);
-        std::string panel = panelLines[row];
+    auto renderFullRow = [&](const std::vector<int>& tileIndices) {
+        std::vector<std::pair<std::string, std::string> > cells;
+        cells.reserve(tileIndices.size());
 
-        std::cout << "|" << leftCell.first << "|" << panel << "|" << rightCell.first << "|\n";
-        std::cout << "|" << leftCell.second << "|" << std::string(innerWidth, ' ')
-                  << "|" << rightCell.second << "|\n";
-        if (row < 8) {
-            std::cout << sideRowSeparator << "\n";
+        for (int tileIndex : tileIndices) {
+            cells.push_back(renderCell(tileIndex));
         }
+
+        for (int line = 0; line < 2; ++line) {
+            std::cout << "|";
+            for (const std::pair<std::string, std::string>& cell : cells) {
+                std::cout << (line == 0 ? cell.first : cell.second) << "|";
+            }
+            std::cout << "\n";
+        }
+    };
+
+    std::vector<int> topRow;
+    topRow.reserve(sideTileCount + 1);
+    for (int column = 0; column <= sideTileCount; ++column) {
+        topRow.push_back(2 * sideTileCount + column);
     }
 
-    std::cout << separator << "\n";
-    std::cout << "|";
-    for (int tileIndex : bottomRow) {
-        std::pair<std::string, std::string> cell = renderCell(tileIndex);
-        std::cout << cell.first << "|";
+    std::vector<int> bottomRow;
+    bottomRow.reserve(sideTileCount + 1);
+    for (int column = 0; column <= sideTileCount; ++column) {
+        bottomRow.push_back(sideTileCount - column);
     }
-    std::cout << "\n";
 
-    std::cout << "|";
-    for (int tileIndex : bottomRow) {
-        std::pair<std::string, std::string> cell = renderCell(tileIndex);
-        std::cout << cell.second << "|";
+    std::cout << fullSeparator << "\n";
+    renderFullRow(topRow);
+    std::cout << fullSeparator << "\n";
+
+    for (int row = 1; row < sideTileCount; ++row) {
+        const int leftIndex = 2 * sideTileCount - row;
+        const int rightIndex = 3 * sideTileCount + row;
+        std::pair<std::string, std::string> leftCell = renderCell(leftIndex);
+        std::pair<std::string, std::string> rightCell = renderCell(rightIndex);
+        const int panelStart = (row - 1) * 2;
+        const std::string panelLine1 = panelStart < static_cast<int>(panelLines.size())
+            ? padToWidth(panelLines[panelStart], middleWidth)
+            : std::string(middleWidth, ' ');
+        const std::string panelLine2 = panelStart + 1 < static_cast<int>(panelLines.size())
+            ? padToWidth(panelLines[panelStart + 1], middleWidth)
+            : std::string(middleWidth, ' ');
+
+        std::cout << "|" << leftCell.first << "|" << panelLine1 << "|" << rightCell.first << "|\n";
+        std::cout << "|" << leftCell.second << "|" << panelLine2
+                  << "|" << rightCell.second << "|\n";
+        std::cout << (row == sideTileCount - 1 ? fullSeparator : middleSeparator) << "\n";
     }
-    std::cout << "\n";
-    std::cout << separator << "\n";
 
-    renderLegend(players);
+    renderFullRow(bottomRow);
+    std::cout << fullSeparator << "\n";
+
+    renderLegend(board, players);
 }
