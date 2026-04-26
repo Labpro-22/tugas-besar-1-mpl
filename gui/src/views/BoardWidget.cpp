@@ -500,24 +500,18 @@ void BoardWidget::drawBuildings(QPainter &p, const QRect &board, int cs, int es)
             continue;
         }
 
-        const QString assetName = buildingAssetName(building.buildingLevel);
-        const QPixmap& asset = pix(assetName);
-
         p.setPen(Qt::NoPen);
         p.setBrush(QColor(143, 168, 216, 52));
         p.drawEllipse(iconRect.adjusted(2, size - size / 5, -2, 3));
 
-        if (!asset.isNull()) {
-            drawPix(p, asset, iconRect);
-        } else {
-            p.setBrush(building.buildingLevel >= 5 ? QColor(30, 94, 170) : QColor(42, 154, 78));
-            p.setPen(QPen(Pal::line, 1));
-            p.drawRoundedRect(iconRect, 3, 3);
-            QFont font(QStringLiteral("Trebuchet MS"), qMax(7, size / 3), QFont::Black);
-            p.setFont(font);
-            p.setPen(Qt::white);
-            p.drawText(iconRect, Qt::AlignCenter, building.buildingLevel >= 5 ? QStringLiteral("H") : QString::number(building.buildingLevel));
-        }
+        p.setBrush(Qt::white);
+        p.setPen(QPen(QColor(42, 55, 72), qMax(1, size / 16)));
+        p.drawRoundedRect(iconRect, 3, 3);
+
+        QFont font(QStringLiteral("Trebuchet MS"), qMax(7, size / 3), QFont::Black);
+        p.setFont(font);
+        p.setPen(QColor(42, 55, 72));
+        p.drawText(iconRect, Qt::AlignCenter, building.buildingLevel >= 5 ? QStringLiteral("H") : QString::number(building.buildingLevel));
     }
 
     p.restore();

@@ -15,13 +15,14 @@
 
 namespace {
 
-const QColor kPanelTop(241, 237, 226);
-const QColor kPanelBottom(223, 215, 196);
-const QColor kCardPaper(250, 249, 245);
-const QColor kCardBorder(22, 22, 22);
-const QColor kCardShadow(0, 0, 0, 46);
-const QColor kBodyText(18, 18, 18);
-const QColor kMutedText(56, 56, 56);
+const QColor kPanelTop(248, 250, 252);
+const QColor kPanelBottom(248, 250, 252);
+const QColor kCardPaper(255, 255, 255);
+const QColor kCardBorder(215, 225, 238);
+const QColor kCardShadow(15, 23, 42, 26);
+const QColor kBodyText(15, 23, 42);
+const QColor kMutedText(100, 116, 139);
+const QColor kSoftFill(248, 250, 252);
 const QColor kHouseGreen(44, 182, 97);
 const QColor kHotelRed(255, 90, 94);
 
@@ -95,19 +96,19 @@ void drawLabelValueRow(
     bool compact = false
 )
 {
-    QFont labelFont(QStringLiteral("Trebuchet MS"), compact ? 11 : 12, QFont::DemiBold);
+    QFont labelFont(QStringLiteral("Trebuchet MS"), compact ? 9 : 10, QFont::DemiBold);
     painter.setFont(labelFont);
     painter.setPen(kBodyText);
     painter.drawText(rowRect.adjusted(0, 0, -6, 0), Qt::AlignLeft | Qt::AlignVCenter, leftLabel);
 
-    QFont valueFont(QStringLiteral("Trebuchet MS"), compact ? 11 : 12, QFont::DemiBold);
+    QFont valueFont(QStringLiteral("Trebuchet MS"), compact ? 9 : 10, QFont::Black);
     painter.setFont(valueFont);
     painter.drawText(rowRect.adjusted(6, 0, 0, 0), Qt::AlignRight | Qt::AlignVCenter, value);
 }
 
 qreal ownershipBadgeReserve(const QRectF& cardRect)
 {
-    return cardRect.height() * 0.15;
+    return cardRect.height() * 0.13;
 }
 
 QFont fittedSingleLineFont(
@@ -217,14 +218,11 @@ void PropertyCardWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    QLinearGradient panelGradient(rect().topLeft(), rect().bottomLeft());
-    panelGradient.setColorAt(0.0, kPanelTop);
-    panelGradient.setColorAt(1.0, kPanelBottom);
-    painter.fillRect(rect(), panelGradient);
+    painter.fillRect(rect(), kPanelTop);
 
-    const QRectF panel = rect().adjusted(14, 14, -14, -14);
-    qreal cardWidth = qMin(panel.width(), panel.height() * (0.67));
-    qreal cardHeight = cardWidth * 1.46;
+    const QRectF panel = rect().adjusted(12, 12, -12, -12);
+    qreal cardWidth = qMin(panel.width(), panel.height() * (0.70));
+    qreal cardHeight = cardWidth * 1.40;
     if (cardHeight > panel.height()) {
         cardHeight = panel.height();
         cardWidth = cardHeight / 1.46;
@@ -266,11 +264,11 @@ void PropertyCardWidget::drawCardBase(QPainter& painter, const QRectF& cardRect)
     painter.save();
     painter.setPen(Qt::NoPen);
     painter.setBrush(kCardShadow);
-    painter.drawRect(cardRect.translated(4, 5));
+    painter.drawRoundedRect(cardRect.translated(0, 5), 18, 18);
 
-    painter.setPen(QPen(kCardBorder, 2.2));
+    painter.setPen(QPen(kCardBorder, 1.2));
     painter.setBrush(kCardPaper);
-    painter.drawRect(cardRect);
+    painter.drawRoundedRect(cardRect, 18, 18);
     painter.restore();
 }
 
@@ -282,26 +280,26 @@ void PropertyCardWidget::drawPropertyCard(
 {
     painter.save();
 
-    const QRectF inner = cardRect.adjusted(14, 14, -14, -14 - ownershipBadgeReserve(cardRect));
-    const QRectF headerRect(inner.left(), inner.top(), inner.width(), inner.height() * 0.22);
-    const QRectF bodyRect(inner.left(), headerRect.bottom() + 12, inner.width(), inner.height() * 0.50);
-    const QRectF footerRect(inner.left(), bodyRect.bottom() + 10, inner.width(), inner.bottom() - bodyRect.bottom() - 10);
+    const QRectF inner = cardRect.adjusted(18, 18, -18, -16 - ownershipBadgeReserve(cardRect));
+    const QRectF headerRect(inner.left(), inner.top(), inner.width(), inner.height() * 0.20);
+    const QRectF bodyRect(inner.left(), headerRect.bottom() + 12, inner.width(), inner.height() * 0.52);
+    const QRectF footerRect(inner.left(), bodyRect.bottom() + 12, inner.width(), inner.bottom() - bodyRect.bottom() - 12);
 
     const QColor groupColor = MonopolyUi::colorFromGroup(property.getColorGroup(), QColor(128, 128, 128));
-    painter.setPen(QPen(kCardBorder, 1.8));
+    painter.setPen(Qt::NoPen);
     painter.setBrush(groupColor);
-    painter.drawRect(headerRect);
+    painter.drawRoundedRect(headerRect, 13, 13);
 
-    QFont deedFont(QStringLiteral("Trebuchet MS"), qMax(10, int(cardRect.width() * 0.045)), QFont::Black);
+    QFont deedFont(QStringLiteral("Trebuchet MS"), qMax(8, int(cardRect.width() * 0.032)), QFont::Black);
     painter.setFont(deedFont);
     painter.setPen(groupColor.lightnessF() < 0.55 ? Qt::white : kBodyText);
-    painter.drawText(headerRect.adjusted(0, 9, 0, -10), Qt::AlignHCenter | Qt::AlignTop, QStringLiteral("TITLE DEED"));
+    painter.drawText(headerRect.adjusted(0, 8, 0, -10), Qt::AlignHCenter | Qt::AlignTop, QStringLiteral("PROPERTY"));
 
     const QString title = propertyTitle(property);
-    const QRectF titleRect = headerRect.adjusted(8, headerRect.height() * 0.35, -8, -8);
+    const QRectF titleRect = headerRect.adjusted(10, headerRect.height() * 0.34, -10, -8);
     QFont titleFont = fittedSingleLineFont(
         QStringLiteral("Trebuchet MS"),
-        qMax(15, int(cardRect.width() * 0.09)),
+        qMax(16, int(cardRect.width() * 0.075)),
         12,
         QFont::Black,
         title,
@@ -317,10 +315,14 @@ void PropertyCardWidget::drawPropertyCard(
     const QString valueBase = MonopolyUi::formatCurrency(property.getRentAtLevel(0) * rentMultiplier);
     const QString valueSet = MonopolyUi::formatCurrency(property.getRentAtLevel(0) * 2 * rentMultiplier);
 
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(kSoftFill);
+    painter.drawRoundedRect(bodyRect.adjusted(-8, -4, 8, 4), 12, 12);
+
     auto drawRentWithToken = [&](int rowIndex, const QString& value, int houses, bool hotel) {
         const QRectF rowRect(bodyRect.left(), bodyRect.top() + rowIndex * rowHeight, bodyRect.width(), rowHeight);
         const QString prefix = QStringLiteral("Rent with");
-        QFont labelFont(QStringLiteral("Trebuchet MS"), qMax(10, int(cardRect.width() * 0.052)), QFont::DemiBold);
+        QFont labelFont(QStringLiteral("Trebuchet MS"), qMax(9, int(cardRect.width() * 0.04)), QFont::DemiBold);
         painter.setFont(labelFont);
         painter.setPen(kBodyText);
 
@@ -333,8 +335,8 @@ void PropertyCardWidget::drawPropertyCard(
         const QRectF iconRect(
             labelRect.left() + prefixWidth + 6,
             rowRect.center().y() - rowRect.height() * 0.24,
-            rowRect.height() * 0.56,
-            rowRect.height() * 0.56
+            rowRect.height() * 0.48,
+            rowRect.height() * 0.48
         );
         if (hotel) {
             drawHouseGlyph(painter, iconRect, kHotelRed);
@@ -342,7 +344,7 @@ void PropertyCardWidget::drawPropertyCard(
             drawHouseGlyph(painter, iconRect, kHouseGreen, QString::number(houses));
         }
 
-        QFont valueFont(QStringLiteral("Trebuchet MS"), qMax(11, int(cardRect.width() * 0.055)), QFont::DemiBold);
+        QFont valueFont(QStringLiteral("Trebuchet MS"), qMax(10, int(cardRect.width() * 0.043)), QFont::Black);
         painter.setFont(valueFont);
         painter.drawText(rowRect.adjusted(10, 0, 0, 0), Qt::AlignRight | Qt::AlignVCenter, value);
         Q_UNUSED(textY);
@@ -356,14 +358,14 @@ void PropertyCardWidget::drawPropertyCard(
     drawRentWithToken(5, MonopolyUi::formatCurrency(property.getRentAtLevel(4) * rentMultiplier), 4, false);
     drawRentWithToken(6, MonopolyUi::formatCurrency(property.getRentAtLevel(5) * rentMultiplier), 0, true);
 
-    painter.setPen(QPen(QColor(80, 80, 80), 1.2));
+    painter.setPen(QPen(QColor(226, 232, 240), 1.2));
     painter.drawLine(
         QPointF(footerRect.left(), footerRect.top() + 4),
         QPointF(footerRect.right(), footerRect.top() + 4)
     );
 
-    const QRectF houseRow(footerRect.left(), footerRect.top() + 18, footerRect.width(), footerRect.height() * 0.25);
-    const QRectF hotelRow(footerRect.left(), houseRow.bottom() + 8, footerRect.width(), footerRect.height() * 0.25);
+    const QRectF houseRow(footerRect.left(), footerRect.top() + 14, footerRect.width(), footerRect.height() * 0.25);
+    const QRectF hotelRow(footerRect.left(), houseRow.bottom() + 4, footerRect.width(), footerRect.height() * 0.25);
     drawLabelValueRow(
         painter,
         houseRow,
@@ -377,7 +379,7 @@ void PropertyCardWidget::drawPropertyCard(
         QStringLiteral("%1 each").arg(MonopolyUi::formatCurrency(property.getHotelCost()))
     );
 
-    QFont noteFont(QStringLiteral("Trebuchet MS"), qMax(8, int(cardRect.width() * 0.035)), QFont::Normal);
+    QFont noteFont(QStringLiteral("Trebuchet MS"), qMax(7, int(cardRect.width() * 0.028)), QFont::DemiBold);
     painter.setFont(noteFont);
     painter.setPen(kMutedText);
     painter.drawText(
@@ -397,7 +399,7 @@ void PropertyCardWidget::drawRailroadCard(
 {
     painter.save();
 
-    const QRectF inner = cardRect.adjusted(14, 16, -14, -16 - ownershipBadgeReserve(cardRect));
+    const QRectF inner = cardRect.adjusted(18, 18, -18, -16 - ownershipBadgeReserve(cardRect));
     const QRectF iconRect(
         inner.left() + inner.width() * 0.18,
         inner.top() + inner.height() * 0.03,
@@ -409,7 +411,7 @@ void PropertyCardWidget::drawRailroadCard(
 
     drawContainedPixmap(painter, iconRect, uiAsset(QStringLiteral("railroad_icon.png")));
 
-    QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(14, int(cardRect.width() * 0.075)), QFont::Black);
+    QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(14, int(cardRect.width() * 0.064)), QFont::Black);
     painter.setFont(titleFont);
     painter.setPen(kBodyText);
     painter.drawText(titleRect, Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap, propertyTitle(property));
@@ -429,6 +431,9 @@ void PropertyCardWidget::drawRailroadCard(
     };
 
     const qreal rowHeight = bodyRect.height() / labels.size();
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(kSoftFill);
+    painter.drawRoundedRect(bodyRect.adjusted(-8, -4, 8, 4), 12, 12);
     for (int i = 0; i < static_cast<int>(labels.size()); ++i) {
         const QRectF row(bodyRect.left(), bodyRect.top() + i * rowHeight, bodyRect.width(), rowHeight);
         drawLabelValueRow(painter, row, labels[i], MonopolyUi::formatCurrency(values[i]), true);
@@ -445,7 +450,7 @@ void PropertyCardWidget::drawUtilityCard(
 {
     painter.save();
 
-    const QRectF inner = cardRect.adjusted(14, 18, -14, -18 - ownershipBadgeReserve(cardRect));
+    const QRectF inner = cardRect.adjusted(18, 18, -18, -16 - ownershipBadgeReserve(cardRect));
     const QRectF iconRect(
         inner.left() + inner.width() * 0.22,
         inner.top() + inner.height() * 0.01,
@@ -460,7 +465,7 @@ void PropertyCardWidget::drawUtilityCard(
         : QStringLiteral("waterworks_icon.png");
     drawContainedPixmap(painter, iconRect, uiAsset(assetName));
 
-    QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(14, int(cardRect.width() * 0.075)), QFont::Black);
+    QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(14, int(cardRect.width() * 0.064)), QFont::Black);
     painter.setFont(titleFont);
     painter.setPen(kBodyText);
     painter.drawText(titleRect, Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap, propertyTitle(property));
@@ -469,7 +474,11 @@ void PropertyCardWidget::drawUtilityCard(
     const int singleUtility = utilityMultipliers.count(1) ? utilityMultipliers.at(1) : 4;
     const int bothUtilities = utilityMultipliers.count(2) ? utilityMultipliers.at(2) : 10;
 
-    QFont bodyFont(QStringLiteral("Trebuchet MS"), qMax(10, int(cardRect.width() * 0.048)), QFont::DemiBold);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(kSoftFill);
+    painter.drawRoundedRect(textRect.adjusted(-8, -6, 8, 6), 12, 12);
+
+    QFont bodyFont(QStringLiteral("Trebuchet MS"), qMax(9, int(cardRect.width() * 0.038)), QFont::DemiBold);
     painter.setFont(bodyFont);
     painter.setPen(kBodyText);
     painter.drawText(
@@ -518,9 +527,9 @@ void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& car
 
     const QRectF badgeRect(
         cardRect.left() + cardRect.width() * 0.08,
-        cardRect.bottom() - cardRect.height() * 0.13,
+        cardRect.bottom() - cardRect.height() * 0.115,
         cardRect.width() * 0.84,
-        cardRect.height() * 0.088
+        cardRect.height() * 0.078
     );
 
     QColor accent = ownerAccentColor.isValid() ? ownerAccentColor : QColor(34, 34, 34);
@@ -528,21 +537,21 @@ void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& car
         accent = QColor(70, 78, 88);
     }
 
-    painter.setPen(QPen(kCardBorder, 1.4));
-    painter.setBrush(QColor(255, 255, 255, 232));
-    painter.drawRoundedRect(badgeRect, 5, 5);
+    painter.setPen(Qt::NoPen);
+    painter.setBrush(kSoftFill);
+    painter.drawRoundedRect(badgeRect, 10, 10);
 
-    const QRectF stripe(badgeRect.left(), badgeRect.top(), badgeRect.width(), qMax<qreal>(5.0, badgeRect.height() * 0.18));
+    const QRectF stripe(badgeRect.left(), badgeRect.top(), 6, badgeRect.height());
     painter.setPen(Qt::NoPen);
     painter.setBrush(accent);
-    painter.drawRect(stripe);
+    painter.drawRoundedRect(stripe, 3, 3);
 
-    const QRectF ownerTextRect = badgeRect.adjusted(8, 5, -8, -badgeRect.height() * 0.42);
-    const QRectF statusTextRect = badgeRect.adjusted(8, badgeRect.height() * 0.48, -8, -3);
+    const QRectF ownerTextRect = badgeRect.adjusted(16, 5, -10, -badgeRect.height() * 0.42);
+    const QRectF statusTextRect = badgeRect.adjusted(16, badgeRect.height() * 0.48, -10, -3);
 
     QFont ownerFont = fittedSingleLineFont(
         QStringLiteral("Trebuchet MS"),
-        qMax(8, int(cardRect.width() * 0.034)),
+        qMax(8, int(cardRect.width() * 0.03)),
         7,
         QFont::Black,
         ownerText,
@@ -556,7 +565,7 @@ void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& car
 
     QFont statusFont = fittedSingleLineFont(
         QStringLiteral("Trebuchet MS"),
-        qMax(7, int(cardRect.width() * 0.028)),
+        qMax(7, int(cardRect.width() * 0.024)),
         6,
         QFont::DemiBold,
         statusText,

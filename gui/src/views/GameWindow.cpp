@@ -64,6 +64,26 @@ QString shortPlayerLabel(const QString& username)
     return (pieces.front().left(1) + pieces.back().left(1)).toUpper();
 }
 
+QString playerStatusLabel(const PlayerOverview& player)
+{
+    if (player.isBankrupt) {
+        return QStringLiteral("BANKRUPT");
+    }
+    if (player.isInJail) {
+        return QStringLiteral("JAIL");
+    }
+    if (player.hasTakenActionThisTurn) {
+        return QStringLiteral("DONE");
+    }
+    if (player.hasUsedSkillThisTurn) {
+        return QStringLiteral("SKILL");
+    }
+    if (player.hasRolledThisTurn || player.hasRolledMovementDiceThisTurn) {
+        return QStringLiteral("ROLL");
+    }
+    return QStringLiteral("READY");
+}
+
 QString historyAccentColor(const HistoryEntryView& entry)
 {
     const QString action = entry.actionType.toUpper();
@@ -520,6 +540,22 @@ GameWindow::GameWindow(QWidget* parent)
         "  border: 1px solid #d7e1ee;"
         "  border-radius: 18px;"
         "}"
+        "#playerRosterTitle { color:#66809e; font:900 8.5pt 'Trebuchet MS'; letter-spacing:0.5px; }"
+        "#playerRosterRow, #playerRosterRowActive {"
+        "  border: none;"
+        "  border-radius: 8px;"
+        "  padding: 0;"
+        "}"
+        "#playerRosterRow { background: transparent; }"
+        "#playerRosterRow:hover { background: #f3f6fb; }"
+        "#playerRosterRowActive { background: #251f3a; }"
+        "#playerRosterRowActive:hover { background: #302848; }"
+        "#playerRosterName { color:#172033; font:900 9.5pt 'Trebuchet MS'; }"
+        "#playerRosterNameActive { color:#ffffff; font:900 9.5pt 'Trebuchet MS'; }"
+        "#playerRosterMoney { color:#172033; font:900 9.5pt 'Trebuchet MS'; }"
+        "#playerRosterMoneyActive { color:#ffffff; font:900 9.5pt 'Trebuchet MS'; }"
+        "#playerRosterStatus { color:#7b8794; font:900 6.5pt 'Trebuchet MS'; }"
+        "#playerRosterStatusActive { color:#f8c84d; font:900 6.5pt 'Trebuchet MS'; }"
         "#playerAvatar {"
         "  border: none;"
         "  border-radius: 12px;"
@@ -536,6 +572,7 @@ GameWindow::GameWindow(QWidget* parent)
         "  background: transparent;"
         "  border: none;"
         "}"
+        "#historySection { background: transparent; border: none; border-radius: 0; }"
         "#historyTitle { color:#020617; font:900 12pt 'Trebuchet MS'; }"
         "#historyFilter { color:#22c55e; font:900 8pt 'Courier New'; }"
         "#historyScroll {"
@@ -652,8 +689,33 @@ QWidget* GameWindow::buildGamePage()
     auto* playerHeader = new QFrame(sidebarPanel);
     playerHeader->setObjectName(QStringLiteral("playerHeader"));
     auto* playerHeaderLayout = new QVBoxLayout(playerHeader);
-    playerHeaderLayout->setContentsMargins(20, 16, 20, 16);
-    playerHeaderLayout->setSpacing(10);
+    playerHeaderLayout->setContentsMargins(16, 14, 16, 14);
+    playerHeaderLayout->setSpacing(6);
+
+    auto* rosterHeaderRow = new QHBoxLayout();
+    rosterHeaderRow->setContentsMargins(0, 0, 0, 0);
+    rosterHeaderRow->setSpacing(8);
+    playerHeaderLayout->addLayout(rosterHeaderRow);
+
+    auto* rosterTitle = new QLabel(QStringLiteral("All players"), playerHeader);
+    rosterTitle->setObjectName(QStringLiteral("playerRosterTitle"));
+    rosterHeaderRow->addWidget(rosterTitle);
+    rosterHeaderRow->addStretch(1);
+
+    playerTurnLabel = new QLabel(QStringLiteral("Turn: 1"), playerHeader);
+    playerTurnLabel->setObjectName(QStringLiteral("playerRosterTitle"));
+    playerTurnLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    rosterHeaderRow->addWidget(playerTurnLabel);
+
+    playerRosterLayout = new QVBoxLayout();
+    playerRosterLayout->setContentsMargins(0, 0, 0, 0);
+    playerRosterLayout->setSpacing(3);
+    playerHeaderLayout->addLayout(playerRosterLayout);
+
+    auto* rosterDivider = new QFrame(playerHeader);
+    rosterDivider->setObjectName(QStringLiteral("cardDivider"));
+    rosterDivider->setFixedHeight(1);
+    playerHeaderLayout->addWidget(rosterDivider);
 
     auto* playerTopRow = new QHBoxLayout();
     playerTopRow->setContentsMargins(0, 0, 0, 0);
@@ -673,10 +735,12 @@ QWidget* GameWindow::buildGamePage()
     auto* currentPlayerCaption = new QLabel(QStringLiteral("Current player"), playerHeader);
     currentPlayerCaption->setObjectName(QStringLiteral("playerCaption"));
     playerTextColumn->addWidget(currentPlayerCaption);
+    currentPlayerCaption->hide();
 
     playerNameLabel = new QLabel(QStringLiteral("Player"), playerHeader);
     playerNameLabel->setObjectName(QStringLiteral("playerName"));
     playerTextColumn->addWidget(playerNameLabel);
+    playerNameLabel->hide();
 
     playerSwitchButton = new QToolButton(playerHeader);
     playerSwitchButton->setObjectName(QStringLiteral("playerSwitchButton"));
@@ -685,15 +749,19 @@ QWidget* GameWindow::buildGamePage()
     playerSwitchButton->setPopupMode(QToolButton::InstantPopup);
     playerSwitchButton->setCursor(Qt::PointingHandCursor);
     playerTopRow->addWidget(playerSwitchButton, 0, Qt::AlignTop | Qt::AlignRight);
+    playerSwitchButton->hide();
+    playerAvatarLabel->hide();
 
     auto* playerDivider = new QFrame(playerHeader);
     playerDivider->setObjectName(QStringLiteral("cardDivider"));
     playerDivider->setFixedHeight(1);
     playerHeaderLayout->addWidget(playerDivider);
+    playerDivider->hide();
 
     auto* balanceCaption = new QLabel(QStringLiteral("Balance"), playerHeader);
     balanceCaption->setObjectName(QStringLiteral("playerCaption"));
     playerHeaderLayout->addWidget(balanceCaption);
+    balanceCaption->hide();
 
     auto* balanceRow = new QHBoxLayout();
     balanceRow->setContentsMargins(0, 0, 0, 0);
@@ -703,6 +771,7 @@ QWidget* GameWindow::buildGamePage()
     playerMoneyLabel = new QLabel(QStringLiteral("M 0"), playerHeader);
     playerMoneyLabel->setObjectName(QStringLiteral("playerMoney"));
     balanceRow->addWidget(playerMoneyLabel, 1);
+    playerMoneyLabel->hide();
 
     auto* statsSection = new QFrame(playerHeader);
     statsSection->setObjectName(QStringLiteral("statsSection"));
@@ -726,13 +795,14 @@ QWidget* GameWindow::buildGamePage()
     hotelCountLabel->setObjectName(QStringLiteral("statLabelSecondary"));
     statsLayout->addWidget(hotelCountLabel);
     balanceRow->addWidget(statsSection, 0, Qt::AlignBottom);
+    statsSection->hide();
 
     sidebarLayout->addWidget(playerHeader, 0);
 
     auto* portfolioSection = new QFrame(sidebarPanel);
     portfolioSection->setObjectName(QStringLiteral("portfolioSection"));
     auto* portfolioLayout = new QVBoxLayout(portfolioSection);
-    portfolioLayout->setContentsMargins(20, 16, 20, 14);
+    portfolioLayout->setContentsMargins(16, 14, 16, 14);
     portfolioLayout->setSpacing(8);
 
     auto* portfolioHeaderRow = new QHBoxLayout();
@@ -749,7 +819,22 @@ QWidget* GameWindow::buildGamePage()
 
     portfolioWidget = new PropertyPortfolioWidget(portfolioSection);
     portfolioWidget->setFixedHeight(104);
-    portfolioLayout->addWidget(portfolioWidget, 1);
+    portfolioWidget->hide();
+
+    auto* propertySummaryScroll = new QScrollArea(portfolioSection);
+    propertySummaryScroll->setWidgetResizable(true);
+    propertySummaryScroll->setFrameShape(QFrame::NoFrame);
+    propertySummaryScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    propertySummaryScroll->setStyleSheet(QStringLiteral("background:transparent;border:none;"));
+
+    auto* propertySummaryContent = new QWidget(propertySummaryScroll);
+    propertySummaryContent->setStyleSheet(QStringLiteral("background:transparent;"));
+    propertySummaryLayout = new QVBoxLayout(propertySummaryContent);
+    propertySummaryLayout->setContentsMargins(0, 0, 0, 0);
+    propertySummaryLayout->setSpacing(5);
+    propertySummaryLayout->addStretch(1);
+    propertySummaryScroll->setWidget(propertySummaryContent);
+    portfolioLayout->addWidget(propertySummaryScroll, 1);
     sidebarLayout->addWidget(portfolioSection, 0);
 
     auto* divider = new QFrame(sidebarPanel);
@@ -797,8 +882,8 @@ QWidget* GameWindow::buildGamePage()
     auto* historySection = new QFrame(sidebarPanel);
     historySection->setObjectName(QStringLiteral("historySection"));
     auto* historySectionLayout = new QVBoxLayout(historySection);
-    historySectionLayout->setContentsMargins(20, 16, 20, 16);
-    historySectionLayout->setSpacing(8);
+    historySectionLayout->setContentsMargins(12, 10, 12, 10);
+    historySectionLayout->setSpacing(6);
 
     historyHeaderFrame = new QFrame(historySection);
     historyHeaderFrame->setObjectName(QStringLiteral("historyHeaderFrame"));
@@ -827,7 +912,7 @@ QWidget* GameWindow::buildGamePage()
     historyContent->setStyleSheet(QStringLiteral("background:#ffffff;"));
     historyEntriesLayout = new QVBoxLayout(historyContent);
     historyEntriesLayout->setContentsMargins(0, 0, 0, 0);
-    historyEntriesLayout->setSpacing(8);
+    historyEntriesLayout->setSpacing(4);
     historyEntriesLayout->addStretch(1);
     historyScroll->setWidget(historyContent);
     historySectionLayout->addWidget(historyScroll, 1);
@@ -1031,6 +1116,7 @@ void GameWindow::startNewGame()
     properties = session.getConfigData().getPropertyConfigs();
     propertyCardWidget->setConfigData(session.getConfigData());
     finishDialogShown = false;
+    turnOrderPositionByPlayer.clear();
     selectedPropertyId = 0;
     selectedPlayerUsername.clear();
 
@@ -1058,6 +1144,7 @@ void GameWindow::loadGameFromPicker()
     properties = session.getConfigData().getPropertyConfigs();
     propertyCardWidget->setConfigData(session.getConfigData());
     finishDialogShown = false;
+    turnOrderPositionByPlayer.clear();
     selectedPropertyId = 0;
     selectedPlayerUsername.clear();
 
@@ -1379,6 +1466,13 @@ void GameWindow::refreshViewModels()
     const GameState gameState = session.snapshot();
     activePlayerUsername = QString::fromStdString(gameState.getActivePlayerUsername());
 
+    if (turnOrderPositionByPlayer.isEmpty()) {
+        const std::vector<std::string>& turnOrder = gameState.getTurnOrder();
+        for (int index = 0; index < static_cast<int>(turnOrder.size()); ++index) {
+            turnOrderPositionByPlayer.insert(QString::fromStdString(turnOrder[static_cast<std::size_t>(index)]), index + 1);
+        }
+    }
+
     int playerIndex = 0;
     for (const Player& player : session.getPlayers()) {
         const QString username = QString::fromStdString(player.getUsername());
@@ -1390,6 +1484,8 @@ void GameWindow::refreshViewModels()
             username,
             pawnAssetNameForPlayer(username),
             accentColorForPlayer(username),
+            turnOrderPositionByPlayer.value(username, playerIndex + 1),
+            playerIndex + 1,
             player.getBalance(),
             player.getPosition(),
             static_cast<int>(player.getHand().size()),
@@ -1399,7 +1495,8 @@ void GameWindow::refreshViewModels()
             player.hasRolledThisTurn(),
             player.hasRolledMovementDiceThisTurn(),
             player.hasUsedSkillThisTurn(),
-            player.hasTakenActionThisTurn()
+            player.hasTakenActionThisTurn(),
+            player.isBankrupt()
         });
         ++playerIndex;
     }
@@ -1461,6 +1558,15 @@ void GameWindow::refreshSidebar()
 
 void GameWindow::refreshPlayerHeader()
 {
+    if (playerRosterLayout != nullptr) {
+        while (QLayoutItem* item = playerRosterLayout->takeAt(0)) {
+            if (item->widget() != nullptr) {
+                item->widget()->deleteLater();
+            }
+            delete item;
+        }
+    }
+
     const PlayerOverview* player = playerOverviewByUsername(selectedPlayerUsername);
     if (player == nullptr) {
         playerNameLabel->setText(QStringLiteral("Belum ada pemain"));
@@ -1471,7 +1577,93 @@ void GameWindow::refreshPlayerHeader()
         if (roomPlayersLabel != nullptr) {
             roomPlayersLabel->setText(QStringLiteral("0 players"));
         }
+        if (playerTurnLabel != nullptr) {
+            playerTurnLabel->setText(QStringLiteral("Turn: 0"));
+        }
         return;
+    }
+
+    if (playerRosterLayout != nullptr) {
+        QVector<PlayerOverview> orderedPlayers = playerOverviews;
+        std::sort(orderedPlayers.begin(), orderedPlayers.end(), [](const PlayerOverview& left, const PlayerOverview& right) {
+            return left.turnOrderPosition < right.turnOrderPosition;
+        });
+
+        for (const PlayerOverview& overview : orderedPlayers) {
+            auto* row = new QFrame(sidebarPanel);
+            row->setObjectName(overview.isCurrentTurn ? QStringLiteral("playerRosterRowActive")
+                                                       : QStringLiteral("playerRosterRow"));
+            row->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+            row->setMinimumHeight(40);
+            row->setMaximumHeight(40);
+
+            auto* rowLayout = new QHBoxLayout(row);
+            rowLayout->setContentsMargins(8, 4, 10, 4);
+            rowLayout->setSpacing(8);
+
+            auto* activeMarker = new QFrame(row);
+            activeMarker->setFixedSize(4, 28);
+            activeMarker->setStyleSheet(QStringLiteral(
+                "background:%1;"
+                "border-radius:2px;"
+            ).arg(overview.isCurrentTurn ? QStringLiteral("#55e15c") : QStringLiteral("transparent")));
+            rowLayout->addWidget(activeMarker, 0, Qt::AlignVCenter);
+
+            auto* avatar = new QLabel(QString::number(overview.turnOrderPosition), row);
+            avatar->setAlignment(Qt::AlignCenter);
+            avatar->setFixedSize(28, 28);
+            const QColor accent = overview.accentColor.isValid() ? overview.accentColor : QColor(90, 190, 240);
+            avatar->setStyleSheet(QStringLiteral(
+                "background:%1;"
+                "border-radius:14px;"
+                "color:white;"
+                "font:900 8pt 'Trebuchet MS';"
+            ).arg(accent.name()));
+            rowLayout->addWidget(avatar, 0, Qt::AlignVCenter);
+
+            auto* nameColumn = new QVBoxLayout();
+            nameColumn->setContentsMargins(0, 0, 0, 0);
+            nameColumn->setSpacing(0);
+            rowLayout->addLayout(nameColumn, 1);
+
+            auto* nameLabel = new QLabel(overview.name, row);
+            nameLabel->setObjectName(overview.isCurrentTurn ? QStringLiteral("playerRosterNameActive")
+                                                            : QStringLiteral("playerRosterName"));
+            nameColumn->addWidget(nameLabel);
+
+            auto* statusLabel = new QLabel(
+                overview.isCurrentTurn
+                    ? QStringLiteral("ACTIVE")
+                    : playerStatusLabel(overview),
+                row
+            );
+            statusLabel->setObjectName(overview.isCurrentTurn ? QStringLiteral("playerRosterStatusActive")
+                                                              : QStringLiteral("playerRosterStatus"));
+            nameColumn->addWidget(statusLabel);
+
+            if (overview.isInJail) {
+                auto* jailBadge = new QLabel(QStringLiteral("JAIL"), row);
+                jailBadge->setAlignment(Qt::AlignCenter);
+                jailBadge->setFixedSize(34, 18);
+                jailBadge->setStyleSheet(QStringLiteral(
+                    "background:#fee2e2;"
+                    "color:#b91c1c;"
+                    "border-radius:5px;"
+                    "font:900 6.5pt 'Trebuchet MS';"));
+                rowLayout->addWidget(jailBadge, 0, Qt::AlignVCenter);
+            }
+
+            auto* moneyLabel = new QLabel(
+                QStringLiteral("M %1").arg(QLocale(QLocale::English).toString(overview.balance)),
+                row
+            );
+            moneyLabel->setObjectName(overview.isCurrentTurn ? QStringLiteral("playerRosterMoneyActive")
+                                                             : QStringLiteral("playerRosterMoney"));
+            moneyLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+            rowLayout->addWidget(moneyLabel, 0, Qt::AlignVCenter);
+
+            playerRosterLayout->addWidget(row);
+        }
     }
 
     playerNameLabel->setText(player->name);
@@ -1479,6 +1671,9 @@ void GameWindow::refreshPlayerHeader()
     playerSwitchButton->setText(QStringLiteral("Turn %1").arg(session.getCurrentTurn()));
     if (roomPlayersLabel != nullptr) {
         roomPlayersLabel->setText(QStringLiteral("%1 players").arg(playerOverviews.size()));
+    }
+    if (playerTurnLabel != nullptr) {
+        playerTurnLabel->setText(QStringLiteral("Turn: %1").arg(session.getCurrentTurn()));
     }
 
     playerAvatarLabel->setPixmap(QPixmap());
@@ -1542,13 +1737,122 @@ void GameWindow::refreshPortfolio()
 
     if (propertyOwnedLabel != nullptr) {
         int ownedCount = 0;
-        for (const PortfolioPropertyView& property : playerPortfolio) {
-            if (property.owned) {
+        int houseCount = 0;
+        int hotelCount = 0;
+        for (const PropertyConfig& property : properties) {
+            const PropertyViewState* state = propertyStateForId(property.getId());
+            if (state != nullptr && !state->ownerUsername.isEmpty() && state->ownerUsername != QStringLiteral("BANK")) {
                 ++ownedCount;
             }
+            if (state != nullptr && property.getPropertyType() == PropertyType::STREET) {
+                if (state->buildingLevel >= 5) {
+                    ++hotelCount;
+                } else {
+                    houseCount += qMax(0, state->buildingLevel);
+                }
+            }
         }
-        propertyOwnedLabel->setText(QStringLiteral("%1 / %2 owned").arg(ownedCount).arg(playerPortfolio.size()));
+        propertyOwnedLabel->setText(QStringLiteral("%1 / %2 owned | House %3 | Hotel %4")
+            .arg(ownedCount)
+            .arg(properties.size())
+            .arg(houseCount)
+            .arg(hotelCount));
     }
+
+    if (propertySummaryLayout == nullptr) {
+        return;
+    }
+
+    while (QLayoutItem* item = propertySummaryLayout->takeAt(0)) {
+        if (item->widget() != nullptr) {
+            item->widget()->deleteLater();
+        }
+        delete item;
+    }
+
+    for (const PropertyConfig& property : properties) {
+        const PropertyViewState* state = propertyStateForId(property.getId());
+        const QString ownerName = state == nullptr || state->ownerUsername.isEmpty()
+            ? QStringLiteral("BANK")
+            : state->ownerUsername;
+        const bool ownedByPlayer = ownerName != QStringLiteral("BANK");
+
+        QString buildInfo = QStringLiteral("Land");
+        if (property.getPropertyType() == PropertyType::STREET) {
+            const int level = state == nullptr ? 0 : state->buildingLevel;
+            if (level >= 5) {
+                buildInfo = QStringLiteral("Hotel");
+            } else if (level > 0) {
+                buildInfo = QStringLiteral("%1 House").arg(level);
+            }
+        } else if (property.getPropertyType() == PropertyType::RAILROAD) {
+            buildInfo = QStringLiteral("Station");
+        } else if (property.getPropertyType() == PropertyType::UTILITY) {
+            buildInfo = QStringLiteral("Utility");
+        }
+
+        auto* row = new QFrame(sidebarPanel);
+        row->setStyleSheet(QStringLiteral(
+            "QFrame { background:%1; border:none; border-radius:8px; }")
+            .arg(ownedByPlayer ? QStringLiteral("#f8fafc") : QStringLiteral("#ffffff")));
+
+        auto* rowLayout = new QHBoxLayout(row);
+        rowLayout->setContentsMargins(8, 6, 8, 6);
+        rowLayout->setSpacing(8);
+
+        const QColor propertyColor = MonopolyUi::colorFromGroup(property.getColorGroup(), QColor(160, 203, 223));
+        auto* colorStrip = new QFrame(row);
+        colorStrip->setFixedSize(5, 30);
+        colorStrip->setStyleSheet(QStringLiteral(
+            "background:%1; border-radius:2px;")
+            .arg(propertyColor.name()));
+        rowLayout->addWidget(colorStrip, 0, Qt::AlignVCenter);
+
+        auto* textColumn = new QVBoxLayout();
+        textColumn->setContentsMargins(0, 0, 0, 0);
+        textColumn->setSpacing(0);
+        rowLayout->addLayout(textColumn, 1);
+
+        auto* nameLabel = new QLabel(MonopolyUi::singleLineTileName(property.getName()), row);
+        nameLabel->setStyleSheet(QStringLiteral("color:#0f172a;font:900 8.5pt 'Trebuchet MS';"));
+        nameLabel->setWordWrap(false);
+        textColumn->addWidget(nameLabel);
+
+        auto* ownerLabel = new QLabel(
+            QStringLiteral("%1 | %2").arg(ownerName, buildInfo),
+            row
+        );
+        ownerLabel->setStyleSheet(QStringLiteral("color:#64748b;font:800 7.2pt 'Trebuchet MS';"));
+        textColumn->addWidget(ownerLabel);
+
+        if (property.getPropertyType() == PropertyType::STREET && state != nullptr && state->buildingLevel > 0) {
+            auto* buildBadge = new QLabel(
+                state->buildingLevel >= 5
+                    ? QStringLiteral("HOTEL")
+                    : QStringLiteral("HOUSE x%1").arg(state->buildingLevel),
+                row
+            );
+            buildBadge->setAlignment(Qt::AlignCenter);
+            buildBadge->setMinimumWidth(62);
+            buildBadge->setFixedHeight(20);
+            buildBadge->setStyleSheet(QStringLiteral(
+                "background:#fff7cc;"
+                "color:#735900;"
+                "border:none;"
+                "border-radius:6px;"
+                "font:900 6.8pt 'Trebuchet MS';"));
+            rowLayout->addWidget(buildBadge, 0, Qt::AlignVCenter);
+        }
+
+        auto* codeLabel = new QLabel(QString::fromStdString(property.getCode()), row);
+        codeLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        codeLabel->setStyleSheet(QStringLiteral("color:#3b5f91;font:900 7.5pt 'Trebuchet MS';"));
+        rowLayout->addWidget(codeLabel, 0, Qt::AlignVCenter);
+
+        propertySummaryLayout->addWidget(row);
+    }
+
+    propertySummaryLayout->addStretch(1);
 }
 
 void GameWindow::refreshStats()
@@ -1569,7 +1873,7 @@ void GameWindow::refreshHistory()
     if (historyEntries.isEmpty()) {
         auto* emptyLabel = new QLabel(QStringLiteral("Belum ada transaksi yang tercatat."), sidebarPanel);
         emptyLabel->setWordWrap(true);
-        emptyLabel->setStyleSheet(QStringLiteral("color:#66727d;font:700 8pt 'Trebuchet MS';padding:12px 10px;"));
+        emptyLabel->setStyleSheet(QStringLiteral("color:#66727d;font:700 8pt 'Trebuchet MS';padding:6px 2px;"));
         historyEntriesLayout->addWidget(emptyLabel);
         historyEntriesLayout->addStretch(1);
         return;
@@ -1578,14 +1882,13 @@ void GameWindow::refreshHistory()
     for (auto it = historyEntries.cbegin(); it != historyEntries.cend(); ++it) {
         auto* entryFrame = new QFrame(sidebarPanel);
         entryFrame->setStyleSheet(QStringLiteral(
-            "background: #ffffff;"
-            "border: 1px solid #d8e2ef;"
-            "border-radius: 12px;"
+            "background: transparent;"
+            "border: none;"
         ));
 
         auto* entryLayout = new QVBoxLayout(entryFrame);
-        entryLayout->setContentsMargins(12, 8, 12, 8);
-        entryLayout->setSpacing(3);
+        entryLayout->setContentsMargins(0, 2, 0, 4);
+        entryLayout->setSpacing(1);
 
         auto* metaLabel = new QLabel(
             QStringLiteral("Turn %1 | %2 | %3")
@@ -1594,13 +1897,18 @@ void GameWindow::refreshHistory()
                 .arg(it->actionType),
             entryFrame
         );
-        metaLabel->setStyleSheet(QStringLiteral("color:#66809e;font:700 7pt 'Trebuchet MS';"));
+        metaLabel->setStyleSheet(QStringLiteral("color:#66809e;font:800 6.8pt 'Trebuchet MS';"));
         entryLayout->addWidget(metaLabel);
 
         auto* detailLabel = new QLabel(it->detail, entryFrame);
         detailLabel->setWordWrap(true);
-        detailLabel->setStyleSheet(QStringLiteral("color:#020617;font:700 10pt 'Trebuchet MS';"));
+        detailLabel->setStyleSheet(QStringLiteral("color:#020617;font:800 8.6pt 'Trebuchet MS';"));
         entryLayout->addWidget(detailLabel);
+
+        auto* separator = new QFrame(entryFrame);
+        separator->setFixedHeight(1);
+        separator->setStyleSheet(QStringLiteral("background:#e7edf5;border:none;"));
+        entryLayout->addWidget(separator);
 
         historyEntriesLayout->addWidget(entryFrame);
     }
@@ -2250,11 +2558,11 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     QDialog dialog(this, Qt::Dialog | Qt::WindowTitleHint | Qt::WindowCloseButtonHint);
     dialog.setWindowTitle(QStringLiteral("Property Available"));
     dialog.setModal(true);
-    dialog.resize(430, 720);
+    dialog.resize(430, 690);
 
     auto* layout = new QVBoxLayout(&dialog);
     layout->setContentsMargins(14, 14, 14, 14);
-    layout->setSpacing(12);
+    layout->setSpacing(10);
 
     auto* card = new PropertyCardWidget(&dialog);
     card->setConfigData(session.getConfigData());
@@ -2274,43 +2582,42 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     auto* info = new QLabel(purchaseText, &dialog);
     info->setWordWrap(true);
     info->setAlignment(Qt::AlignCenter);
-    info->setStyleSheet(QStringLiteral("color:#17232d;font:800 10pt 'Trebuchet MS';"));
+    info->setStyleSheet(QStringLiteral("color:#334155;font:800 9pt 'Trebuchet MS';"));
     layout->addWidget(info);
 
     auto* buttonRow = new QHBoxLayout();
-    buttonRow->setSpacing(12);
+    buttonRow->setSpacing(10);
     layout->addLayout(buttonRow);
 
     auto* payButton = new QPushButton(QStringLiteral("PAY"), &dialog);
-    payButton->setMinimumHeight(52);
+    payButton->setMinimumHeight(44);
     payButton->setCursor(Qt::PointingHandCursor);
     payButton->setEnabled(player.canAfford(finalPrice));
 
     auto* auctionButton = new QPushButton(QStringLiteral("AUCTION"), &dialog);
-    auctionButton->setMinimumHeight(52);
+    auctionButton->setMinimumHeight(44);
     auctionButton->setCursor(Qt::PointingHandCursor);
 
     buttonRow->addWidget(payButton);
     buttonRow->addWidget(auctionButton);
 
     dialog.setStyleSheet(QStringLiteral(
-        "QDialog { background:#e3dece; }"
+        "QDialog { background:#f8fafc; }"
         "QPushButton {"
-        "  border-radius: 10px;"
-        "  padding: 10px 18px;"
-        "  font: 900 11pt 'Trebuchet MS';"
-        "  letter-spacing: 1px;"
+        "  border-radius: 8px;"
+        "  padding: 8px 16px;"
+        "  font: 900 10pt 'Trebuchet MS';"
         "}"
         "QPushButton:enabled {"
-        "  background:#1159c7;"
+        "  background:#251f3a;"
         "  color:white;"
-        "  border:1px solid #0d49a4;"
+        "  border:1px solid #251f3a;"
         "}"
-        "QPushButton:enabled:hover { background:#1d6ee6; }"
+        "QPushButton:enabled:hover { background:#31284a; }"
         "QPushButton:disabled {"
-        "  background:#d8dde3;"
-        "  color:#8d99a6;"
-        "  border:1px solid #c3cad2;"
+        "  background:#e7edf5;"
+        "  color:#94a3b8;"
+        "  border:1px solid #d7e1ee;"
         "}"
     ));
 
@@ -2477,12 +2784,12 @@ void GameWindow::updateResponsiveLayout()
     const int shellMargin = std::clamp(windowWidth / 110, 8, 16);
     const int boardInset = std::clamp(windowWidth / 150, 6, 12);
     const int shellSpacing = std::clamp(windowWidth / 115, 10, 16);
-    const int sidebarWidth = std::clamp(static_cast<int>(windowWidth * 0.235), 300, 360);
+    const int sidebarWidth = std::clamp(static_cast<int>(windowWidth * 0.265), 390, 500);
     const int avatarSize = std::clamp(windowHeight / 13, 50, 62);
     const bool compactSidebar = windowHeight < 820;
-    const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 8 : 6), compactSidebar ? 102 : 125, compactSidebar ? 126 : 160);
-    const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 7 : 5), compactSidebar ? 112 : 135, compactSidebar ? 138 : 175);
-    const int historyMinHeight = std::clamp(windowHeight / (compactSidebar ? 7 : 5), compactSidebar ? 96 : 130, compactSidebar ? 135 : 210);
+    const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 5 : 4), compactSidebar ? 145 : 170, compactSidebar ? 185 : 250);
+    const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 4 : 3), compactSidebar ? 180 : 220, compactSidebar ? 230 : 310);
+    const int historyMinHeight = std::clamp(windowHeight / (compactSidebar ? 9 : 7), compactSidebar ? 86 : 105, compactSidebar ? 115 : 150);
     const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 22 : 18), compactSidebar ? 34 : 38, compactSidebar ? 40 : 48);
     const int actionIcon = std::clamp(actionHeight / 3, compactSidebar ? 13 : 15, compactSidebar ? 16 : 19);
     const int actionFont = std::clamp(actionHeight / 8, compactSidebar ? 7 : 8, compactSidebar ? 8 : 9);
