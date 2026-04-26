@@ -245,7 +245,6 @@ void BoardRenderer::render(const Board& board,
     initColorMap(colorMap);
 
     const int tileCount = board.getTileCount();
-    const bool hasSquareTileCount = tileCount >= 20 && tileCount <= 60 && tileCount % 4 == 0;
     const Tile* jailTile = board.getTile("PEN");
     const int jailIndex = jailTile == nullptr ? -1 : jailTile->getIndex();
 
@@ -286,13 +285,6 @@ void BoardRenderer::render(const Board& board,
 
     if (turnManager.getCurrentPlayer() != nullptr) {
         activePlayer = turnManager.getCurrentPlayer()->getUsername();
-    }
-
-    if (!hasSquareTileCount) {
-        std::cout << "\nBoard CLI dynamic membutuhkan 20-60 petak dan jumlahnya harus kelipatan 4 agar corner dan setiap sisi seimbang. Jumlah petak saat ini: "
-                  << tileCount << "\n";
-        renderLegend(board, players);
-        return;
     }
 
     const int sideTileCount = tileCount / 4;

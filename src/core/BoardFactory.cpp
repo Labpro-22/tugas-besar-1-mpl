@@ -152,12 +152,14 @@ namespace {
         if (boardTileCount < 20 || boardTileCount > 60) {
             throw ConfigException(
                 source,
-                "jumlah petak papan harus berada pada rentang 20..60");
+                "jumlah petak papan harus berada pada rentang 20..60. Jumlah saat ini: " +
+                    std::to_string(boardTileCount));
         }
         if (boardTileCount % 4 != 0) {
             throw ConfigException(
                 source,
-                "jumlah petak papan harus berbentuk 4n + 4, yaitu kelipatan 4");
+                "jumlah petak papan harus kelipatan 4 agar corner dan setiap sisi seimbang. Jumlah saat ini: " +
+                    std::to_string(boardTileCount));
         }
     }
 
