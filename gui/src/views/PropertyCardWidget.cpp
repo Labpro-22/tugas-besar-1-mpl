@@ -105,6 +105,32 @@ void drawLabelValueRow(
     painter.drawText(rowRect.adjusted(6, 0, 0, 0), Qt::AlignRight | Qt::AlignVCenter, value);
 }
 
+qreal ownershipBadgeReserve(const QRectF& cardRect)
+{
+    return cardRect.height() * 0.15;
+}
+
+QFont fittedSingleLineFont(
+    const QString& family,
+    int desiredPointSize,
+    int minimumPointSize,
+    int weight,
+    const QString& text,
+    qreal availableWidth
+)
+{
+    int pointSize = desiredPointSize;
+    while (pointSize > minimumPointSize) {
+        QFont font(family, pointSize, weight);
+        if (QFontMetrics(font).horizontalAdvance(text) <= availableWidth) {
+            return font;
+        }
+        --pointSize;
+    }
+
+    return QFont(family, minimumPointSize, weight);
+}
+
 }  // namespace
 
 PropertyCardWidget::PropertyCardWidget(QWidget *parent)
@@ -252,7 +278,7 @@ void PropertyCardWidget::drawPropertyCard(
 {
     painter.save();
 
-    const QRectF inner = cardRect.adjusted(14, 14, -14, -14);
+    const QRectF inner = cardRect.adjusted(14, 14, -14, -14 - ownershipBadgeReserve(cardRect));
     const QRectF headerRect(inner.left(), inner.top(), inner.width(), inner.height() * 0.22);
     const QRectF bodyRect(inner.left(), headerRect.bottom() + 12, inner.width(), inner.height() * 0.50);
     const QRectF footerRect(inner.left(), bodyRect.bottom() + 10, inner.width(), inner.bottom() - bodyRect.bottom() - 10);
@@ -355,7 +381,7 @@ void PropertyCardWidget::drawRailroadCard(
 {
     painter.save();
 
-    const QRectF inner = cardRect.adjusted(14, 16, -14, -16);
+    const QRectF inner = cardRect.adjusted(14, 16, -14, -16 - ownershipBadgeReserve(cardRect));
     const QRectF iconRect(
         inner.left() + inner.width() * 0.18,
         inner.top() + inner.height() * 0.03,
@@ -403,7 +429,7 @@ void PropertyCardWidget::drawUtilityCard(
 {
     painter.save();
 
-    const QRectF inner = cardRect.adjusted(14, 18, -14, -18);
+    const QRectF inner = cardRect.adjusted(14, 18, -14, -18 - ownershipBadgeReserve(cardRect));
     const QRectF iconRect(
         inner.left() + inner.width() * 0.22,
         inner.top() + inner.height() * 0.01,
@@ -471,9 +497,9 @@ void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& car
 
     const QRectF badgeRect(
         cardRect.left() + cardRect.width() * 0.08,
-        cardRect.bottom() - cardRect.height() * 0.145,
+        cardRect.bottom() - cardRect.height() * 0.13,
         cardRect.width() * 0.84,
-        cardRect.height() * 0.095
+        cardRect.height() * 0.088
     );
 
     QColor accent = ownerAccentColor.isValid() ? ownerAccentColor : QColor(34, 34, 34);
@@ -490,15 +516,36 @@ void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& car
     painter.setBrush(accent);
     painter.drawRect(stripe);
 
-    QFont ownerFont(QStringLiteral("Trebuchet MS"), qMax(8, int(cardRect.width() * 0.034)), QFont::Black);
+    const QRectF ownerTextRect = badgeRect.adjusted(8, 5, -8, -badgeRect.height() * 0.42);
+    const QRectF statusTextRect = badgeRect.adjusted(8, badgeRect.height() * 0.48, -8, -3);
+
+    QFont ownerFont = fittedSingleLineFont(
+        QStringLiteral("Trebuchet MS"),
+        qMax(8, int(cardRect.width() * 0.034)),
+        7,
+        QFont::Black,
+        ownerText,
+        ownerTextRect.width());
     painter.setFont(ownerFont);
     painter.setPen(kBodyText);
-    painter.drawText(badgeRect.adjusted(8, 5, -8, -badgeRect.height() * 0.42), Qt::AlignCenter, ownerText);
+    painter.drawText(
+        ownerTextRect,
+        Qt::AlignCenter,
+        QFontMetrics(ownerFont).elidedText(ownerText, Qt::ElideRight, int(ownerTextRect.width())));
 
-    QFont statusFont(QStringLiteral("Trebuchet MS"), qMax(7, int(cardRect.width() * 0.028)), QFont::DemiBold);
+    QFont statusFont = fittedSingleLineFont(
+        QStringLiteral("Trebuchet MS"),
+        qMax(7, int(cardRect.width() * 0.028)),
+        6,
+        QFont::DemiBold,
+        statusText,
+        statusTextRect.width());
     painter.setFont(statusFont);
     painter.setPen(kMutedText);
-    painter.drawText(badgeRect.adjusted(8, badgeRect.height() * 0.48, -8, -3), Qt::AlignCenter, statusText);
+    painter.drawText(
+        statusTextRect,
+        Qt::AlignCenter,
+        QFontMetrics(statusFont).elidedText(statusText, Qt::ElideRight, int(statusTextRect.width())));
 
     painter.restore();
 }
