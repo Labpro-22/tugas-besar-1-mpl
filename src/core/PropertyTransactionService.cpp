@@ -318,7 +318,7 @@ void PropertyTransactionService::handleRentPayment(
         return;
     }
 
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         if (io != nullptr) {
             io->showMessage("[SHIELD ACTIVE]: Alhamdulillah, ShieldCard melindungimu dari tagihan sewa!");
         }

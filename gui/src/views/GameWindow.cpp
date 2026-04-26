@@ -25,6 +25,7 @@
 #include <QRegularExpression>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QSet>
 #include <QSpinBox>
 #include <QStackedWidget>
@@ -36,6 +37,7 @@
 #include "models/state/GameState.hpp"
 #include "models/state/LogEntry.hpp"
 #include "models/state/PropertyState.hpp"
+#include "models/cards/SkillCard.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/SaveManager.hpp"
@@ -115,6 +117,24 @@ bool isUsernameDuplicate(const QStringList& names, const QString& candidate)
         }
     }
     return false;
+}
+
+bool hasUsableSkillCardForCurrentState(const Player& player)
+{
+    for (SkillCard* card : player.getHand()) {
+        if (card != nullptr && (!player.isJailed() || card->canUseWhileJailed())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool canUseSkillBeforeMovementDice(const Player& player)
+{
+    return !player.hasUsedSkillThisTurn() &&
+        !player.hasRolledThisTurn() &&
+        !player.hasRolledMovementDiceThisTurn() &&
+        hasUsableSkillCardForCurrentState(player);
 }
 
 void centerDialog(QDialog& dialog, QWidget* parent)
@@ -1377,6 +1397,7 @@ void GameWindow::refreshViewModels()
             username == activePlayerUsername,
             player.isJailed(),
             player.hasRolledThisTurn(),
+            player.hasRolledMovementDiceThisTurn(),
             player.hasUsedSkillThisTurn(),
             player.hasTakenActionThisTurn()
         });
@@ -1395,6 +1416,8 @@ void GameWindow::refreshViewModels()
             viewState.buildingLevel = propertyState.getBuildingLevel() == "H"
                 ? 5
                 : QString::fromStdString(propertyState.getBuildingLevel()).toInt();
+            viewState.festivalMultiplier = propertyState.getFestivalMultiplier();
+            viewState.festivalDuration = propertyState.getFestivalDuration();
             propertyStateById.insert(property.getId(), viewState);
             break;
         }
@@ -1552,7 +1575,7 @@ void GameWindow::refreshHistory()
         return;
     }
 
-    for (auto it = historyEntries.crbegin(); it != historyEntries.crend(); ++it) {
+    for (auto it = historyEntries.cbegin(); it != historyEntries.cend(); ++it) {
         auto* entryFrame = new QFrame(sidebarPanel);
         entryFrame->setStyleSheet(QStringLiteral(
             "background: #ffffff;"
@@ -1583,6 +1606,11 @@ void GameWindow::refreshHistory()
     }
 
     historyEntriesLayout->addStretch(1);
+    QTimer::singleShot(0, this, [this]() {
+        if (historyScroll != nullptr && historyScroll->verticalScrollBar() != nullptr) {
+            historyScroll->verticalScrollBar()->setValue(historyScroll->verticalScrollBar()->maximum());
+        }
+    });
 }
 
 void GameWindow::refreshBoardPawns()
@@ -1618,7 +1646,9 @@ void GameWindow::refreshBoardPawns()
             it.key() - 1,
             ownerUsername,
             accentColorForPlayer(ownerUsername),
-            it.value().mortgaged
+            it.value().mortgaged,
+            it.value().festivalMultiplier,
+            it.value().festivalDuration
         });
     }
     boardWidget->setOwners(ownerData);
@@ -1638,7 +1668,9 @@ void GameWindow::refreshSelectedPropertyDetails()
         ownerUsername,
         ownerUsername == QStringLiteral("BANK") ? QColor(70, 78, 88) : accentColorForPlayer(ownerUsername),
         state != nullptr && state->mortgaged,
-        state == nullptr ? 0 : state->buildingLevel
+        state == nullptr ? 0 : state->buildingLevel,
+        state == nullptr ? 1 : state->festivalMultiplier,
+        state == nullptr ? 0 : state->festivalDuration
     );
 }
 
@@ -1649,17 +1681,15 @@ void GameWindow::refreshActionAvailability()
     const bool hasGame = session.isReady() && currentPlayerOverview != nullptr && currentPlayer != nullptr && !session.isGameEnded();
     const bool canRoll = hasGame && !currentPlayerOverview->hasRolledThisTurn &&
         !(currentPlayerOverview->isInJail && currentPlayer->getJailTurns() > 3);
+    const bool canManageAssets = hasGame && !currentPlayerOverview->isInJail;
 
     rollButton->setEnabled(canRoll);
     setDiceButton->setEnabled(canRoll);
-    useSkillButton->setEnabled(hasGame && !currentPlayerOverview->hasUsedSkillThisTurn &&
-        !currentPlayerOverview->hasRolledThisTurn &&
-        !currentPlayerOverview->hasTakenActionThisTurn &&
-        !currentPlayer->getHand().empty());
+    useSkillButton->setEnabled(hasGame && canUseSkillBeforeMovementDice(*currentPlayer));
     payFineButton->setEnabled(hasGame && currentPlayerOverview->isInJail);
-    buildButton->setEnabled(hasGame);
-    mortgageButton->setEnabled(hasGame);
-    redeemButton->setEnabled(hasGame);
+    buildButton->setEnabled(canManageAssets);
+    mortgageButton->setEnabled(canManageAssets);
+    redeemButton->setEnabled(canManageAssets);
     saveButton->setEnabled(hasGame && !currentPlayerOverview->hasTakenActionThisTurn);
 }
 
@@ -1775,7 +1805,9 @@ void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& pr
         ownerUsername,
         ownerUsername == QStringLiteral("BANK") ? QColor(70, 78, 88) : accentColorForPlayer(ownerUsername),
         state != nullptr && state->mortgaged,
-        state == nullptr ? 0 : state->buildingLevel
+        state == nullptr ? 0 : state->buildingLevel,
+        state == nullptr ? 1 : state->festivalMultiplier,
+        state == nullptr ? 0 : state->festivalDuration
     );
     layout->addWidget(card, 1);
 
@@ -2202,8 +2234,11 @@ int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int
 bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile& property)
 {
     const int propertyId = property.getIndex() + 1;
+    const int originalPrice = property.getBuyPrice();
+    const int finalPrice = player.getDiscountedAmount(originalPrice);
+
     if (propertyConfigForId(propertyId) == nullptr) {
-        return player.canAfford(property.getBuyPrice());
+        return player.canAfford(finalPrice);
     }
 
     selectedPlayerUsername = QString::fromStdString(player.getUsername());
@@ -2227,13 +2262,16 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     card->setOwnershipInfo(QStringLiteral("BANK"), QColor(70, 78, 88), false, 0);
     layout->addWidget(card, 1);
 
-    auto* info = new QLabel(
-        QStringLiteral("%1 dapat membeli %2 seharga %3.")
-            .arg(QString::fromStdString(player.getUsername()))
-            .arg(MonopolyUi::singleLineTileName(property.getName()))
-            .arg(MonopolyUi::formatCurrency(property.getBuyPrice())),
-        &dialog
-    );
+    QString purchaseText = QStringLiteral("%1 dapat membeli %2 seharga %3.")
+        .arg(QString::fromStdString(player.getUsername()))
+        .arg(MonopolyUi::singleLineTileName(property.getName()))
+        .arg(MonopolyUi::formatCurrency(finalPrice));
+    if (finalPrice != originalPrice) {
+        purchaseText += QStringLiteral("\nDiskon aktif dari harga awal %1.")
+            .arg(MonopolyUi::formatCurrency(originalPrice));
+    }
+
+    auto* info = new QLabel(purchaseText, &dialog);
     info->setWordWrap(true);
     info->setAlignment(Qt::AlignCenter);
     info->setStyleSheet(QStringLiteral("color:#17232d;font:800 10pt 'Trebuchet MS';"));
@@ -2246,7 +2284,7 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     auto* payButton = new QPushButton(QStringLiteral("PAY"), &dialog);
     payButton->setMinimumHeight(52);
     payButton->setCursor(Qt::PointingHandCursor);
-    payButton->setEnabled(player.canAfford(property.getBuyPrice()));
+    payButton->setEnabled(player.canAfford(finalPrice));
 
     auto* auctionButton = new QPushButton(QStringLiteral("AUCTION"), &dialog);
     auctionButton->setMinimumHeight(52);

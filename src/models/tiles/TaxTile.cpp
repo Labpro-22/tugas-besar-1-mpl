@@ -70,7 +70,7 @@ void TaxTile::onLanded(Player& player, GameContext& gameContext) {
 }
 
 void TaxTile::applyTax(Player& player, GameContext& gameContext, int amountToPay, int choice) const {
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari pajak.");
         gameContext.logEvent(
             "PAJAK",

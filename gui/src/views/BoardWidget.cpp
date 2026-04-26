@@ -12,6 +12,7 @@
 #include <QPolygon>
 #include <QRegularExpression>
 #include <QStringList>
+#include <QtGui/QFontMetrics>
 #include <QtMath>
 
 #include <exception>
@@ -213,6 +214,27 @@ QString initialsForName(const QString& name)
         return parts.front().left(2).toUpper();
     }
     return (parts.front().left(1) + parts.back().left(1)).toUpper();
+}
+
+QFont fittedTextFont(
+    const QString& family,
+    int desiredPointSize,
+    int minimumPointSize,
+    int weight,
+    const QString& text,
+    const QRect& rect,
+    int flags
+)
+{
+    for (int pointSize = desiredPointSize; pointSize > minimumPointSize; --pointSize) {
+        QFont font(family, pointSize, weight);
+        const QRect bounds = QFontMetrics(font).boundingRect(rect, flags, text);
+        if (bounds.width() <= rect.width() && bounds.height() <= rect.height()) {
+            return font;
+        }
+    }
+
+    return QFont(family, minimumPointSize, weight);
 }
 }  // namespace
 
@@ -544,6 +566,29 @@ void BoardWidget::drawOwners(QPainter &p, const QRect &board, int cs, int es) co
             p.setPen(Qt::white);
             p.drawText(mortgageBadge, Qt::AlignCenter, QStringLiteral("M"));
         }
+
+        if (owner.festivalDuration > 0 && owner.festivalMultiplier > 1) {
+            const int festivalWidth = qMax(badgeHeight + 8, badgeHeight * 2);
+            int festivalLeft = badge.right() + 3 + (owner.mortgaged ? badgeHeight + 3 : 0);
+            int festivalTop = badge.top();
+            if (festivalLeft + festivalWidth > tile.right() - 4) {
+                festivalLeft = badge.left();
+                festivalTop = badge.top() - badgeHeight - 3;
+            }
+
+            const QRect festivalBadge(festivalLeft, festivalTop, festivalWidth, badgeHeight);
+            p.setPen(QPen(Pal::line, 1));
+            p.setBrush(QColor(255, 191, 54));
+            p.drawRoundedRect(festivalBadge, 4, 4);
+
+            QFont festivalFont(QStringLiteral("Trebuchet MS"), qMax(5, badgeHeight / 2), QFont::Black);
+            p.setFont(festivalFont);
+            p.setPen(QColor(38, 30, 0));
+            p.drawText(
+                festivalBadge,
+                Qt::AlignCenter,
+                QStringLiteral("x%1").arg(owner.festivalMultiplier));
+        }
     }
 
     p.restore();
@@ -849,18 +894,18 @@ void BoardWidget::drawCornerJail(QPainter &p, const QRect &r) const
 
     // "HANYA / MAMPIR" vertical text on right strip
     {
-        QFont sf("Arial", qMax(7,W/15), QFont::Bold);
+        QFont sf("Arial", qMax(5, W / 22), QFont::Bold);
         p.save();
-        p.translate(r.right()-W/8, r.center().y());
+        p.translate(r.right() - W / 6, r.center().y());
         p.rotate(-90);
         p.setFont(sf);
         p.setPen(Pal::ink);
-        p.drawText(QRect(-H/2+4, -W/8+2, H-8, W/4), Qt::AlignCenter|Qt::TextWordWrap, "HANYA\nMAMPIR");
+        p.drawText(QRect(-H / 2 + 6, -W / 9, H - 12, W / 4), Qt::AlignCenter | Qt::TextWordWrap, "HANYA\nMAMPIR");
         p.restore();
     }
 
     // Orange jail box (diagonal) with "DI / LAPAS"
-    int boxS = int(qMin(W,H)*0.62);
+    int boxS = int(qMin(W,H)*0.54);
     QRect jailBox(r.left()+4, r.top()+4, boxS, boxS);
     p.fillRect(jailBox, Pal::jailOr);
     p.setPen(QPen(Pal::line, 2));
@@ -986,7 +1031,7 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
     int topY  = lr.top() + (c.hasStrip ? stripH : 0);
     QRect content(lr.left()+4, topY+4, W-8, H - (c.hasStrip ? stripH : 0) - 8);
 
-    // Font sizes based on tile width (fonts not bold as per reference screenshot)
+    // Font sizes are fitted to the available tile text box so long city names stay readable.
     QFont nameFont("Arial", qMax(7, W/9), QFont::Bold);
     QFont priceFont("Arial", qMax(5, W/18), QFont::Bold);
 
@@ -996,14 +1041,30 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
         //    [price at bottom]
         // ─────────────────────────────────────────
         QRect nameR(content.left(), content.top() + 4, content.width(), content.height()*55/100);
+        nameFont = fittedTextFont(
+            QStringLiteral("Arial"),
+            qMax(6, W / 11),
+            4,
+            QFont::Bold,
+            c.name,
+            nameR,
+            Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap);
         p.setFont(nameFont);
         p.setPen(Pal::ink);
         p.drawText(nameR, Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap, c.name);
 
         if (!c.price.isEmpty()) {
+            QRect priceR(content.left(), content.bottom() - (content.height()/4), content.width(), content.height()/4);
+            priceFont = fittedTextFont(
+                QStringLiteral("Arial"),
+                qMax(5, W / 18),
+                5,
+                QFont::Bold,
+                priceText(c.price),
+                priceR,
+                Qt::AlignHCenter | Qt::AlignBottom);
             p.setFont(priceFont);
             p.setPen(Pal::ink);
-            QRect priceR(content.left(), content.bottom() - (content.height()/4), content.width(), content.height()/4);
             p.drawText(priceR, Qt::AlignHCenter | Qt::AlignBottom, priceText(c.price));
         }
 
@@ -1019,6 +1080,14 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
 
         // Name top
         QRect nameR(content.left(), content.top() + 4, content.width(), nameSectionH);
+        nameFont = fittedTextFont(
+            QStringLiteral("Arial"),
+            qMax(6, W / 11),
+            4,
+            QFont::Bold,
+            c.name,
+            nameR,
+            Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap);
         p.setFont(nameFont);
         p.setPen(Pal::ink);
         p.drawText(nameR, Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap, c.name);
@@ -1053,6 +1122,14 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
         // Price bottom
         if (!c.price.isEmpty()) {
             QRect priceR(content.left(), content.bottom() - priceSectionH, content.width(), priceSectionH);
+            priceFont = fittedTextFont(
+                QStringLiteral("Arial"),
+                qMax(5, W / 18),
+                5,
+                QFont::Bold,
+                priceText(c.price),
+                priceR,
+                Qt::AlignHCenter | Qt::AlignBottom);
             p.setFont(priceFont);
             p.setPen(Pal::ink);
             p.drawText(priceR, Qt::AlignHCenter | Qt::AlignBottom, priceText(c.price));

@@ -16,7 +16,7 @@ DoctorFeeCard::DoctorFeeCard(int amount)
       amount(amount) {}
 
 void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Alhamdulillah, kamu dapat berobat gratis dengan ShieldCard!");
         gameContext.showMessage(
             "Tagihan " + TextFormatter::formatMoney(amount) +
@@ -66,6 +66,12 @@ void DoctorFeeCard::execute(Player& player, GameContext& gameContext) {
         const bool settled = bankruptcyHandler->handleBankruptcy(player, nullptr, amountToPay, gameContext);
         if (!settled && gameContext.getIO() != nullptr) {
             gameContext.getIO()->showMessage("Pembayaran biaya dokter dibatalkan. Tagihan belum terselesaikan.");
+        }
+        if (settled && !player.isBankrupt()) {
+            gameContext.logEvent(
+                "KARTU",
+                player.getUsername() + " membayar DoctorFeeCard " +
+                    TextFormatter::formatMoney(amountToPay) + " ke Bank setelah likuidasi.");
         }
         return;
     }

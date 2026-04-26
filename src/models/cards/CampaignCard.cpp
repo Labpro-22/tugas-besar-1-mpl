@@ -15,7 +15,7 @@ CampaignCard::CampaignCard(int amount)
       amount(amount) {}
 
 void CampaignCard::execute(Player& player, GameContext& gameContext) {
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         gameContext.showMessage(
             "[SHIELD ACTIVE]: Alhamdulillah, kamu berhasil melakukan kampanye gratis dengan ShieldCard!");
         gameContext.logEvent(

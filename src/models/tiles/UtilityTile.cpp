@@ -20,7 +20,7 @@ void UtilityTile::onLanded(Player& player, GameContext& gameContext) {
         gameContext.showMessage("Kamu mendarat di " + getName() + "!");
         gameContext.showMessage("Belum ada yang menginjaknya duluan, " + getName() + " kini menjadi milikmu!");
         gameContext.logEvent(
-            "UTILITY",
+            "BELI",
             getName() + " kini milik " + player.getUsername() + " (otomatis)");
     } else {
         gameContext.triggerRentEvent(player, *this);

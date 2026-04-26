@@ -133,7 +133,7 @@ void StreetTile::setBuildingLevel(int level) {
 }
 
 void StreetTile::setFestivalState(int multiplier, int duration) {
-    festivalMultiplier = (multiplier < 1) ? 1 : multiplier;
+    festivalMultiplier = (multiplier < 1) ? 1 : (multiplier > 8 ? 8 : multiplier);
     festivalDuration = (duration < 0) ? 0 : duration;
     if (festivalDuration == 0) {
         festivalMultiplier = 1;

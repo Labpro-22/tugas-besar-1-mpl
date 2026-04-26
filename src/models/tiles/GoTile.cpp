@@ -31,8 +31,19 @@ void GoTile::onLanded(Player& player, GameContext& gameContext) {
     }
 }
 
-void GoTile::onPassed(Player& player, GameContext&) {
+void GoTile::onPassed(Player& player, GameContext& gameContext) {
     awardSalary(player);
+    if (gameContext.getLogger() != nullptr) {
+        int currentTurn = 0;
+        if (gameContext.getTurnManager() != nullptr) {
+            currentTurn = gameContext.getTurnManager()->getCurrentTurn();
+        }
+        gameContext.getLogger()->log(
+            currentTurn,
+            player.getUsername(),
+            "GO",
+            "Melewati GO, mendapatkan gaji " + TextFormatter::formatMoney(salary));
+    }
 }
 
 void GoTile::awardSalary(Player &player) {

@@ -165,13 +165,17 @@ void PropertyCardWidget::setOwnershipInfo(
     const QString& newOwnerName,
     const QColor& accentColor,
     bool mortgaged,
-    int buildingLevel
+    int buildingLevel,
+    int festivalMultiplier,
+    int festivalDuration
 )
 {
     ownerName = newOwnerName.isEmpty() ? QStringLiteral("BANK") : newOwnerName;
     ownerAccentColor = accentColor;
     currentPropertyMortgaged = mortgaged;
     currentBuildingLevel = buildingLevel;
+    currentFestivalMultiplier = qBound(1, festivalMultiplier, 8);
+    currentFestivalDuration = qMax(0, festivalDuration);
     update();
 }
 
@@ -291,15 +295,27 @@ void PropertyCardWidget::drawPropertyCard(
     QFont deedFont(QStringLiteral("Trebuchet MS"), qMax(10, int(cardRect.width() * 0.045)), QFont::Black);
     painter.setFont(deedFont);
     painter.setPen(groupColor.lightnessF() < 0.55 ? Qt::white : kBodyText);
-    painter.drawText(headerRect.adjusted(0, 10, 0, -10), Qt::AlignHCenter | Qt::AlignTop, QStringLiteral("TITLE DEED"));
+    painter.drawText(headerRect.adjusted(0, 9, 0, -10), Qt::AlignHCenter | Qt::AlignTop, QStringLiteral("TITLE DEED"));
 
-    QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(15, int(cardRect.width() * 0.09)), QFont::Black);
+    const QString title = propertyTitle(property);
+    const QRectF titleRect = headerRect.adjusted(8, headerRect.height() * 0.35, -8, -8);
+    QFont titleFont = fittedSingleLineFont(
+        QStringLiteral("Trebuchet MS"),
+        qMax(15, int(cardRect.width() * 0.09)),
+        12,
+        QFont::Black,
+        title,
+        titleRect.width());
     painter.setFont(titleFont);
-    painter.drawText(headerRect.adjusted(12, 18, -12, -14), Qt::AlignCenter | Qt::TextWordWrap, propertyTitle(property));
+    painter.drawText(
+        titleRect,
+        Qt::AlignCenter,
+        QFontMetrics(titleFont).elidedText(title, Qt::ElideRight, int(titleRect.width())));
 
     const qreal rowHeight = bodyRect.height() / 7.0;
-    const QString valueBase = MonopolyUi::formatCurrency(property.getRentAtLevel(0));
-    const QString valueSet = MonopolyUi::formatCurrency(property.getRentAtLevel(0) * 2);
+    const int rentMultiplier = currentFestivalDuration > 0 ? currentFestivalMultiplier : 1;
+    const QString valueBase = MonopolyUi::formatCurrency(property.getRentAtLevel(0) * rentMultiplier);
+    const QString valueSet = MonopolyUi::formatCurrency(property.getRentAtLevel(0) * 2 * rentMultiplier);
 
     auto drawRentWithToken = [&](int rowIndex, const QString& value, int houses, bool hotel) {
         const QRectF rowRect(bodyRect.left(), bodyRect.top() + rowIndex * rowHeight, bodyRect.width(), rowHeight);
@@ -334,11 +350,11 @@ void PropertyCardWidget::drawPropertyCard(
 
     drawLabelValueRow(painter, QRectF(bodyRect.left(), bodyRect.top(), bodyRect.width(), rowHeight), QStringLiteral("Rent"), valueBase);
     drawLabelValueRow(painter, QRectF(bodyRect.left(), bodyRect.top() + rowHeight, bodyRect.width(), rowHeight), QStringLiteral("Rent with colour set"), valueSet);
-    drawRentWithToken(2, MonopolyUi::formatCurrency(property.getRentAtLevel(1)), 1, false);
-    drawRentWithToken(3, MonopolyUi::formatCurrency(property.getRentAtLevel(2)), 2, false);
-    drawRentWithToken(4, MonopolyUi::formatCurrency(property.getRentAtLevel(3)), 3, false);
-    drawRentWithToken(5, MonopolyUi::formatCurrency(property.getRentAtLevel(4)), 4, false);
-    drawRentWithToken(6, MonopolyUi::formatCurrency(property.getRentAtLevel(5)), 0, true);
+    drawRentWithToken(2, MonopolyUi::formatCurrency(property.getRentAtLevel(1) * rentMultiplier), 1, false);
+    drawRentWithToken(3, MonopolyUi::formatCurrency(property.getRentAtLevel(2) * rentMultiplier), 2, false);
+    drawRentWithToken(4, MonopolyUi::formatCurrency(property.getRentAtLevel(3) * rentMultiplier), 3, false);
+    drawRentWithToken(5, MonopolyUi::formatCurrency(property.getRentAtLevel(4) * rentMultiplier), 4, false);
+    drawRentWithToken(6, MonopolyUi::formatCurrency(property.getRentAtLevel(5) * rentMultiplier), 0, true);
 
     painter.setPen(QPen(QColor(80, 80, 80), 1.2));
     painter.drawLine(
@@ -489,6 +505,11 @@ void PropertyCardWidget::drawOwnershipBadge(QPainter& painter, const QRectF& car
         statusParts.append(QStringLiteral("HOTEL"));
     } else if (currentBuildingLevel > 0) {
         statusParts.append(QStringLiteral("%1 HOUSE").arg(currentBuildingLevel));
+    }
+    if (currentFestivalDuration > 0 && currentFestivalMultiplier > 1) {
+        statusParts.append(QStringLiteral("FESTIVAL x%1 %2T")
+            .arg(currentFestivalMultiplier)
+            .arg(currentFestivalDuration));
     }
 
     const QString statusText = statusParts.isEmpty()

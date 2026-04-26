@@ -90,10 +90,9 @@ int Board::getTileCount() const {
 }
 
 void Board::tickFestivals(Player& player) {
-    (void)player;
     for (auto const& pair : propertyIndex) {
         StreetTile* street = pair.second->asStreetTile();
-        if (street != nullptr) {
+        if (street != nullptr && street->isOwnedBy(player)) {
             street->tickFestival();
         }
     }

@@ -1041,8 +1041,26 @@ int QtGameIO::promptTaxPaymentOption(
     wealthLabel->setObjectName(QStringLiteral("taxWealth"));
     layout->addWidget(wealthLabel);
 
+    const int discountedFlatAmount = player.getDiscountedAmount(flatAmount);
+    const int discountedPercentageAmount = player.getDiscountedAmount(percentageAmount);
+    QString flatButtonText = QStringLiteral("BAYAR TETAP - M%1").arg(discountedFlatAmount);
+    if (discountedFlatAmount != flatAmount) {
+        flatButtonText = QStringLiteral("TETAP: M%1 (AWAL M%2)")
+            .arg(discountedFlatAmount)
+            .arg(flatAmount);
+    }
+    QString percentButtonText = QStringLiteral("BAYAR %1% DARI KEKAYAAN - M%2")
+        .arg(percentage)
+        .arg(discountedPercentageAmount);
+    if (discountedPercentageAmount != percentageAmount) {
+        percentButtonText = QStringLiteral("%1%: M%2 (AWAL M%3)")
+            .arg(percentage)
+            .arg(discountedPercentageAmount)
+            .arg(percentageAmount);
+    }
+
     auto* flatButton = new QPushButton(
-        QStringLiteral("BAYAR TETAP - M%1").arg(flatAmount),
+        flatButtonText,
         shell
     );
     flatButton->setObjectName(QStringLiteral("taxPrimaryButton"));
@@ -1051,9 +1069,7 @@ int QtGameIO::promptTaxPaymentOption(
     layout->addWidget(flatButton);
 
     auto* percentButton = new QPushButton(
-        QStringLiteral("BAYAR %1% DARI KEKAYAAN - M%2")
-            .arg(percentage)
-            .arg(percentageAmount),
+        percentButtonText,
         shell
     );
     percentButton->setObjectName(QStringLiteral("taxSecondaryButton"));

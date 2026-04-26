@@ -42,6 +42,7 @@ struct PlayerOverview {
     bool isCurrentTurn = false;
     bool isInJail = false;
     bool hasRolledThisTurn = false;
+    bool hasRolledMovementDiceThisTurn = false;
     bool hasUsedSkillThisTurn = false;
     bool hasTakenActionThisTurn = false;
 };
@@ -50,6 +51,8 @@ struct PropertyViewState {
     QString ownerUsername;
     bool mortgaged = false;
     int buildingLevel = 0;
+    int festivalMultiplier = 1;
+    int festivalDuration = 0;
 };
 
 struct HistoryEntryView {
