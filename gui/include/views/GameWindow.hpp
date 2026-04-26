@@ -36,6 +36,8 @@ struct PlayerOverview {
     QString name;
     QString pawnAssetName;
     QColor accentColor;
+    int turnOrderPosition = 0;
+    int setupPosition = 0;
     int balance = 0;
     int tileIndex = 0;
     int handCount = 0;
@@ -46,6 +48,7 @@ struct PlayerOverview {
     bool hasRolledMovementDiceThisTurn = false;
     bool hasUsedSkillThisTurn = false;
     bool hasTakenActionThisTurn = false;
+    bool isBankrupt = false;
 };
 
 struct PropertyViewState {
@@ -121,6 +124,8 @@ private:
     QColor accentColorForPlayer(const QString& username) const;
     int totalHouseCount(const QString& username) const;
     int totalHotelCount(const QString& username) const;
+    bool hasBuildablePropertyForPlayer(const QString& username) const;
+    bool hasMortgagedPropertyForPlayer(const QString& username) const;
     QString currentTurnStatusText() const;
     QString saveDirectoryPath() const;
 
@@ -138,10 +143,13 @@ private:
     QVBoxLayout* boardShellLayout = nullptr;
     QVBoxLayout* sidebarLayout = nullptr;
     QGridLayout* actionsLayout = nullptr;
+    QVBoxLayout* playerRosterLayout = nullptr;
+    QVBoxLayout* propertySummaryLayout = nullptr;
     QLabel* playerAvatarLabel = nullptr;
     QLabel* playerNameLabel = nullptr;
     QLabel* playerMoneyLabel = nullptr;
     QLabel* roomPlayersLabel = nullptr;
+    QLabel* playerTurnLabel = nullptr;
     QLabel* propertyOwnedLabel = nullptr;
     QToolButton* playerSwitchButton = nullptr;
     PropertyPortfolioWidget* portfolioWidget = nullptr;
@@ -163,6 +171,7 @@ private:
 
     std::vector<PropertyConfig> properties;
     QMap<QString, QColor> accentColorByPlayer;
+    QMap<QString, int> turnOrderPositionByPlayer;
     QVector<PlayerOverview> playerOverviews;
     QMap<int, PropertyViewState> propertyStateById;
     QVector<HistoryEntryView> historyEntries;

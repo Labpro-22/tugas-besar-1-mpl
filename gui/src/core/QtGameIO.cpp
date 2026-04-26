@@ -174,6 +174,59 @@ QString skillCardTitle(const SkillCard* card)
     return title.toUpper();
 }
 
+QString skillCardAccentColor(const SkillCard* card)
+{
+    const QString title = skillCardTitle(card);
+    if (title == QStringLiteral("MOVE")) {
+        return QStringLiteral("#2563eb");
+    }
+    if (title == QStringLiteral("DISCOUNT")) {
+        return QStringLiteral("#16a34a");
+    }
+    if (title == QStringLiteral("SHIELD")) {
+        return QStringLiteral("#0891b2");
+    }
+    if (title == QStringLiteral("TELEPORT")) {
+        return QStringLiteral("#7c3aed");
+    }
+    if (title == QStringLiteral("LASSO")) {
+        return QStringLiteral("#f59e0b");
+    }
+    if (title == QStringLiteral("DEMOLITION")) {
+        return QStringLiteral("#dc2626");
+    }
+    return QStringLiteral("#64748b");
+}
+
+QString wrapSkillCardText(const QString& text, int maxLineLength = 18)
+{
+    QString result;
+    QString currentLine;
+    for (const QString& word : text.split(' ', Qt::SkipEmptyParts)) {
+        if (!currentLine.isEmpty() && currentLine.size() + 1 + word.size() > maxLineLength) {
+            if (!result.isEmpty()) {
+                result += '\n';
+            }
+            result += currentLine;
+            currentLine.clear();
+        }
+
+        if (!currentLine.isEmpty()) {
+            currentLine += ' ';
+        }
+        currentLine += word;
+    }
+
+    if (!currentLine.isEmpty()) {
+        if (!result.isEmpty()) {
+            result += '\n';
+        }
+        result += currentLine;
+    }
+
+    return result;
+}
+
 void animateDialogEntrance(QDialog& dialog)
 {
     dialog.setWindowOpacity(0.0);
@@ -202,16 +255,16 @@ void showNoticeCard(QWidget* parent, const QString& titleText, const QString& bo
     dialog.setAttribute(Qt::WA_TranslucentBackground);
 
     auto* root = new QVBoxLayout(&dialog);
-    root->setContentsMargins(20, 20, 20, 20);
+    root->setContentsMargins(16, 16, 16, 16);
 
     auto* shell = new QFrame(&dialog);
     shell->setObjectName(QStringLiteral("noticeCardShell"));
-    shell->setMinimumSize(430, 250);
+    shell->setMinimumSize(420, 220);
     root->addWidget(shell);
 
     auto* layout = new QVBoxLayout(shell);
-    layout->setContentsMargins(24, 18, 24, 18);
-    layout->setSpacing(12);
+    layout->setContentsMargins(24, 20, 24, 20);
+    layout->setSpacing(10);
 
     auto* title = new QLabel(titleText.toUpper(), shell);
     title->setAlignment(Qt::AlignCenter);
@@ -248,18 +301,17 @@ void showNoticeCard(QWidget* parent, const QString& titleText, const QString& bo
 
     dialog.setStyleSheet(QStringLiteral(
         "#noticeCardShell {"
-        "  background: #fffef8;"
-        "  border: 2px solid #1b1b1b;"
-        "  border-radius: 2px;"
+        "  background: #ffffff;"
+        "  border: 1px solid #d7e1ee;"
+        "  border-radius: 14px;"
         "}"
         "#noticeCardTitle {"
         "  color: #090909;"
-        "  font: 900 15pt 'Trebuchet MS';"
-        "  letter-spacing: 0.5px;"
+        "  font: 900 14pt 'Trebuchet MS';"
         "}"
         "#noticeCardBody {"
         "  color: #111;"
-        "  font: 800 12pt 'Trebuchet MS';"
+        "  font: 800 10.5pt 'Trebuchet MS';"
         "  line-height: 120%;"
         "}"
         "#noticeCardFooter {"
@@ -267,14 +319,14 @@ void showNoticeCard(QWidget* parent, const QString& titleText, const QString& bo
         "  font: 700 8pt 'Trebuchet MS';"
         "}"
         "QPushButton {"
-        "  background: #111;"
+        "  background: #251f3a;"
         "  color: white;"
         "  border: none;"
-        "  border-radius: 4px;"
+        "  border-radius: 8px;"
         "  font: 900 9pt 'Trebuchet MS';"
         "  letter-spacing: 1px;"
         "}"
-        "QPushButton:hover { background: #2a2a2a; }"
+        "QPushButton:hover { background: #31284a; }"
     ));
 
     QObject::connect(continueButton, &QPushButton::clicked, &dialog, &QDialog::accept);
@@ -568,7 +620,7 @@ void QtGameIO::showDiceRoll(int die1, int die2)
     dialog.setAttribute(Qt::WA_TranslucentBackground);
 
     auto* root = new QVBoxLayout(&dialog);
-    root->setContentsMargins(18, 18, 18, 18);
+    root->setContentsMargins(14, 14, 14, 14);
 
     auto* shell = new QWidget(&dialog);
     shell->setObjectName(QStringLiteral("diceRollShell"));
@@ -1215,8 +1267,8 @@ int QtGameIO::promptSkillCardSelection(
     root->addWidget(shell);
 
     auto* layout = new QVBoxLayout(shell);
-    layout->setContentsMargins(24, 22, 24, 22);
-    layout->setSpacing(16);
+    layout->setContentsMargins(22, 18, 22, 18);
+    layout->setSpacing(10);
 
     auto* header = new QLabel(toQString(title).toUpper(), shell);
     header->setAlignment(Qt::AlignCenter);
@@ -1235,16 +1287,19 @@ int QtGameIO::promptSkillCardSelection(
     layout->addWidget(subtitle);
 
     auto* scroll = new QScrollArea(shell);
-    scroll->setWidgetResizable(true);
-    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scroll->setWidgetResizable(false);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setStyleSheet(QStringLiteral("QScrollArea { background: transparent; border: none; } QScrollArea > QWidget > QWidget { background: transparent; }"));
+    scroll->viewport()->setStyleSheet(QStringLiteral("background: transparent;"));
     layout->addWidget(scroll);
 
     auto* cardsHost = new QWidget(scroll);
+    cardsHost->setStyleSheet(QStringLiteral("background: transparent;"));
     auto* cardsLayout = new QHBoxLayout(cardsHost);
-    cardsLayout->setContentsMargins(6, 10, 6, 10);
-    cardsLayout->setSpacing(14);
+    cardsLayout->setContentsMargins(0, 0, 0, 0);
+    cardsLayout->setSpacing(12);
     scroll->setWidget(cardsHost);
 
     int selected = allowCancel ? 0 : 1;
@@ -1257,10 +1312,29 @@ int QtGameIO::promptSkillCardSelection(
         auto* cardButton = new QPushButton(cardsHost);
         cardButton->setObjectName(QStringLiteral("skillCardButton"));
         cardButton->setCursor(Qt::PointingHandCursor);
-        cardButton->setMinimumSize(168, 224);
-        cardButton->setMaximumSize(188, 240);
+        cardButton->setFocusPolicy(Qt::NoFocus);
+        cardButton->setAutoDefault(false);
+        cardButton->setDefault(false);
+        cardButton->setFlat(true);
+        cardButton->setFixedSize(152, 152);
         cardButton->setText(QStringLiteral("%1\n\n%2\n\n#%3")
-            .arg(skillCardTitle(card), description, QString::number(i + 1)));
+            .arg(skillCardTitle(card), wrapSkillCardText(description, 16), QString::number(i + 1)));
+        const QString accent = skillCardAccentColor(card);
+        cardButton->setStyleSheet(QStringLiteral(
+            "QPushButton#skillCardButton {"
+            "  text-align: center;"
+            "  background-color: #ffffff;"
+            "  color: #0f172a;"
+            "  border: 3px solid %1;"
+            "  border-radius: 0px;"
+            "  padding: 10px 8px;"
+            "  font: 800 8.4pt 'Trebuchet MS';"
+            "}"
+            "QPushButton#skillCardButton:hover {"
+            "  background-color: #f8fafc;"
+            "  border: 4px solid %1;"
+            "}"
+        ).arg(accent));
         cardsLayout->addWidget(cardButton);
 
         QObject::connect(cardButton, &QPushButton::clicked, &dialog, [&, i]() {
@@ -1283,46 +1357,31 @@ int QtGameIO::promptSkillCardSelection(
     }
 
     dialog.setStyleSheet(QStringLiteral(
-        "#skillPickerShell {"
-        "  background: rgba(245, 240, 226, 0.98);"
-        "  border: 1px solid rgba(32, 32, 32, 0.34);"
-        "  border-radius: 20px;"
-        "}"
+        "#skillPickerShell { background: #ffffff; border: 1px solid #d7e1ee; border-radius: 12px; }"
         "#skillPickerTitle {"
-        "  color: #101010;"
-        "  font: 900 16pt 'Trebuchet MS';"
-        "  letter-spacing: 1px;"
+        "  color: #172033;"
+        "  font: 900 13pt 'Trebuchet MS';"
         "}"
         "#skillPickerSubtitle {"
-        "  color: #31404b;"
-        "  font: 700 9.5pt 'Trebuchet MS';"
-        "}"
-        "QScrollArea { background: transparent; }"
-        "#skillCardButton {"
-        "  text-align: center;"
-        "  background: #fffef9;"
-        "  color: #101010;"
-        "  border: 2px solid #191919;"
-        "  border-radius: 4px;"
-        "  padding: 18px 12px;"
-        "  font: 800 10pt 'Trebuchet MS';"
-        "}"
-        "#skillCardButton:hover {"
-        "  background: #eaf6ff;"
-        "  border: 3px solid #1262c5;"
+        "  color: #64748b;"
+        "  font: 800 8.8pt 'Trebuchet MS';"
         "}"
         "#cancelSkillPickerButton {"
-        "  background: #20252b;"
+        "  background: #251f3a;"
         "  color: white;"
         "  border: none;"
         "  border-radius: 10px;"
         "  font: 900 10pt 'Trebuchet MS';"
         "  letter-spacing: 1px;"
         "}"
-        "#cancelSkillPickerButton:hover { background: #343b45; }"
+        "#cancelSkillPickerButton:hover { background: #31284a; }"
     ));
 
-    dialog.resize(qMin(860, 220 + static_cast<int>(cards.size()) * 190), 370);
+    const int visibleCardCount = qMin(4, static_cast<int>(cards.size()));
+    const int cardAreaWidth = visibleCardCount * 152 + qMax(0, visibleCardCount - 1) * 12;
+    scroll->setFixedSize(cardAreaWidth, 154);
+    cardsHost->setFixedSize(cardAreaWidth, 154);
+    dialog.resize(cardAreaWidth + 64, allowCancel ? 318 : 278);
     if (dialogParent != nullptr) {
         const QPoint center = dialogParent->mapToGlobal(dialogParent->rect().center());
         dialog.move(center.x() - dialog.width() / 2, center.y() - dialog.height() / 2);
