@@ -176,6 +176,11 @@ bool shouldShowJailNotice(const QString& statusText)
         normalized.contains(QStringLiteral("aowkowkowk anda masuk penjara"));
 }
 
+bool hasActionCardPopupNotice(const QString& statusText)
+{
+    return statusText.toLower().contains(QStringLiteral("kartu:"));
+}
+
 QString jailNoticeLine(const QString& statusText)
 {
     const QString normalized = statusText.toLower();
@@ -1369,7 +1374,7 @@ void GameWindow::executeSessionAction(const QString& successFallback, const std:
             QStringLiteral("Bangkrut"),
             QStringLiteral("NOOOOOO, KAMU DINYATAKAN BANGKRUTTT T-T")
         );
-    } else if (success && shouldShowJailNotice(lastStatusText)) {
+    } else if (success && shouldShowJailNotice(lastStatusText) && !hasActionCardPopupNotice(lastStatusText)) {
         showCustomNotice(
             this,
             QStringLiteral("Penjara"),
@@ -2781,7 +2786,7 @@ void GameWindow::applyPendingMessages(const QString& fallback)
         const QString allMessages = messages.join('\n');
         if (shouldShowBankruptcyNotice(allMessages)) {
             lastStatusText = firstLineContaining(allMessages, QStringLiteral("dinyatakan bangkrut"));
-        } else if (shouldShowJailNotice(allMessages)) {
+        } else if (shouldShowJailNotice(allMessages) && !hasActionCardPopupNotice(allMessages)) {
             lastStatusText = jailNoticeLine(allMessages);
         } else {
             lastStatusText = messages.mid(qMax(0, messages.size() - 3)).join('\n');
