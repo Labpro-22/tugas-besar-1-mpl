@@ -158,6 +158,23 @@ bool canUseSkillBeforeMovementDice(const Player& player)
         hasUsableSkillCardForCurrentState(player);
 }
 
+QString firstLineContaining(const QString& text, const QString& pattern)
+{
+    const QStringList lines = text.split('\n', Qt::SkipEmptyParts);
+    for (const QString& line : lines) {
+        if (line.toLower().contains(pattern)) {
+            return line.trimmed();
+        }
+    }
+    return text.trimmed();
+}
+
+bool shouldShowJailNotice(const QString& statusText)
+{
+    const QString normalized = statusText.toLower();
+    return normalized.contains(QStringLiteral("awokwokwowk anda masuk penjara"));
+}
+
 bool shouldShowActionBlockedNotice(const QString& statusText)
 {
     const QString normalized = statusText.toLower();
@@ -167,13 +184,22 @@ bool shouldShowActionBlockedNotice(const QString& statusText)
         QStringLiteral("tidak ada properti yang memenuhi syarat"),
         QStringLiteral("tidak ada color group yang memenuhi syarat"),
         QStringLiteral("properti yang dipilih tidak valid"),
+        QStringLiteral("tidak valid untuk"),
         QStringLiteral("uang kamu tidak cukup untuk menebus"),
         QStringLiteral("uang kamu tidak cukup untuk membangun"),
+        QStringLiteral("uang kamu tidak cukup"),
+        QStringLiteral("kamu tidak mampu"),
+        QStringLiteral("tidak dapat digadaikan"),
+        QStringLiteral("tidak dapat dibangun"),
+        QStringLiteral("tidak dapat menghasilkan"),
         QStringLiteral("tidak ada kartu kemampuan"),
         QStringLiteral("kartu kemampuan hanya bisa digunakan"),
         QStringLiteral("kamu sudah menggunakan kartu kemampuan"),
         QStringLiteral("kamu tidak sedang berada di penjara"),
-        QStringLiteral("denda belum bisa dibayar")
+        QStringLiteral("denda belum bisa dibayar"),
+        QStringLiteral("hanya dapat dilakukan"),
+        QStringLiteral("harus memiliki seluruh petak"),
+        QStringLiteral("tebus semua properti")
     };
 
     for (const QString& pattern : blockedPatterns) {
@@ -1278,7 +1304,13 @@ void GameWindow::executeSessionAction(const QString& successFallback, const std:
 
     applyPendingMessages(success ? successFallback : errorMessage);
     refreshScene(lastStatusText);
-    if (success && shouldShowActionBlockedNotice(lastStatusText)) {
+    if (success && shouldShowJailNotice(lastStatusText)) {
+        showCustomNotice(
+            this,
+            QStringLiteral("Penjara"),
+            firstLineContaining(lastStatusText, QStringLiteral("awokwokwowk anda masuk penjara"))
+        );
+    } else if (success && shouldShowActionBlockedNotice(lastStatusText)) {
         showCustomNotice(this, QStringLiteral("Aksi Tidak Bisa Dilakukan"), lastStatusText);
     }
     showGameFinishedDialogIfNeeded();
