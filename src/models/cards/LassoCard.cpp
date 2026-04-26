@@ -1,0 +1,91 @@
+#include "models/cards/LassoCard.hpp"
+
+#include <string>
+#include <vector>
+
+#include "core/Board.hpp"
+#include "core/GameContext.hpp"
+#include "core/GameIO.hpp"
+#include "core/MovementService.hpp"
+#include "core/TurnManager.hpp"
+#include "models/Player.hpp"
+#include "models/tiles/Tile.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
+
+LassoCard::LassoCard()
+    : SkillCard() {}
+
+std::string LassoCard::getTypeName() const {
+    return "LassoCard";
+}
+
+void LassoCard::use(Player& player, GameContext& gameContext) {
+    Board* board = gameContext.getBoard();
+    TurnManager* turnManager = gameContext.getTurnManager();
+    GameIO* io = gameContext.getIO();
+
+    if (board == nullptr || turnManager == nullptr || board->getTileCount() <= 0) {
+        return;
+    }
+
+    Player* target = nullptr;
+    int boardSize = board->getTileCount();
+    int nearestDistance = boardSize + 1;
+    std::vector<Player*> activePlayers = turnManager->getActivePlayers();
+
+    for (Player* otherPlayer : activePlayers) {
+        if (otherPlayer == nullptr || otherPlayer == &player || !otherPlayer->isActive()) {
+            continue;
+        }
+
+        if (otherPlayer->isJailed()) {
+            continue;
+        }
+
+        int distance = (otherPlayer->getPosition() - player.getPosition() + boardSize) % boardSize;
+
+        if (distance > 0 && distance < nearestDistance) {
+            target = otherPlayer;
+            nearestDistance = distance;
+        }
+    }
+
+    if (target == nullptr) {
+        throw SkillUseFailedException(
+            getTypeName(),
+            "tidak ada pemain lawan di depan posisi kamu yang dapat ditarik.");
+    }
+
+    int destinationIndex = player.getPosition();
+    Tile* destinationTile = board->getTile(destinationIndex);
+
+    if (target->consumeShield()) {
+        gameContext.showMessage(
+            target->getUsername() + " terlindungi ShieldCard dari LassoCard.");
+        gameContext.logEvent(
+            "KARTU",
+            target->getUsername() + " terlindungi ShieldCard dari LassoCard " +
+                player.getUsername() + ".");
+        return;
+    }
+
+    target->moveTo(destinationIndex);
+
+    if (io != nullptr) {
+        io->showPawnStep(*target, destinationIndex);
+    }
+    gameContext.showMessage(target->getUsername() + " ditarik ke posisi " +
+                    player.getUsername() + ".");
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " menggunakan LassoCard menarik " +
+            target->getUsername() + " ke posisi " + std::to_string(destinationIndex + 1) + ".");
+
+    if (destinationTile != nullptr) {
+        if (MovementService::shouldSkipGoLandingSalary(destinationTile)) {
+            gameContext.showMessage("Tarikan ke GO tidak memberikan gaji.");
+            return;
+        }
+        destinationTile->onLanded(*target, gameContext);
+    }
+}

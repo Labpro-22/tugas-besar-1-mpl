@@ -1,0 +1,298 @@
+#include "utils/ConfigLoader.hpp"
+
+#include "models/config/ActionTileConfig.hpp"
+#include "models/config/ConfigData.hpp"
+#include "models/config/MiscConfig.hpp"
+#include "models/config/PropertyConfig.hpp"
+#include "models/config/SpecialConfig.hpp"
+#include "models/config/TaxConfig.hpp"
+#include "utils/exceptions/NimonspoliException.hpp"
+
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <filesystem>
+#include <fstream>
+#include <sstream>
+#include <stdexcept>
+
+namespace {
+    std::ifstream openRequiredConfigFile(const std::string& path) {
+        const std::filesystem::path filePath(path);
+        const std::string filename = filePath.filename().string();
+        std::error_code filesystemError;
+
+        if (!std::filesystem::exists(filePath, filesystemError) || filesystemError) {
+            throw ConfigException(path, "file wajib \"" + filename + "\" tidak ditemukan");
+        }
+
+        if (!std::filesystem::is_regular_file(filePath, filesystemError) || filesystemError) {
+            throw ConfigException(path, "path \"" + filename + "\" bukan file konfigurasi");
+        }
+
+        std::ifstream file(path);
+        if (!file.is_open()) {
+            throw ConfigException(path, "file wajib \"" + filename + "\" tidak dapat dibuka");
+        }
+
+        return file;
+    }
+}
+
+PropertyType ConfigLoader::stringToType(const std::string& s) {
+    if (s == "STREET") return PropertyType::STREET;
+    if (s == "RAILROAD") return PropertyType::RAILROAD;
+    if (s == "UTILITY") return PropertyType::UTILITY;
+    throw ConfigException("", "tipe properti tidak dikenal: " + s);
+}
+
+ColorGroup ConfigLoader::stringToColor(const std::string& s) {
+    if (s == "COKLAT") return ColorGroup::COKLAT;
+    if (s == "BIRU_MUDA") return ColorGroup::BIRU_MUDA;
+    if (s == "MERAH_MUDA") return ColorGroup::MERAH_MUDA;
+    if (s == "ORANGE") return ColorGroup::ORANGE;
+    if (s == "MERAH") return ColorGroup::MERAH;
+    if (s == "KUNING") return ColorGroup::KUNING;
+    if (s == "HIJAU") return ColorGroup::HIJAU;
+    if (s == "BIRU_TUA") return ColorGroup::BIRU_TUA;
+    if (s == "ABU_ABU") return ColorGroup::ABU_ABU;
+    if (s == "DEFAULT") return ColorGroup::DEFAULT;
+    throw ConfigException("", "warna properti tidak dikenal: " + s);
+}
+
+ConfigLoader::ConfigLoader(const std::string& configPath) : configPath(configPath) {
+    if (!this->configPath.empty() && this->configPath.back() != '/' && this->configPath.back() != '\\') {
+        this->configPath += '/';
+    }
+}
+
+ConfigData ConfigLoader::loadAll() const {
+    const std::filesystem::path basePath(configPath.empty() ? "." : configPath);
+    std::error_code filesystemError;
+    if (!std::filesystem::exists(basePath, filesystemError) || filesystemError) {
+        throw ConfigException(configPath, "folder config tidak ditemukan");
+    }
+    if (!std::filesystem::is_directory(basePath, filesystemError) || filesystemError) {
+        throw ConfigException(configPath, "path bukan folder config");
+    }
+
+    std::vector<PropertyConfig> properties = parsePropertyFile(configPath + "property.txt");
+    std::vector<ActionTileConfig> actionTiles = parseActionTileFile(configPath + "aksi.txt");
+    std::vector<std::string> boardLayout = parseBoardLayoutFile(configPath + "papan.txt");
+    std::map<int, int> railroads = parseRailroadFile(configPath + "railroad.txt");
+    std::map<int, int> utilities = parseUtilityFile(configPath + "utility.txt");
+    TaxConfig tax = parseTaxFile(configPath + "tax.txt");
+    SpecialConfig special = parseSpecialFile(configPath + "special.txt");
+    MiscConfig misc = parseMiscFile(configPath + "misc.txt");
+ 
+    return ConfigData(properties, actionTiles, railroads, utilities, boardLayout, configPath, tax, special, misc);
+}
+
+std::vector<PropertyConfig>
+ConfigLoader::parsePropertyFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
+    std::vector<PropertyConfig> result;
+    std::string line;
+    bool isHeader = true;
+    
+    while (std::getline(file,line)){
+        if (line.empty() || line[0] == '#') continue;
+        if (isHeader) { isHeader = false; continue; } 
+        std::istringstream ss(line);
+        
+        int id, buyPrice, mortgageVal;
+        std::string code, name, typeStr, colorStr;
+        int houseCost    = 0;
+        int hotelCost    = 0;
+        std::array<int, 6> rentLevels = {0, 0, 0, 0, 0, 0};
+ 
+        if (!(ss >> id >> code >> name >> typeStr >> colorStr >> buyPrice >> mortgageVal)) {
+            throw ConfigException(path, "baris property tidak valid: " + line);
+        }
+ 
+        if (typeStr == "STREET") {
+            if (!(ss >> houseCost >> hotelCost)) {
+                throw ConfigException(path, "data biaya bangunan street tidak lengkap: " + code);
+            }
+            for (int i = 0; i < 6; ++i) {
+                if (!(ss >> rentLevels[i])) {
+                    throw ConfigException(path, "tabel sewa street tidak lengkap: " + code);
+                }
+            }
+        }
+ 
+        result.emplace_back(
+            id, code, name, 
+            stringToType(typeStr),
+            stringToColor(colorStr),
+            buyPrice, mortgageVal, houseCost, hotelCost,
+            rentLevels
+        );
+    }
+ 
+    return result;
+}
+
+std::vector<ActionTileConfig>
+ConfigLoader::parseActionTileFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
+
+    std::vector<ActionTileConfig> result;
+    std::string line;
+    bool isHeader = true;
+
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+        if (isHeader) {
+            isHeader = false;
+            continue;
+        }
+
+        std::istringstream ss(line);
+        int id = 0;
+        std::string code;
+        std::string name;
+        std::string tileType;
+        std::string colorStr;
+
+        if (ss >> id >> code >> name >> tileType >> colorStr) {
+            result.emplace_back(id, code, name, tileType, stringToColor(colorStr));
+        }
+    }
+
+    return result;
+}
+
+std::vector<std::string> ConfigLoader::parseBoardLayoutFile(const std::string& path) const {
+    std::ifstream file(path);
+    if (!file.is_open()) {
+        return {};
+    }
+
+    std::vector<std::string> result;
+    std::string line;
+    bool isHeader = true;
+
+    while (std::getline(file, line)) {
+        const std::size_t commentStart = line.find('#');
+        if (commentStart != std::string::npos) {
+            line = line.substr(0, commentStart);
+        }
+
+        std::istringstream ss(line);
+        std::vector<std::string> tokens;
+        std::string token;
+        while (ss >> token) {
+            tokens.push_back(token);
+        }
+        if (tokens.empty()) {
+            continue;
+        }
+
+        std::string code = tokens.front();
+        const bool firstTokenIsNumber = !code.empty() &&
+            std::all_of(code.begin(), code.end(), [](unsigned char ch) {
+                return std::isdigit(ch) != 0;
+            });
+        if (firstTokenIsNumber && tokens.size() >= 2) {
+            code = tokens[1];
+        }
+
+        if (isHeader && (code == "KODE" || code == "CODE" || code == "PAPAN" || code == "BOARD")) {
+            isHeader = false;
+            continue;
+        }
+        isHeader = false;
+
+        result.push_back(code);
+    }
+
+    return result;
+}
+
+std::map<int, int>
+ConfigLoader::parseRailroadFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
+ 
+    std::map<int, int> result;
+    std::string line;
+ 
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+ 
+        std::istringstream ss(line);
+        int count, rent;
+        if (ss >> count >> rent) {
+            result[count] = rent;
+        }
+    }
+ 
+    return result;
+}
+
+
+std::map<int,int>
+ConfigLoader::parseUtilityFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
+    std::map<int, int> result;
+    std::string line;
+
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+ 
+        std::istringstream ss(line);
+        int count, multiplier;
+        if (ss >> count >> multiplier) {
+            result[count] = multiplier;
+        }
+    }
+    return result;
+}
+
+TaxConfig ConfigLoader::parseTaxFile(const std::string& path) const{
+    std::ifstream file = openRequiredConfigFile(path);
+ 
+    int pphFlat = 0, pphPct = 0, pbmFlat = 0;
+    std::string line;
+ 
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+ 
+        std::istringstream ss(line);
+        if (ss >> pphFlat >> pphPct >> pbmFlat) break;
+    }
+ 
+    return TaxConfig(pphFlat, pphPct, pbmFlat);
+}
+
+SpecialConfig ConfigLoader::parseSpecialFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
+ 
+    int goSalary = 0, jailFine = 0;
+    std::string line;
+ 
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+ 
+        std::istringstream ss(line);
+        if (ss >> goSalary >> jailFine) break;
+    }
+ 
+    return SpecialConfig(goSalary, jailFine);
+}
+
+MiscConfig ConfigLoader::parseMiscFile(const std::string& path) const {
+    std::ifstream file = openRequiredConfigFile(path);
+ 
+    int maxTurn = 0, initialBalance = 0;
+    std::string line;
+ 
+    while (std::getline(file, line)) {
+        if (line.empty() || line[0] == '#') continue;
+ 
+        std::istringstream ss(line);
+        if (ss >> maxTurn >> initialBalance) break;
+    }
+ 
+    return MiscConfig(maxTurn, initialBalance);
+}
