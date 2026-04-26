@@ -80,6 +80,19 @@ namespace {
                 continue;
             }
 
+            std::vector<StreetTile*> group = board.getProperties(colorGroup);
+            bool allOwnedAndActive = !group.empty();
+            for (StreetTile* street : group) {
+                if (street == nullptr || !street->isOwnedBy(player) ||
+                    street->getStatus() != PropertyStatus::OWNED) {
+                    allOwnedAndActive = false;
+                    break;
+                }
+            }
+            if (!allOwnedAndActive) {
+                continue;
+            }
+
             std::vector<StreetTile*> streets = getOwnedStreetsInColorGroup(board, player, colorGroup);
             bool hasBuildableStreet = false;
             for (StreetTile* street : streets) {
@@ -95,6 +108,47 @@ namespace {
         }
 
         return groups;
+    }
+
+    bool hasMortgagedStreetInMonopoly(Board& board, const Player& player) {
+        const ColorGroup streetGroups[] = {
+            ColorGroup::COKLAT,
+            ColorGroup::BIRU_MUDA,
+            ColorGroup::MERAH_MUDA,
+            ColorGroup::ORANGE,
+            ColorGroup::MERAH,
+            ColorGroup::KUNING,
+            ColorGroup::HIJAU,
+            ColorGroup::BIRU_TUA
+        };
+
+        for (ColorGroup colorGroup : streetGroups) {
+            if (!board.hasMonopoly(player, colorGroup)) {
+                continue;
+            }
+
+            std::vector<StreetTile*> group = board.getProperties(colorGroup);
+            for (StreetTile* street : group) {
+                if (street != nullptr && street->isOwnedBy(player) &&
+                    street->getStatus() == PropertyStatus::MORTGAGED) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    void showNoBuildablePropertyReason(GameIO* io, Board& board, const Player& player) {
+        if (hasMortgagedStreetInMonopoly(board, player)) {
+            io->showMessage("Tidak ada properti yang memenuhi syarat untuk dibangun.");
+            io->showMessage("Ada properti dalam color group monopoli yang sedang digadaikan.");
+            io->showMessage("Tebus semua properti dalam color group tersebut sebelum membangun rumah atau hotel.");
+            return;
+        }
+
+        io->showMessage("Tidak ada properti yang memenuhi syarat untuk dibangun.");
+        io->showMessage("Kamu harus memiliki seluruh petak dalam satu color group terlebih dahulu.");
     }
 
     void printGroupBuildSummary(GameIO* io, Board& board, const Player& player, ColorGroup colorGroup) {
@@ -459,8 +513,7 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
         }
 
         if (selectable.empty()) {
-            io->showMessage("Tidak ada properti yang memenuhi syarat untuk dibangun.");
-            io->showMessage("Kamu harus memiliki seluruh petak dalam satu color group terlebih dahulu.");
+            showNoBuildablePropertyReason(io, *board, player);
             return;
         }
 
@@ -490,8 +543,14 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
     } else {
         std::vector<ColorGroup> buildableGroups = getBuildableColorGroups(*board, player);
         if (buildableGroups.empty()) {
-            io->showMessage("Tidak ada color group yang memenuhi syarat untuk dibangun.");
-            io->showMessage("Kamu harus memiliki seluruh petak dalam satu color group terlebih dahulu.");
+            if (hasMortgagedStreetInMonopoly(*board, player)) {
+                io->showMessage("Tidak ada color group yang memenuhi syarat untuk dibangun.");
+                io->showMessage("Ada properti dalam color group monopoli yang sedang digadaikan.");
+                io->showMessage("Tebus semua properti dalam color group tersebut sebelum membangun rumah atau hotel.");
+            } else {
+                io->showMessage("Tidak ada color group yang memenuhi syarat untuk dibangun.");
+                io->showMessage("Kamu harus memiliki seluruh petak dalam satu color group terlebih dahulu.");
+            }
             return;
         }
 

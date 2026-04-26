@@ -291,9 +291,11 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
     player.setHasRolledMovementDiceThisTurn(true);
     player.setActionTakenThisTurn(true);
 
-    if (dice.getDie1() == dice.getDie2()) {
+    const bool rolledDouble = dice.getDie1() == dice.getDie2();
+    if (rolledDouble) {
         player.setConsecutiveDoubles(player.getConsecutiveDoubles() + 1);
         if (player.getConsecutiveDoubles() >= 3) {
+            ui.showDiceRoll(dice.getDie1(), dice.getDie2());
             Tile* jailTile = board.getTile("PEN");
             applyJailState(player, jailTile);
             expireTemporarySkillEffects(player, ui, "saat giliran berakhir");
@@ -319,7 +321,7 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
     expireTemporarySkillEffects(player, ui, "setelah gerakan pertama selesai");
 
     ui.renderBoard(board, players, turnManager);
-    if (dice.getDie1() == dice.getDie2() &&
+    if (rolledDouble &&
         player.isActive() &&
         player.getConsecutiveDoubles() > 0 &&
         player.getConsecutiveDoubles() < 3) {

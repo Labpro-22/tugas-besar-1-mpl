@@ -138,6 +138,32 @@ bool canUseSkillBeforeMovementDice(const Player& player)
         hasUsableSkillCardForCurrentState(player);
 }
 
+bool shouldShowActionBlockedNotice(const QString& statusText)
+{
+    const QString normalized = statusText.toLower();
+    const QStringList blockedPatterns = {
+        QStringLiteral("tidak ada properti yang dapat digadaikan"),
+        QStringLiteral("tidak ada properti yang sedang digadaikan"),
+        QStringLiteral("tidak ada properti yang memenuhi syarat"),
+        QStringLiteral("tidak ada color group yang memenuhi syarat"),
+        QStringLiteral("properti yang dipilih tidak valid"),
+        QStringLiteral("uang kamu tidak cukup untuk menebus"),
+        QStringLiteral("uang kamu tidak cukup untuk membangun"),
+        QStringLiteral("tidak ada kartu kemampuan"),
+        QStringLiteral("kartu kemampuan hanya bisa digunakan"),
+        QStringLiteral("kamu sudah menggunakan kartu kemampuan"),
+        QStringLiteral("kamu tidak sedang berada di penjara"),
+        QStringLiteral("denda belum bisa dibayar")
+    };
+
+    for (const QString& pattern : blockedPatterns) {
+        if (normalized.contains(pattern)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void centerDialog(QDialog& dialog, QWidget* parent)
 {
     dialog.adjustSize();
@@ -1165,6 +1191,9 @@ void GameWindow::executeSessionAction(const QString& successFallback, const std:
 
     applyPendingMessages(success ? successFallback : errorMessage);
     refreshScene(lastStatusText);
+    if (success && shouldShowActionBlockedNotice(lastStatusText)) {
+        showCustomNotice(this, QStringLiteral("Aksi Tidak Bisa Dilakukan"), lastStatusText);
+    }
     showGameFinishedDialogIfNeeded();
 }
 
