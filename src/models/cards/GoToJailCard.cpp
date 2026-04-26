@@ -10,7 +10,7 @@ GoToJailCard::GoToJailCard()
     : ActionCard("Awkoakwoak Anda masuk Penjara.") {}
 
 void GoToJailCard::execute(Player& player, GameContext& gameContext) {
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Alhamdulillah, ShieldCard melindungimu dari masuk Penjara!");
         gameContext.logEvent(
             "KARTU",
@@ -27,6 +27,9 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
         if (gameContext.getIO() != nullptr) {
             gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
         }
+        gameContext.logEvent(
+            "KARTU",
+            player.getUsername() + " terkena GoToJailCard dan masuk Penjara.");
         return;
     }
 
@@ -37,4 +40,7 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
     if (gameContext.getIO() != nullptr && jailTileBase != nullptr) {
         gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
     }
+    gameContext.logEvent(
+        "KARTU",
+        player.getUsername() + " terkena GoToJailCard dan masuk Penjara.");
 }

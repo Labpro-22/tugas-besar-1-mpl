@@ -104,6 +104,25 @@ Tile* CommandProcessor::resolveMovement(Player& player, int totalMove) {
     }
 
     Tile* landedTile = board.getTile(player.getPosition());
+    if (logger != nullptr) {
+        std::string detail =
+            "Lempar: " + std::to_string(dice.getDie1()) + "+" +
+            std::to_string(dice.getDie2()) + "=" + std::to_string(dice.getTotal());
+        if (dice.isDouble()) {
+            detail += " (double)";
+        }
+        if (landedTile != nullptr) {
+            detail += " -> mendarat di " + landedTile->getName() +
+                      " (" + landedTile->getCode() + ")";
+        }
+
+        logger->log(
+            turnManager.getCurrentTurn(),
+            player.getUsername(),
+            "DADU",
+            detail);
+    }
+
     if (landedTile != nullptr && context != nullptr) {
         MovementService::awardGoSalaryForForwardMovement(
             board,
@@ -296,26 +315,8 @@ CommandResult CommandProcessor::processDiceCommand(const Command& command, Playe
     }
 
     ui.showDiceRoll(dice.getDie1(), dice.getDie2());
-    Tile* landedTile = resolveMovement(player, dice.getTotal());
-
-    if (logger != nullptr) {
-        std::string detail =
-            "Lempar: " + std::to_string(dice.getDie1()) + "+" +
-            std::to_string(dice.getDie2()) + "=" + std::to_string(dice.getTotal());
-        if (dice.isDouble()) {
-            detail += " (double)";
-        }
-        if (landedTile != nullptr) {
-            detail += " -> mendarat di " + landedTile->getName() +
-                      " (" + landedTile->getCode() + ")";
-        }
-
-        logger->log(
-            turnManager.getCurrentTurn(),
-            player.getUsername(),
-            "DADU",
-            detail);
-    }
+    resolveMovement(player, dice.getTotal());
+    expireTemporarySkillEffects(player, ui, "setelah gerakan pertama selesai");
 
     ui.renderBoard(board, players, turnManager);
     if (dice.getDie1() == dice.getDie2() &&
@@ -380,22 +381,14 @@ void CommandProcessor::processSkillCommand(Player& player) {
     SkillCard* card = usableCards[choice - 1];
     try {
         card->use(player, *context);
-    } catch (const SkillUseFailedException& e) {
-        ui.showMessage(e.what());
-        return;
+    } catch (const SkillUseFailedException&) {
+        throw;
     }
 
     player.setUsedSkillThisTurn(true);
     player.setActionTakenThisTurn(true);
     player.removeCard(card);
     context->getSkillDeck()->discardCard(card);
-    if (logger != nullptr) {
-        logger->log(
-            turnManager.getCurrentTurn(),
-            player.getUsername(),
-            "KARTU",
-            "Menggunakan " + card->getTypeName());
-    }
 }
 
 void CommandProcessor::showLog(const Command& command) {

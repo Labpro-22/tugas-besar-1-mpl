@@ -14,7 +14,7 @@ GoToJailTile::GoToJailTile(int index, const std::string& code, const std::string
 void GoToJailTile::onLanded(Player& player, GameContext& gameContext) {
     gameContext.showMessage("Kamu mendarat di Petak Pergi ke Penjara!");
 
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Efek ShieldCard melindungi Anda dari sanksi penjara.");
         gameContext.logEvent(
             "PENJARA",

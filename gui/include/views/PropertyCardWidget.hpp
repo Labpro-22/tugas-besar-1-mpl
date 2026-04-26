@@ -16,7 +16,14 @@ public:
 
     void setConfigData(const ConfigData& configData);
     void setSelectedProperty(int propertyId);
-    void setOwnershipInfo(const QString& ownerName, const QColor& accentColor, bool mortgaged, int buildingLevel);
+    void setOwnershipInfo(
+        const QString& ownerName,
+        const QColor& accentColor,
+        bool mortgaged,
+        int buildingLevel,
+        int festivalMultiplier = 1,
+        int festivalDuration = 0
+    );
     int selectedPropertyId() const;
 
     QSize minimumSizeHint() const override;
@@ -39,5 +46,7 @@ private:
     QColor ownerAccentColor;
     bool currentPropertyMortgaged = false;
     int currentBuildingLevel = 0;
+    int currentFestivalMultiplier = 1;
+    int currentFestivalDuration = 0;
     int currentPropertyId = 0;
 };

@@ -20,7 +20,7 @@ void RailroadTile::onLanded(Player& player, GameContext& gameContext) {
         gameContext.showMessage("Kamu mendarat di " + getName() + " (" + getCode() + ")!");
         gameContext.showMessage("Belum ada yang menginjaknya duluan, stasiun ini kini menjadi milikmu!");
         gameContext.logEvent(
-            "RAILROAD",
+            "BELI",
             getName() + " (" + getCode() + ") kini milik " + player.getUsername() + " (otomatis)");
     } else {
         gameContext.triggerRentEvent(player, *this);

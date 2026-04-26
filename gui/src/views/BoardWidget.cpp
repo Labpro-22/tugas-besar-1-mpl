@@ -12,6 +12,7 @@
 #include <QPolygon>
 #include <QRegularExpression>
 #include <QStringList>
+#include <QtGui/QFontMetrics>
 #include <QtMath>
 
 #include <exception>
@@ -26,32 +27,46 @@
 //  PALETTE  (exact Figma hex values)
 // ─────────────────────────────────────────────────────────────────────────────
 namespace Pal {
-    const QColor bg       (205, 230, 208);   // #CDE6D0
-    const QColor frame    (  0, 114, 187);   // #0072BB blue outer
+    const QColor bg       (250, 247, 255);
+    const QColor frame    (255, 255, 255);
     const QColor line     (  0,   0,   0);
-    const QColor white    (255, 255, 255);
+    const QColor ink      ( 55,  65,  81);
+    const QColor white    (255, 252, 250);
 
     // property strips
-    const QColor brown    (149,  84,  54);   // #955436
-    const QColor sky      (169, 220, 244);   // #A9DCF4
-    const QColor pink     (217,  58, 150);   // #D93A96
-    const QColor orange   (247, 148,  29);   // #F7941D
-    const QColor red      (237,  28,  36);   // #ED1C24
-    const QColor yellow   (254, 242,   0);   // #FEF200
-    const QColor green    ( 31, 178,  90);   // #1FB25A
-    const QColor darkBlue (  0, 114, 187);   // #0072BB
+    const QColor brown    (186, 156, 240);
+    const QColor sky      ( 98, 153, 238);
+    const QColor pink     (154,  84, 236);
+    const QColor orange   (255, 127, 120);
+    const QColor red      (255,  76,  34);
+    const QColor yellow   (255, 211,  28);
+    const QColor green    ( 16, 174,  91);
+    const QColor darkBlue ( 82,  76, 255);
 
     // special
-    const QColor jailOr   (247, 148,  29);
-    const QColor chestBlue(170, 224, 250);
-    const QColor chanceBg (247, 148,  29);
-    const QColor logoRed  (241,  28,  36);
+    const QColor jailOr   (255,  76,  34);
+    const QColor chestBlue(106, 154, 244);
+    const QColor chanceBg (255,  76,  34);
+    const QColor logoRed  ( 82,  76, 255);
 }
 
 namespace {
 QString formatCurrency(int amount)
 {
-    return QStringLiteral("M%1").arg(amount);
+    return QString::number(amount);
+}
+
+QString priceText(const QString& amount)
+{
+    if (amount.isEmpty()) {
+        return {};
+    }
+    QString cleaned = amount;
+    cleaned.remove(QStringLiteral("M"));
+    cleaned.replace(QStringLiteral("BAYAR"), QStringLiteral("PAY"));
+    return cleaned.startsWith(QStringLiteral("PAY"))
+        ? cleaned.simplified()
+        : QStringLiteral("PRICE %1").arg(cleaned.simplified());
 }
 
 QString formatTileName(const std::string& rawName)
@@ -200,6 +215,27 @@ QString initialsForName(const QString& name)
     }
     return (parts.front().left(1) + parts.back().left(1)).toUpper();
 }
+
+QFont fittedTextFont(
+    const QString& family,
+    int desiredPointSize,
+    int minimumPointSize,
+    int weight,
+    const QString& text,
+    const QRect& rect,
+    int flags
+)
+{
+    for (int pointSize = desiredPointSize; pointSize > minimumPointSize; --pointSize) {
+        QFont font(family, pointSize, weight);
+        const QRect bounds = QFontMetrics(font).boundingRect(rect, flags, text);
+        if (bounds.width() <= rect.width() && bounds.height() <= rect.height()) {
+            return font;
+        }
+    }
+
+    return QFont(family, minimumPointSize, weight);
+}
 }  // namespace
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -208,7 +244,7 @@ QString initialsForName(const QString& name)
 BoardWidget::BoardWidget(QWidget *parent)
     : QWidget(parent), cells(createCells())
 {
-    setMinimumSize(620, 620);
+    setMinimumSize(560, 560);
     setAutoFillBackground(false);
 }
 BoardWidget::~BoardWidget() = default;
@@ -310,7 +346,7 @@ void BoardWidget::drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) c
 
     QRectF shadowRect = r.translated(2, 3);
     p.setPen(Qt::NoPen);
-    p.setBrush(QColor(0, 0, 0, 70));
+    p.setBrush(QColor(143, 168, 216, 80));
     p.drawEllipse(shadowRect);
 
     if (isActivePawn) {
@@ -319,7 +355,7 @@ void BoardWidget::drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) c
     }
 
     p.setBrush(pawn.accentColor.isValid() ? pawn.accentColor : QColor(230, 230, 230));
-    p.setPen(QPen(isActivePawn ? QColor(255, 245, 175) : Qt::black, isActivePawn ? 2.6 : 1.2));
+    p.setPen(QPen(isActivePawn ? QColor(255, 245, 175) : Pal::line, isActivePawn ? 2.6 : 1.2));
     p.drawEllipse(r);
 
     const QRectF iconRect = r.adjusted(r.width() * 0.16, r.height() * 0.16, -r.width() * 0.16, -r.height() * 0.16);
@@ -348,7 +384,7 @@ void BoardWidget::drawPawn(QPainter &p, const QRectF &r, const PawnData &pawn) c
         p.drawText(iconRect, Qt::AlignCenter, initialsForName(pawn.name));
     }
 
-    p.setPen(QPen(isActivePawn ? Qt::white : Qt::black, isActivePawn ? 1.8 : 1.0));
+    p.setPen(QPen(isActivePawn ? Qt::white : Pal::line, isActivePawn ? 1.8 : 1.0));
     p.setBrush(Qt::NoBrush);
     p.drawEllipse(r);
     p.restore();
@@ -468,14 +504,14 @@ void BoardWidget::drawBuildings(QPainter &p, const QRect &board, int cs, int es)
         const QPixmap& asset = pix(assetName);
 
         p.setPen(Qt::NoPen);
-        p.setBrush(QColor(0, 0, 0, 46));
+        p.setBrush(QColor(143, 168, 216, 52));
         p.drawEllipse(iconRect.adjusted(2, size - size / 5, -2, 3));
 
         if (!asset.isNull()) {
             drawPix(p, asset, iconRect);
         } else {
             p.setBrush(building.buildingLevel >= 5 ? QColor(30, 94, 170) : QColor(42, 154, 78));
-            p.setPen(QPen(QColor(17, 17, 17), 1));
+            p.setPen(QPen(Pal::line, 1));
             p.drawRoundedRect(iconRect, 3, 3);
             QFont font(QStringLiteral("Trebuchet MS"), qMax(7, size / 3), QFont::Black);
             p.setFont(font);
@@ -513,7 +549,7 @@ void BoardWidget::drawOwners(QPainter &p, const QRect &board, int cs, int es) co
         const QRect badge(tile.left() + 4, tile.bottom() - badgeHeight - 4, badgeWidth, badgeHeight);
 
         const QColor accent = owner.accentColor.isValid() ? owner.accentColor : QColor(40, 40, 40);
-        p.setPen(QPen(Qt::black, 1));
+        p.setPen(QPen(Pal::line, 1));
         p.setBrush(accent);
         p.drawRoundedRect(badge, 4, 4);
 
@@ -524,11 +560,34 @@ void BoardWidget::drawOwners(QPainter &p, const QRect &board, int cs, int es) co
 
         if (owner.mortgaged) {
             const QRect mortgageBadge(badge.right() + 3, badge.top(), badgeHeight, badgeHeight);
-            p.setPen(QPen(Qt::black, 1));
-            p.setBrush(QColor(30, 30, 30));
+            p.setPen(QPen(Pal::line, 1));
+            p.setBrush(QColor(126, 116, 196));
             p.drawRoundedRect(mortgageBadge, 4, 4);
             p.setPen(Qt::white);
             p.drawText(mortgageBadge, Qt::AlignCenter, QStringLiteral("M"));
+        }
+
+        if (owner.festivalDuration > 0 && owner.festivalMultiplier > 1) {
+            const int festivalWidth = qMax(badgeHeight + 8, badgeHeight * 2);
+            int festivalLeft = badge.right() + 3 + (owner.mortgaged ? badgeHeight + 3 : 0);
+            int festivalTop = badge.top();
+            if (festivalLeft + festivalWidth > tile.right() - 4) {
+                festivalLeft = badge.left();
+                festivalTop = badge.top() - badgeHeight - 3;
+            }
+
+            const QRect festivalBadge(festivalLeft, festivalTop, festivalWidth, badgeHeight);
+            p.setPen(QPen(Pal::line, 1));
+            p.setBrush(QColor(255, 191, 54));
+            p.drawRoundedRect(festivalBadge, 4, 4);
+
+            QFont festivalFont(QStringLiteral("Trebuchet MS"), qMax(5, badgeHeight / 2), QFont::Black);
+            p.setFont(festivalFont);
+            p.setPen(QColor(38, 30, 0));
+            p.drawText(
+                festivalBadge,
+                Qt::AlignCenter,
+                QStringLiteral("x%1").arg(owner.festivalMultiplier));
         }
     }
 
@@ -665,7 +724,7 @@ QVector<BoardWidget::CellData> BoardWidget::createCells() const
 // ─────────────────────────────────────────────────────────────────────────────
 QRect BoardWidget::boardBounds() const
 {
-    const int margin = 10;
+    const int margin = qMax(2, qMin(width(), height()) / 220);
     const int s = qMax(0, qMin(width(), height()) - 2 * margin);
     return { (width() - s) / 2, (height() - s) / 2, s, s };
 }
@@ -726,7 +785,7 @@ bool BoardWidget::isInspectableTile(int idx) const
 void BoardWidget::mousePressEvent(QMouseEvent *event)
 {
     const QRect board = boardBounds();
-    const int cs = qMax(88, int(board.width() * 0.138));
+    const int cs = qMax(74, int(board.width() * 0.132));
     const int es = (board.width() - 2 * cs) / 9;
     const QRect cr(board.x() + cs, board.y() + cs, es * 9, es * 9);
 
@@ -784,46 +843,41 @@ void BoardWidget::drawDiamond(QPainter &p, const QRect &r) const
 void BoardWidget::drawCornerGo(QPainter &p, const QRect &r) const
 {
     p.save();
-    p.fillRect(r, Pal::white);
+    p.fillRect(r, Pal::jailOr);
     p.setPen(QPen(Pal::line, 2));
     p.drawRect(r);
 
     int W=r.width(), H=r.height();
 
     // "DAPAT ... GAJI SAAT LEWAT" – tiny black text top-left area
-    QFont tiny("Arial", qMax(6, W/17), QFont::Bold);
+    QFont tiny("Arial", qMax(7, W/13), QFont::Bold);
     p.setFont(tiny);
-    p.setPen(Pal::line);
+    p.setPen(Qt::white);
     const QString goSalary = (!cells.isEmpty() && !cells[0].price.isEmpty()) ? cells[0].price : QStringLiteral("M200");
-    p.drawText(r.adjusted(4,4,-W/2,-H/2), Qt::AlignLeft|Qt::AlignTop|Qt::TextWordWrap,
-               QStringLiteral("DAPAT\n%1 GAJI\nSAAT LEWAT").arg(goSalary));
+    p.save();
+    p.translate(r.center());
+    p.rotate(-45);
+    p.drawText(QRect(-W/2, -H/2 + H/10, W, H/4), Qt::AlignCenter,
+               QStringLiteral("DAPAT %1").arg(goSalary));
 
     // Red arrow pointing left (pointing toward tile 1)
     // Arrow at bottom half, pointing left
     {
-        int ax  = r.right() - W/6;
-        int ay  = r.bottom() - H/4;
-        int aw  = W/2, ah = H/7;
-        QPolygon arr;
-        arr << QPoint(ax,      ay - ah/2)
-            << QPoint(ax-aw,   ay - ah/2)
-            << QPoint(ax-aw,   ay - ah)
-            << QPoint(ax-aw - ah, ay)
-            << QPoint(ax-aw,   ay + ah)
-            << QPoint(ax-aw,   ay + ah/2)
-            << QPoint(ax,      ay + ah/2);
-        p.setPen(Qt::NoPen);
-        p.setBrush(Pal::red);
-        p.drawPolygon(arr);
+        p.setPen(QPen(QColor(255, 196, 148), qMax(2, W / 32), Qt::SolidLine, Qt::SquareCap));
+        const int arrowY = H / 3;
+        for (int i = 0; i < 5; ++i) {
+            const int x = -W / 2 + W / 8 + i * W / 12;
+            p.drawLine(QPoint(x + W / 16, arrowY), QPoint(x, arrowY + W / 16));
+            p.drawLine(QPoint(x + W / 16, arrowY), QPoint(x, arrowY - W / 16));
+        }
     }
 
     // "GO" — big red bold text in top-right quadrant
-    QFont goF("Arial Black", qMax(22, W*2/5));
-    goF.setBold(true);
+    QFont goF("Arial Black", qMax(24, W*2/5));
     p.setFont(goF);
-    p.setPen(Pal::red);
-    QRect goR(r.left()+W/2, r.top()+4, W/2-4, H/2-4);
-    p.drawText(goR, Qt::AlignCenter, "GO");
+    p.drawText(QRect(-W/2, -H/8, W, H/2), Qt::AlignCenter, "GO");
+
+    p.restore();
 
     p.restore();
 }
@@ -840,18 +894,18 @@ void BoardWidget::drawCornerJail(QPainter &p, const QRect &r) const
 
     // "HANYA / MAMPIR" vertical text on right strip
     {
-        QFont sf("Arial", qMax(5,W/18), QFont::Bold);
+        QFont sf("Arial", qMax(5, W / 22), QFont::Bold);
         p.save();
-        p.translate(r.right()-W/8, r.center().y());
+        p.translate(r.right() - W / 6, r.center().y());
         p.rotate(-90);
         p.setFont(sf);
-        p.setPen(Pal::line);
-        p.drawText(QRect(-H/2+4, -W/8+2, H-8, W/4), Qt::AlignCenter|Qt::TextWordWrap, "HANYA\nMAMPIR");
+        p.setPen(Pal::ink);
+        p.drawText(QRect(-H / 2 + 6, -W / 9, H - 12, W / 4), Qt::AlignCenter | Qt::TextWordWrap, "HANYA\nMAMPIR");
         p.restore();
     }
 
     // Orange jail box (diagonal) with "DI / LAPAS"
-    int boxS = int(qMin(W,H)*0.62);
+    int boxS = int(qMin(W,H)*0.54);
     QRect jailBox(r.left()+4, r.top()+4, boxS, boxS);
     p.fillRect(jailBox, Pal::jailOr);
     p.setPen(QPen(Pal::line, 2));
@@ -861,7 +915,7 @@ void BoardWidget::drawCornerJail(QPainter &p, const QRect &r) const
     {
         QFont jf("Arial", qMax(6, boxS/8), QFont::Bold);
         p.setFont(jf);
-        p.setPen(Pal::line);
+        p.setPen(Qt::white);
         p.save();
         p.translate(jailBox.center());
         p.rotate(-35);
@@ -890,9 +944,9 @@ void BoardWidget::drawCornerFreeParking(QPainter &p, const QRect &r) const
     int W=r.width(), H=r.height();
 
     // "BEBAS" top-left, "PARKIR" bottom-right (rotated 180 because top-left corner faces down-right)
-    QFont lf("Arial", qMax(6, W/14), QFont::Bold);
+    QFont lf("Arial", qMax(7, W/13), QFont::Bold);
     p.setFont(lf);
-    p.setPen(Pal::red);
+    p.setPen(Pal::ink);
     p.save();
     p.translate(r.center());
     p.rotate(135);
@@ -919,9 +973,9 @@ void BoardWidget::drawCornerGoToJail(QPainter &p, const QRect &r) const
     int W=r.width(), H=r.height();
 
     // "GO TO" at top, "JAIL" at bottom (rotated 225 = facing left+down)
-    QFont lf("Arial", qMax(6, W/14), QFont::Bold);
+    QFont lf("Arial", qMax(7, W/13), QFont::Bold);
     p.setFont(lf);
-    p.setPen(Pal::darkBlue);
+    p.setPen(Pal::ink);
     p.save();
     p.translate(r.center());
     p.rotate(225);
@@ -960,8 +1014,8 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
     QRect lr(-W/2, -H/2, W, H);
 
     // Base fill
-    p.fillRect(lr, Pal::bg);
-    p.setPen(QPen(Pal::line, 3));
+    p.fillRect(lr, Pal::white);
+    p.setPen(QPen(Pal::line, 2));
     p.drawRect(lr);
 
     // ── Property strip (TOP, facing board center) ──
@@ -969,33 +1023,49 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
     if (c.hasStrip) {
         QRect strip(lr.left(), lr.top(), W, stripH);
         p.fillRect(strip, c.stripColor);
-        p.setPen(QPen(Pal::line, 3));
+        p.setPen(QPen(Pal::line, 2));
         p.drawRect(strip);
     }
 
     // ── Calculate content zone below strip ──
     int topY  = lr.top() + (c.hasStrip ? stripH : 0);
-    QRect content(lr.left()+2, topY+2, W-4, H - (c.hasStrip ? stripH : 0) - 4);
+    QRect content(lr.left()+4, topY+4, W-8, H - (c.hasStrip ? stripH : 0) - 8);
 
-    // Font sizes based on tile width (fonts not bold as per reference screenshot)
-    QFont nameFont("Inter", qMax(5, W/11)); 
-    QFont priceFont("Inter", qMax(5, W/11));
+    // Font sizes are fitted to the available tile text box so long city names stay readable.
+    QFont nameFont("Arial", qMax(7, W/9), QFont::Bold);
+    QFont priceFont("Arial", qMax(5, W/18), QFont::Bold);
 
     if (c.hasStrip) {
         // ── PROPERTY TILE layout (matches reference):
         //    [NAME  centered right below the strip]
         //    [price at bottom]
         // ─────────────────────────────────────────
-        QRect nameR(content.left(), content.top() + 4, content.width(), content.height()/2);
+        QRect nameR(content.left(), content.top() + 4, content.width(), content.height()*55/100);
+        nameFont = fittedTextFont(
+            QStringLiteral("Arial"),
+            qMax(6, W / 11),
+            4,
+            QFont::Bold,
+            c.name,
+            nameR,
+            Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap);
         p.setFont(nameFont);
-        p.setPen(Pal::line);
-        p.drawText(nameR, Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap, c.name);
+        p.setPen(Pal::ink);
+        p.drawText(nameR, Qt::AlignHCenter | Qt::AlignVCenter | Qt::TextWordWrap, c.name);
 
         if (!c.price.isEmpty()) {
+            QRect priceR(content.left(), content.bottom() - (content.height()/4), content.width(), content.height()/4);
+            priceFont = fittedTextFont(
+                QStringLiteral("Arial"),
+                qMax(5, W / 18),
+                5,
+                QFont::Bold,
+                priceText(c.price),
+                priceR,
+                Qt::AlignHCenter | Qt::AlignBottom);
             p.setFont(priceFont);
-            p.setPen(Pal::line);
-            QRect priceR(content.left(), content.bottom() - (content.height()/3), content.width(), content.height()/3);
-            p.drawText(priceR, Qt::AlignHCenter | Qt::AlignBottom, c.price);
+            p.setPen(Pal::ink);
+            p.drawText(priceR, Qt::AlignHCenter | Qt::AlignBottom, priceText(c.price));
         }
 
     } else {
@@ -1010,8 +1080,16 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
 
         // Name top
         QRect nameR(content.left(), content.top() + 4, content.width(), nameSectionH);
+        nameFont = fittedTextFont(
+            QStringLiteral("Arial"),
+            qMax(6, W / 11),
+            4,
+            QFont::Bold,
+            c.name,
+            nameR,
+            Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap);
         p.setFont(nameFont);
-        p.setPen(Pal::line);
+        p.setPen(Pal::ink);
         p.drawText(nameR, Qt::AlignHCenter | Qt::AlignTop | Qt::TextWordWrap, c.name);
 
         // Icon centre – fill most of middle section
@@ -1044,9 +1122,17 @@ void BoardWidget::drawEdgeTile(QPainter &p, EdgeSide side,
         // Price bottom
         if (!c.price.isEmpty()) {
             QRect priceR(content.left(), content.bottom() - priceSectionH, content.width(), priceSectionH);
+            priceFont = fittedTextFont(
+                QStringLiteral("Arial"),
+                qMax(5, W / 18),
+                5,
+                QFont::Bold,
+                priceText(c.price),
+                priceR,
+                Qt::AlignHCenter | Qt::AlignBottom);
             p.setFont(priceFont);
-            p.setPen(Pal::line);
-            p.drawText(priceR, Qt::AlignHCenter | Qt::AlignBottom, c.price);
+            p.setPen(Pal::ink);
+            p.drawText(priceR, Qt::AlignHCenter | Qt::AlignBottom, priceText(c.price));
         }
     }
 
@@ -1072,10 +1158,20 @@ void BoardWidget::drawCenter(QPainter &p, const QRect &cr) const
         p.translate(center);
         p.rotate(-35);
         QRect card(-cw/2, -ch/2, cw, ch);
-        p.setPen(QPen(QColor(28,82,132), 2, Qt::DashLine));
-        p.setBrush(Pal::chestBlue);
+        p.setPen(QPen(Pal::chestBlue, qMax(3, cr.width() / 115)));
+        p.setBrush(Qt::NoBrush);
         p.drawRect(card);
-        drawPix(p, pix("community_chest_center_card.png"), card.adjusted(4,4,-4,-4));
+        const QRect iconRect(
+            card.left() + card.width() * 34 / 100,
+            card.top() + card.height() * 18 / 100,
+            card.width() * 32 / 100,
+            card.height() * 32 / 100
+        );
+        drawPix(p, pix("community_chest_center_card.png"), iconRect);
+        QFont cardFont("Arial", qMax(8, cr.width() / 55), QFont::Bold);
+        p.setFont(cardFont);
+        p.setPen(Pal::ink);
+        p.drawText(card.adjusted(8, card.height()*62/100, -8, -8), Qt::AlignCenter, "DANA UMUM");
         p.restore();
     }
 
@@ -1088,46 +1184,90 @@ void BoardWidget::drawCenter(QPainter &p, const QRect &cr) const
         p.translate(center);
         p.rotate(-35);
         QRect card(-cw/2, -ch/2, cw, ch);
-        p.setPen(QPen(QColor(120,70,10), 2, Qt::DashLine));
-        p.setBrush(Pal::chanceBg);
+        p.setPen(QPen(Pal::chanceBg, qMax(3, cr.width() / 110)));
+        p.setBrush(Qt::NoBrush);
         p.drawRect(card);
-        drawPix(p, pix("chance_center_card.png"), card.adjusted(4,4,-4,-4));
+        QFont cardFont("Arial", qMax(8, cr.width() / 55), QFont::Bold);
+        p.setFont(cardFont);
+        p.setPen(Pal::ink);
+        p.drawText(card.adjusted(8, 8, -8, -card.height()*62/100), Qt::AlignCenter, "KESEMPATAN");
+        QFont qFont("Arial Black", qMax(18, cr.width() / 16));
+        p.setFont(qFont);
+        p.setPen(Pal::chanceBg);
+        p.drawText(card.adjusted(0, card.height()/5, 0, 0), Qt::AlignCenter, "?");
+        p.restore();
+    }
+
+    {
+        p.save();
+        p.translate(cr.center());
+        p.rotate(-35);
+
+        const qreal s = cr.width() / 100.0;
+        p.setPen(QPen(Pal::line, qMax<qreal>(1.2, s * 0.22), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        p.drawArc(QRectF(-16*s, 16*s, 20*s, 20*s), 205 * 16, 205 * 16);
+        p.drawLine(QPointF(-27*s, 33*s), QPointF(-18*s, 23*s));
+        p.drawLine(QPointF(-27*s, 33*s), QPointF(-22*s, 41*s));
+
+        p.setBrush(Pal::pink);
+        p.setPen(QPen(Pal::line, qMax<qreal>(2.0, s * 0.35)));
+        p.drawPie(QRectF(-28*s, 3*s, 33*s, 33*s), 25 * 16, 245 * 16);
+
+        p.setPen(Qt::NoPen);
+        p.setBrush(Pal::green);
+        p.drawRoundedRect(QRectF(22*s, -1*s, 11*s, 28*s), 6*s, 6*s);
+        p.drawRoundedRect(QRectF(31*s, -1*s, 11*s, 28*s), 6*s, 6*s);
+        p.drawRoundedRect(QRectF(40*s, -1*s, 11*s, 28*s), 6*s, 6*s);
+
+        p.setBrush(QColor(255, 76, 34));
+        p.drawRoundedRect(QRectF(-33*s, -15*s, 11*s, 22*s), 6*s, 6*s);
+        p.setBrush(QColor(35, 181, 232));
+        p.drawEllipse(QRectF(-18*s, -14*s, 12*s, 12*s));
+        p.setBrush(QColor(155, 82, 236));
+        p.drawEllipse(QRectF(-24*s, -5*s, 13*s, 13*s));
+        p.setBrush(QColor(21, 206, 126));
+        p.drawEllipse(QRectF(-12*s, 2*s, 12*s, 12*s));
+
         p.restore();
     }
 
     // ── NIMONSPOLI diagonal banner (smaller, won't clip) ──
     {
-        double logoW = cr.width() * 0.72;
-        double logoH = cr.height()* 0.13;
+        double logoW = cr.width() * 0.90;
+        double logoH = cr.height()* 0.18;
         p.save();
         p.translate(cr.center());
         p.rotate(-38);
 
-        // Drop shadow
         p.setPen(Qt::NoPen);
-        p.setBrush(QColor(0,0,0,55));
-        p.drawRoundedRect(QRectF(-logoW/2+6, -logoH/2+6, logoW, logoH), 10, 10);
+        p.setBrush(QColor(143, 168, 216, 54));
+        p.drawRect(QRectF(-logoW/2+7, -logoH/2+7, logoW, logoH));
 
-        // Red banner
         p.setBrush(Pal::logoRed);
-        p.setPen(QPen(Pal::white, 5));
-        p.drawRoundedRect(QRectF(-logoW/2, -logoH/2, logoW, logoH), 10, 10);
+        p.setPen(QPen(Pal::line, 2));
+        p.drawRect(QRectF(-logoW/2, -logoH/2, logoW, logoH));
 
-        // Inner black outline
         p.setPen(QPen(Pal::line, 1.5));
         p.setBrush(Qt::NoBrush);
-        p.drawRoundedRect(QRectF(-logoW/2+4, -logoH/2+4, logoW-8, logoH-8), 7, 7);
+        p.drawRect(QRectF(-logoW/2+8, -logoH/2+8, logoW-16, logoH-16));
+
+        p.setBrush(Pal::white);
+        const qreal handle = qMax<qreal>(7.0, logoH * 0.14);
+        const QVector<QPointF> handles = {
+            QPointF(-logoW/2+8, -logoH/2+8), QPointF(logoW/2-8, -logoH/2+8),
+            QPointF(-logoW/2+8, logoH/2-8), QPointF(logoW/2-8, logoH/2-8)
+        };
+        for (const QPointF& pt : handles) {
+            QRectF h(pt.x() - handle/2, pt.y() - handle/2, handle, handle);
+            p.drawRect(h);
+        }
 
         // Text – sized to fit banner height
-        int fontSize = qMax(10, int(logoH * 0.48));
+        int fontSize = qMax(10, int(logoH * 0.40));
         QFont lf("Arial Black", fontSize);
         lf.setBold(true);
-        lf.setLetterSpacing(QFont::PercentageSpacing, 108);
         p.setFont(lf);
-        // shadow
-        p.setPen(QColor(0,0,0,80));
-        p.drawText(QRectF(-logoW/2+3, -logoH/2+3, logoW, logoH), Qt::AlignCenter, "NIMONSPOLI");
-        // white text
         p.setPen(Qt::white);
         p.drawText(QRectF(-logoW/2, -logoH/2, logoW, logoH), Qt::AlignCenter, "NIMONSPOLI");
 
@@ -1146,11 +1286,6 @@ void BoardWidget::drawCell(QPainter &p, int idx, const QRect &r) const
     const EdgeSide side = sideForIndex(idx);
 
     if (side == EdgeSide::Corner) {
-        // Base fill + border
-        p.fillRect(r, Pal::white);
-        p.setPen(QPen(Pal::line, 3));
-        p.drawRect(r);
-
         switch (idx) {
         case  0: drawCornerGo(p, r);          break;
         case 10: drawCornerJail(p, r);         break;
@@ -1158,10 +1293,6 @@ void BoardWidget::drawCell(QPainter &p, int idx, const QRect &r) const
         case 30: drawCornerGoToJail(p, r);     break;
         }
     } else {
-        // Tile outer border (fallback)
-        p.fillRect(r, Pal::bg);
-        p.setPen(QPen(Pal::line, 3));
-        p.drawRect(r);
         drawEdgeTile(p, side, r, c);
     }
 
@@ -1212,13 +1343,11 @@ void BoardWidget::paintEvent(QPaintEvent *event)
 
     const QRect board = boardBounds();
     // Corner tile ~13.8% of board, edge tiles fill the rest in 9 equal slots
-    const int cs = qMax(88, int(board.width() * 0.138));
+    const int cs = qMax(74, int(board.width() * 0.132));
     const int es = (board.width() - 2*cs) / 9;
 
-    // Board background
+    // Board background; perimeter cells draw the visible outside border.
     p.fillRect(board, Pal::bg);
-    p.setPen(QPen(Pal::line, 3));
-    p.drawRect(board);
 
     // Center
     const QRect cr(board.x()+cs, board.y()+cs, es*9, es*9);
@@ -1236,18 +1365,11 @@ void BoardWidget::paintEvent(QPaintEvent *event)
 
     drawPawns(p, board, cs, es);
 
-    // Redraw outer board border on top
-    p.setPen(QPen(Pal::line, 3));
-    p.setBrush(Qt::NoBrush);
-    p.drawRect(board);
-    p.setPen(QPen(Pal::line, 2));
-    p.drawRect(cr);
-
     if (tileSelectionMode && !selectionPromptText.isEmpty()) {
         p.save();
         p.setRenderHint(QPainter::Antialiasing);
         QRect promptRect = selectionPromptRect(cr);
-        p.setPen(QPen(QColor(17, 17, 17), 2));
+        p.setPen(QPen(Pal::line, 2));
         p.setBrush(QColor(255, 254, 248, 236));
         p.drawRect(promptRect);
 
@@ -1255,7 +1377,7 @@ void BoardWidget::paintEvent(QPaintEvent *event)
         if (tileSelectionAllowCancel) {
             const QRect cancelRect = selectionCancelRect(cr);
             textRect.setRight(cancelRect.left() - 8);
-            p.setBrush(QColor(17, 17, 17));
+            p.setBrush(QColor(126, 116, 196));
             p.setPen(Qt::NoPen);
             p.drawRect(cancelRect);
             p.setPen(QPen(Qt::white, 3, Qt::SolidLine, Qt::RoundCap));
@@ -1265,7 +1387,7 @@ void BoardWidget::paintEvent(QPaintEvent *event)
 
         QFont titleFont(QStringLiteral("Trebuchet MS"), qMax(10, cr.width() / 36), QFont::Black);
         p.setFont(titleFont);
-        p.setPen(QColor(17, 17, 17));
+        p.setPen(Pal::ink);
         p.drawText(textRect, Qt::AlignCenter | Qt::TextWordWrap, selectionPromptText.toUpper());
         p.restore();
     }

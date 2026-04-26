@@ -460,12 +460,6 @@ bool BankruptcyHandler::handleBankruptcy(Player& player, Player* creditor, int a
     if (creditor) {
         creditor->setBalance(creditor->getBalance() + amount);
     }
-    logWithUsername(
-        context,
-        player.getUsername(),
-        "PEMBAYARAN",
-        "Membayar " + TextFormatter::formatMoney(amount) +
-            (creditor == nullptr ? " ke Bank setelah likuidasi." : " kepada " + creditor->getUsername() + " setelah likuidasi."));
     if (context.getIO() != nullptr) {
         context.getIO()->showPaymentNotification(
             "PAYMENT",

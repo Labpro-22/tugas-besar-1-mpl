@@ -17,7 +17,7 @@ MoveBackCard::MoveBackCard(int steps)
       steps(steps) {}
 
 void MoveBackCard::execute(Player& player, GameContext& gameContext) {
-    if (player.isShieldActive()) {
+    if (player.consumeShield()) {
         gameContext.showMessage("[SHIELD ACTIVE]: Alhamdulillah, kamu terlindungi ShieldCard sehingga tidak perlu mundur!");
         gameContext.logEvent(
             "KARTU",

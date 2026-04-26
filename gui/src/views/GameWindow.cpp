@@ -18,12 +18,14 @@
 #include <QLabel>
 #include <QLayoutItem>
 #include <QLineEdit>
+#include <QLocale>
 #include <QMenu>
 #include <QPropertyAnimation>
 #include <QPushButton>
 #include <QRegularExpression>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QSet>
 #include <QSpinBox>
 #include <QStackedWidget>
@@ -35,6 +37,7 @@
 #include "models/state/GameState.hpp"
 #include "models/state/LogEntry.hpp"
 #include "models/state/PropertyState.hpp"
+#include "models/cards/SkillCard.hpp"
 #include "models/tiles/PropertyTile.hpp"
 #include "models/tiles/Tile.hpp"
 #include "utils/SaveManager.hpp"
@@ -97,10 +100,10 @@ void configureActionButton(QToolButton* button, const QString& text, const QIcon
 {
     button->setText(text);
     button->setIcon(icon);
-    button->setIconSize(QSize(26, 26));
-    button->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    button->setIconSize(QSize(20, 20));
+    button->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);
     button->setCursor(Qt::PointingHandCursor);
-    button->setMinimumHeight(56);
+    button->setMinimumHeight(primary ? 44 : 36);
     button->setObjectName(primary ? QStringLiteral("actionButtonPrimary") : QStringLiteral("actionButton"));
     button->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Minimum);
 }
@@ -114,6 +117,24 @@ bool isUsernameDuplicate(const QStringList& names, const QString& candidate)
         }
     }
     return false;
+}
+
+bool hasUsableSkillCardForCurrentState(const Player& player)
+{
+    for (SkillCard* card : player.getHand()) {
+        if (card != nullptr && (!player.isJailed() || card->canUseWhileJailed())) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool canUseSkillBeforeMovementDice(const Player& player)
+{
+    return !player.hasUsedSkillThisTurn() &&
+        !player.hasRolledThisTurn() &&
+        !player.hasRolledMovementDiceThisTurn() &&
+        hasUsableSkillCardForCurrentState(player);
 }
 
 void centerDialog(QDialog& dialog, QWidget* parent)
@@ -477,81 +498,87 @@ GameWindow::GameWindow(QWidget* parent)
     configureConnections();
 
     setStyleSheet(
-        "#gameWindow { background: #edf2f7; }"
+        "#gameWindow { background: #f8fafc; }"
         "#boardShell {"
-        "  background: rgba(255,255,255,0.97);"
-        "  border: 1px solid #d7dee6;"
-        "  border-radius: 20px;"
+        "  background: #ffffff;"
+        "  border: 1px solid #d7dde3;"
+        "  border-radius: 18px;"
         "}"
         "#sidebarPanel {"
-        "  background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 rgba(170, 210, 228, 0.96), stop:1 rgba(160, 201, 220, 0.98));"
-        "  border: 1px solid rgba(123, 168, 188, 0.92);"
-        "  border-radius: 22px;"
+        "  background: transparent;"
+        "  border: none;"
         "}"
-        "#playerHeader {"
-        "  background: rgba(255,255,255,0.38);"
-        "  border-top-left-radius: 22px;"
-        "  border-top-right-radius: 22px;"
-        "  border-bottom: 1px solid rgba(111, 148, 165, 0.45);"
+        "#roomChip {"
+        "  background: #f1f5f9;"
+        "  color: #587091;"
+        "  border-radius: 14px;"
+        "  padding: 5px 13px;"
+        "  font: 700 9pt 'Trebuchet MS';"
+        "}"
+        "#playerHeader, #portfolioSection, #historySection {"
+        "  background: #ffffff;"
+        "  border: 1px solid #d7e1ee;"
+        "  border-radius: 18px;"
         "}"
         "#playerAvatar {"
-        "  background: rgba(255,255,255,0.86);"
-        "  border: 2px solid rgba(255,255,255,0.96);"
-        "  border-radius: 11px;"
+        "  border: none;"
+        "  border-radius: 12px;"
         "}"
-        "#playerName { color:#10181f; font: 900 15pt 'Trebuchet MS'; }"
-        "#playerMoney { color:#2f8c2f; font: 900 18pt 'Trebuchet MS'; }"
-        "#portfolioSection, #statsSection, #actionsSection, #historySection { background: transparent; }"
-        "#sidebarDivider { background: rgba(111, 150, 167, 0.55); margin: 6px 18px 4px 18px; }"
+        "#playerCaption { color:#66809e; font: 700 9pt 'Trebuchet MS'; }"
+        "#playerName { color:#020617; font: 900 13pt 'Trebuchet MS'; }"
+        "#playerMoney { color:#5b8def; font: 900 20pt 'Trebuchet MS'; }"
+        "#cardDivider { background: #d6e0eb; }"
+        "#sectionTitle { color:#020617; font: 900 12pt 'Trebuchet MS'; }"
+        "#sectionMeta { color:#55708f; font: 700 9pt 'Trebuchet MS'; }"
+        "#statsSection, #actionsSection { background: transparent; }"
+        "#sidebarDivider { background: transparent; margin: 0; }"
         "#historyHeaderFrame {"
-        "  background: rgba(255,255,255,0.92);"
-        "  border: 1px solid rgba(138,160,174,0.95);"
-        "  border-top-left-radius: 10px;"
-        "  border-top-right-radius: 10px;"
+        "  background: transparent;"
+        "  border: none;"
         "}"
-        "#historyTitle { color:#243744; font:900 8.7pt 'Trebuchet MS'; letter-spacing:1px; }"
-        "#historyFilter { color:#596d7d; font:700 8pt 'Courier New'; }"
+        "#historyTitle { color:#020617; font:900 12pt 'Trebuchet MS'; }"
+        "#historyFilter { color:#22c55e; font:900 8pt 'Courier New'; }"
         "#historyScroll {"
-        "  background: rgba(255,255,255,0.82);"
-        "  border-left: 1px solid rgba(138,160,174,0.95);"
-        "  border-right: 1px solid rgba(138,160,174,0.95);"
-        "  border-bottom: 1px solid rgba(138,160,174,0.95);"
-        "  border-bottom-left-radius: 10px;"
-        "  border-bottom-right-radius: 10px;"
+        "  background: #ffffff;"
+        "  border: none;"
         "}"
-        "#statLabelPrimary, #statLabelSecondary { color:#245987; font:900 10pt 'Trebuchet MS'; }"
-        "#statLabelSecondary { color:#3f7a33; }"
+        "#statIcon { color:#64748b; font:900 8pt 'Trebuchet MS'; }"
+        "#statLabelPrimary, #statLabelSecondary { color:#334155; font:900 9pt 'Trebuchet MS'; }"
         "#playerSwitchButton {"
-        "  min-width: 54px;"
-        "  min-height: 32px;"
-        "  padding: 4px 10px;"
-        "  border-radius: 16px;"
-        "  border: 1px solid rgba(78,119,136,0.50);"
-        "  background: rgba(255,255,255,0.72);"
-        "  color: #173142;"
+        "  min-width: 58px;"
+        "  min-height: 30px;"
+        "  padding: 4px 12px;"
+        "  border-radius: 15px;"
+        "  border: none;"
+        "  background: #f1f5f9;"
+        "  color: #64748b;"
         "  font: 900 8.5pt 'Trebuchet MS';"
         "}"
         "#playerSwitchButton:hover {"
-        "  background: rgba(255,255,255,0.94);"
-        "  border: 2px solid #347cb7;"
+        "  background: #e8eef6;"
         "}"
         "#actionButtonPrimary, #actionButton {"
-        "  padding: 4px 8px;"
-        "  border-radius: 10px;"
-        "  border: 1px solid rgba(134,152,166,0.9);"
-        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #dfe7ec);"
-        "  color: #162432;"
+        "  padding: 8px 12px;"
+        "  border-radius: 12px;"
+        "  border: 1px solid #d8e2ef;"
+        "  background: #ffffff;"
+        "  color: #020617;"
+        "  font: 900 11pt 'Trebuchet MS';"
         "}"
         "#actionButtonPrimary {"
-        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #dbefff);"
-        "  border-color: rgba(70, 123, 189, 0.85);"
+        "  background: #eef4ff;"
+        "  color: #2563eb;"
+        "  border-color: #bfdbfe;"
+        "  border-radius: 12px;"
         "}"
         "#actionButtonPrimary:hover, #actionButton:hover {"
-        "  background: qlineargradient(x1:0,y1:0,x2:0,y2:1, stop:0 #ffffff, stop:1 #eef4f8);"
+        "  background: #f8fafc;"
         "}"
+        "#actionButtonPrimary:hover { background: #dbeafe; }"
         "#actionButtonPrimary:disabled, #actionButton:disabled {"
-        "  color: rgba(74,88,102,0.55);"
-        "  background: rgba(231,235,239,0.86);"
+        "  color: #9aa4ad;"
+        "  background: #f8fafc;"
+        "  border-color: #e6edf5;"
         "}"
         "QDialog { background: #d9d4c5; }"
     );
@@ -582,13 +609,13 @@ QWidget* GameWindow::buildGamePage()
     auto* page = new QWidget(this);
 
     gamePageLayout = new QHBoxLayout(page);
-    gamePageLayout->setContentsMargins(18, 18, 18, 18);
-    gamePageLayout->setSpacing(16);
+    gamePageLayout->setContentsMargins(12, 12, 12, 12);
+    gamePageLayout->setSpacing(12);
 
     boardShell = new QFrame(page);
     boardShell->setObjectName(QStringLiteral("boardShell"));
     boardShellLayout = new QVBoxLayout(boardShell);
-    boardShellLayout->setContentsMargins(18, 18, 18, 18);
+    boardShellLayout->setContentsMargins(10, 10, 10, 10);
     boardShellLayout->setSpacing(0);
 
     boardWidget = new BoardWidget(boardShell);
@@ -598,38 +625,58 @@ QWidget* GameWindow::buildGamePage()
 
     sidebarPanel = new QFrame(page);
     sidebarPanel->setObjectName(QStringLiteral("sidebarPanel"));
-    sidebarPanel->setMinimumWidth(320);
-    sidebarPanel->setMaximumWidth(350);
+    sidebarPanel->setMinimumWidth(300);
+    sidebarPanel->setMaximumWidth(360);
     sidebarPanel->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
     gamePageLayout->addWidget(sidebarPanel, 0);
 
     sidebarLayout = new QVBoxLayout(sidebarPanel);
     sidebarLayout->setContentsMargins(0, 0, 0, 0);
-    sidebarLayout->setSpacing(0);
+    sidebarLayout->setSpacing(8);
+
+    auto* roomChipRow = new QHBoxLayout();
+    roomChipRow->setContentsMargins(0, 0, 0, 0);
+    roomChipRow->setSpacing(10);
+    roomChipRow->addStretch(1);
+
+    auto* roomLabel = new QLabel(QStringLiteral("Room #4821"), sidebarPanel);
+    roomLabel->setObjectName(QStringLiteral("roomChip"));
+    roomChipRow->addWidget(roomLabel);
+
+    roomPlayersLabel = new QLabel(QStringLiteral("0 players"), sidebarPanel);
+    roomPlayersLabel->setObjectName(QStringLiteral("roomChip"));
+    roomChipRow->addWidget(roomPlayersLabel);
+    roomChipRow->addStretch(1);
+    sidebarLayout->addLayout(roomChipRow);
 
     auto* playerHeader = new QFrame(sidebarPanel);
     playerHeader->setObjectName(QStringLiteral("playerHeader"));
-    auto* playerHeaderLayout = new QHBoxLayout(playerHeader);
-    playerHeaderLayout->setContentsMargins(18, 16, 18, 14);
-    playerHeaderLayout->setSpacing(12);
+    auto* playerHeaderLayout = new QVBoxLayout(playerHeader);
+    playerHeaderLayout->setContentsMargins(20, 16, 20, 16);
+    playerHeaderLayout->setSpacing(10);
+
+    auto* playerTopRow = new QHBoxLayout();
+    playerTopRow->setContentsMargins(0, 0, 0, 0);
+    playerTopRow->setSpacing(12);
+    playerHeaderLayout->addLayout(playerTopRow);
 
     playerAvatarLabel = new QLabel(playerHeader);
     playerAvatarLabel->setObjectName(QStringLiteral("playerAvatar"));
     playerAvatarLabel->setAlignment(Qt::AlignCenter);
-    playerAvatarLabel->setFixedSize(64, 64);
-    playerHeaderLayout->addWidget(playerAvatarLabel, 0, Qt::AlignTop);
+    playerAvatarLabel->setFixedSize(56, 56);
+    playerTopRow->addWidget(playerAvatarLabel, 0, Qt::AlignTop);
 
     auto* playerTextColumn = new QVBoxLayout();
-    playerTextColumn->setSpacing(4);
-    playerHeaderLayout->addLayout(playerTextColumn, 1);
+    playerTextColumn->setSpacing(1);
+    playerTopRow->addLayout(playerTextColumn, 1);
+
+    auto* currentPlayerCaption = new QLabel(QStringLiteral("Current player"), playerHeader);
+    currentPlayerCaption->setObjectName(QStringLiteral("playerCaption"));
+    playerTextColumn->addWidget(currentPlayerCaption);
 
     playerNameLabel = new QLabel(QStringLiteral("Player"), playerHeader);
     playerNameLabel->setObjectName(QStringLiteral("playerName"));
     playerTextColumn->addWidget(playerNameLabel);
-
-    playerMoneyLabel = new QLabel(QStringLiteral("M0"), playerHeader);
-    playerMoneyLabel->setObjectName(QStringLiteral("playerMoney"));
-    playerTextColumn->addWidget(playerMoneyLabel);
 
     playerSwitchButton = new QToolButton(playerHeader);
     playerSwitchButton->setObjectName(QStringLiteral("playerSwitchButton"));
@@ -637,18 +684,71 @@ QWidget* GameWindow::buildGamePage()
     playerSwitchButton->setToolButtonStyle(Qt::ToolButtonTextOnly);
     playerSwitchButton->setPopupMode(QToolButton::InstantPopup);
     playerSwitchButton->setCursor(Qt::PointingHandCursor);
-    playerHeaderLayout->addWidget(playerSwitchButton, 0, Qt::AlignTop | Qt::AlignRight);
+    playerTopRow->addWidget(playerSwitchButton, 0, Qt::AlignTop | Qt::AlignRight);
+
+    auto* playerDivider = new QFrame(playerHeader);
+    playerDivider->setObjectName(QStringLiteral("cardDivider"));
+    playerDivider->setFixedHeight(1);
+    playerHeaderLayout->addWidget(playerDivider);
+
+    auto* balanceCaption = new QLabel(QStringLiteral("Balance"), playerHeader);
+    balanceCaption->setObjectName(QStringLiteral("playerCaption"));
+    playerHeaderLayout->addWidget(balanceCaption);
+
+    auto* balanceRow = new QHBoxLayout();
+    balanceRow->setContentsMargins(0, 0, 0, 0);
+    balanceRow->setSpacing(10);
+    playerHeaderLayout->addLayout(balanceRow);
+
+    playerMoneyLabel = new QLabel(QStringLiteral("M 0"), playerHeader);
+    playerMoneyLabel->setObjectName(QStringLiteral("playerMoney"));
+    balanceRow->addWidget(playerMoneyLabel, 1);
+
+    auto* statsSection = new QFrame(playerHeader);
+    statsSection->setObjectName(QStringLiteral("statsSection"));
+    auto* statsLayout = new QHBoxLayout(statsSection);
+    statsLayout->setContentsMargins(0, 0, 0, 0);
+    statsLayout->setSpacing(8);
+
+    auto* houseTitle = new QLabel(QStringLiteral("House"), statsSection);
+    houseTitle->setObjectName(QStringLiteral("statIcon"));
+    statsLayout->addWidget(houseTitle);
+
+    houseCountLabel = new QLabel(QStringLiteral("0"), statsSection);
+    houseCountLabel->setObjectName(QStringLiteral("statLabelPrimary"));
+    statsLayout->addWidget(houseCountLabel);
+
+    auto* hotelTitle = new QLabel(QStringLiteral("Hotel"), statsSection);
+    hotelTitle->setObjectName(QStringLiteral("statIcon"));
+    statsLayout->addWidget(hotelTitle);
+
+    hotelCountLabel = new QLabel(QStringLiteral("0"), statsSection);
+    hotelCountLabel->setObjectName(QStringLiteral("statLabelSecondary"));
+    statsLayout->addWidget(hotelCountLabel);
+    balanceRow->addWidget(statsSection, 0, Qt::AlignBottom);
 
     sidebarLayout->addWidget(playerHeader, 0);
 
     auto* portfolioSection = new QFrame(sidebarPanel);
     portfolioSection->setObjectName(QStringLiteral("portfolioSection"));
     auto* portfolioLayout = new QVBoxLayout(portfolioSection);
-    portfolioLayout->setContentsMargins(18, 4, 18, 4);
-    portfolioLayout->setSpacing(0);
+    portfolioLayout->setContentsMargins(20, 16, 20, 14);
+    portfolioLayout->setSpacing(8);
+
+    auto* portfolioHeaderRow = new QHBoxLayout();
+    portfolioHeaderRow->setContentsMargins(0, 0, 0, 0);
+    portfolioHeaderRow->setSpacing(8);
+    auto* portfolioTitle = new QLabel(QStringLiteral("Properties"), portfolioSection);
+    portfolioTitle->setObjectName(QStringLiteral("sectionTitle"));
+    portfolioHeaderRow->addWidget(portfolioTitle);
+    portfolioHeaderRow->addStretch(1);
+    propertyOwnedLabel = new QLabel(QStringLiteral("0 / 22 owned"), portfolioSection);
+    propertyOwnedLabel->setObjectName(QStringLiteral("sectionMeta"));
+    portfolioHeaderRow->addWidget(propertyOwnedLabel);
+    portfolioLayout->addLayout(portfolioHeaderRow);
 
     portfolioWidget = new PropertyPortfolioWidget(portfolioSection);
-    portfolioWidget->setFixedHeight(208);
+    portfolioWidget->setFixedHeight(104);
     portfolioLayout->addWidget(portfolioWidget, 1);
     sidebarLayout->addWidget(portfolioSection, 0);
 
@@ -657,37 +757,12 @@ QWidget* GameWindow::buildGamePage()
     divider->setFixedHeight(1);
     sidebarLayout->addWidget(divider, 0);
 
-    auto* statsSection = new QFrame(sidebarPanel);
-    statsSection->setObjectName(QStringLiteral("statsSection"));
-    auto* statsLayout = new QHBoxLayout(statsSection);
-    statsLayout->setContentsMargins(18, 8, 18, 10);
-    statsLayout->setSpacing(10);
-
-    auto* houseTitle = new QLabel(QStringLiteral("Houses"), statsSection);
-    houseTitle->setStyleSheet(QStringLiteral("color:#244150;font:800 8.5pt 'Trebuchet MS';"));
-    statsLayout->addWidget(houseTitle);
-
-    houseCountLabel = new QLabel(QStringLiteral("0"), statsSection);
-    houseCountLabel->setObjectName(QStringLiteral("statLabelPrimary"));
-    statsLayout->addWidget(houseCountLabel);
-
-    auto* hotelTitle = new QLabel(QStringLiteral("Hotels"), statsSection);
-    hotelTitle->setStyleSheet(QStringLiteral("color:#244150;font:800 8.5pt 'Trebuchet MS';margin-left:8px;"));
-    statsLayout->addWidget(hotelTitle);
-
-    hotelCountLabel = new QLabel(QStringLiteral("0"), statsSection);
-    hotelCountLabel->setObjectName(QStringLiteral("statLabelSecondary"));
-    statsLayout->addWidget(hotelCountLabel);
-
-    statsLayout->addStretch(1);
-    sidebarLayout->addWidget(statsSection, 0);
-
     auto* actionsSection = new QFrame(sidebarPanel);
     actionsSection->setObjectName(QStringLiteral("actionsSection"));
     actionsLayout = new QGridLayout(actionsSection);
-    actionsLayout->setContentsMargins(18, 0, 18, 12);
-    actionsLayout->setHorizontalSpacing(10);
-    actionsLayout->setVerticalSpacing(10);
+    actionsLayout->setContentsMargins(0, 0, 0, 0);
+    actionsLayout->setHorizontalSpacing(8);
+    actionsLayout->setVerticalSpacing(6);
     actionsLayout->setColumnStretch(0, 1);
     actionsLayout->setColumnStretch(1, 1);
 
@@ -700,35 +775,35 @@ QWidget* GameWindow::buildGamePage()
     redeemButton = new QToolButton(actionsSection);
     saveButton = new QToolButton(actionsSection);
 
-    configureActionButton(rollButton, QStringLiteral("ROLL DICE"), style()->standardIcon(QStyle::SP_MediaPlay), true);
-    configureActionButton(setDiceButton, QStringLiteral("SET DICE"), style()->standardIcon(QStyle::SP_BrowserReload));
-    configureActionButton(useSkillButton, QStringLiteral("USE SKILL"), style()->standardIcon(QStyle::SP_CommandLink));
-    configureActionButton(payFineButton, QStringLiteral("PAY FINE"), style()->standardIcon(QStyle::SP_MessageBoxWarning));
-    configureActionButton(buildButton, QStringLiteral("BUILD"), style()->standardIcon(QStyle::SP_FileDialogNewFolder));
-    configureActionButton(mortgageButton, QStringLiteral("MORTGAGE"), style()->standardIcon(QStyle::SP_DialogApplyButton));
-    configureActionButton(redeemButton, QStringLiteral("UNMORTGAGE"), style()->standardIcon(QStyle::SP_DialogResetButton));
-    configureActionButton(saveButton, QStringLiteral("SAVE"), style()->standardIcon(QStyle::SP_DialogSaveButton));
+    configureActionButton(rollButton, QStringLiteral("Roll Dice"), style()->standardIcon(QStyle::SP_DialogHelpButton), true);
+    configureActionButton(setDiceButton, QStringLiteral("Set Dice"), style()->standardIcon(QStyle::SP_BrowserReload));
+    configureActionButton(useSkillButton, QStringLiteral("Use Skill"), style()->standardIcon(QStyle::SP_CommandLink));
+    configureActionButton(payFineButton, QStringLiteral("Pay Fine"), style()->standardIcon(QStyle::SP_MessageBoxWarning));
+    configureActionButton(buildButton, QStringLiteral("Build"), style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    configureActionButton(mortgageButton, QStringLiteral("Mortgage"), style()->standardIcon(QStyle::SP_DialogApplyButton));
+    configureActionButton(redeemButton, QStringLiteral("Unmortgage"), style()->standardIcon(QStyle::SP_DialogResetButton));
+    configureActionButton(saveButton, QStringLiteral("Save Game"), style()->standardIcon(QStyle::SP_DialogSaveButton));
 
-    actionsLayout->addWidget(rollButton, 0, 0);
-    actionsLayout->addWidget(setDiceButton, 0, 1);
-    actionsLayout->addWidget(useSkillButton, 1, 0);
-    actionsLayout->addWidget(payFineButton, 1, 1);
-    actionsLayout->addWidget(buildButton, 2, 0);
-    actionsLayout->addWidget(mortgageButton, 2, 1);
-    actionsLayout->addWidget(redeemButton, 3, 0);
-    actionsLayout->addWidget(saveButton, 3, 1);
+    actionsLayout->addWidget(rollButton, 0, 0, 1, 2);
+    actionsLayout->addWidget(setDiceButton, 1, 0);
+    actionsLayout->addWidget(useSkillButton, 1, 1);
+    actionsLayout->addWidget(payFineButton, 2, 0);
+    actionsLayout->addWidget(buildButton, 2, 1);
+    actionsLayout->addWidget(mortgageButton, 3, 0);
+    actionsLayout->addWidget(redeemButton, 3, 1);
+    actionsLayout->addWidget(saveButton, 4, 0, 1, 2);
     sidebarLayout->addWidget(actionsSection, 0);
 
     auto* historySection = new QFrame(sidebarPanel);
     historySection->setObjectName(QStringLiteral("historySection"));
     auto* historySectionLayout = new QVBoxLayout(historySection);
-    historySectionLayout->setContentsMargins(18, 0, 18, 18);
-    historySectionLayout->setSpacing(0);
+    historySectionLayout->setContentsMargins(20, 16, 20, 16);
+    historySectionLayout->setSpacing(8);
 
     historyHeaderFrame = new QFrame(historySection);
     historyHeaderFrame->setObjectName(QStringLiteral("historyHeaderFrame"));
     auto* historyHeaderLayout = new QHBoxLayout(historyHeaderFrame);
-    historyHeaderLayout->setContentsMargins(10, 8, 10, 8);
+    historyHeaderLayout->setContentsMargins(0, 0, 0, 0);
     historyHeaderLayout->setSpacing(6);
 
     auto* historyTitle = new QLabel(QStringLiteral("HISTORY"), historyHeaderFrame);
@@ -746,12 +821,13 @@ QWidget* GameWindow::buildGamePage()
     historyScroll->setWidgetResizable(true);
     historyScroll->setFrameShape(QFrame::NoFrame);
     historyScroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
-    historyScroll->setMinimumHeight(220);
+    historyScroll->setMinimumHeight(96);
 
     auto* historyContent = new QWidget(historyScroll);
+    historyContent->setStyleSheet(QStringLiteral("background:#ffffff;"));
     historyEntriesLayout = new QVBoxLayout(historyContent);
     historyEntriesLayout->setContentsMargins(0, 0, 0, 0);
-    historyEntriesLayout->setSpacing(0);
+    historyEntriesLayout->setSpacing(8);
     historyEntriesLayout->addStretch(1);
     historyScroll->setWidget(historyContent);
     historySectionLayout->addWidget(historyScroll, 1);
@@ -1321,6 +1397,7 @@ void GameWindow::refreshViewModels()
             username == activePlayerUsername,
             player.isJailed(),
             player.hasRolledThisTurn(),
+            player.hasRolledMovementDiceThisTurn(),
             player.hasUsedSkillThisTurn(),
             player.hasTakenActionThisTurn()
         });
@@ -1339,6 +1416,8 @@ void GameWindow::refreshViewModels()
             viewState.buildingLevel = propertyState.getBuildingLevel() == "H"
                 ? 5
                 : QString::fromStdString(propertyState.getBuildingLevel()).toInt();
+            viewState.festivalMultiplier = propertyState.getFestivalMultiplier();
+            viewState.festivalDuration = propertyState.getFestivalDuration();
             propertyStateById.insert(property.getId(), viewState);
             break;
         }
@@ -1385,25 +1464,31 @@ void GameWindow::refreshPlayerHeader()
     const PlayerOverview* player = playerOverviewByUsername(selectedPlayerUsername);
     if (player == nullptr) {
         playerNameLabel->setText(QStringLiteral("Belum ada pemain"));
-        playerMoneyLabel->setText(QStringLiteral("M0"));
+        playerMoneyLabel->setText(QStringLiteral("M 0"));
         playerAvatarLabel->setPixmap(QPixmap());
         playerAvatarLabel->setText(QStringLiteral("--"));
-        playerSwitchButton->setText(QStringLiteral("--"));
+        playerSwitchButton->setText(QStringLiteral("Turn 0"));
+        if (roomPlayersLabel != nullptr) {
+            roomPlayersLabel->setText(QStringLiteral("0 players"));
+        }
         return;
     }
 
     playerNameLabel->setText(player->name);
-    playerMoneyLabel->setText(MonopolyUi::formatCurrency(player->balance));
-    playerSwitchButton->setText(shortPlayerLabel(player->name));
+    playerMoneyLabel->setText(QStringLiteral("M %1").arg(QLocale(QLocale::English).toString(player->balance)));
+    playerSwitchButton->setText(QStringLiteral("Turn %1").arg(session.getCurrentTurn()));
+    if (roomPlayersLabel != nullptr) {
+        roomPlayersLabel->setText(QStringLiteral("%1 players").arg(playerOverviews.size()));
+    }
 
     playerAvatarLabel->setPixmap(QPixmap());
     playerAvatarLabel->setText(shortPlayerLabel(player->name));
     const QColor accent = player->accentColor.isValid() ? player->accentColor : QColor(90, 190, 240);
-    const int avatarRadius = qMax(10, playerAvatarLabel->width() / 6);
+    const int avatarRadius = qMax(10, playerAvatarLabel->width() / 5);
     const int avatarFontSize = std::clamp(playerAvatarLabel->width() / 4, 12, 18);
     playerAvatarLabel->setStyleSheet(QStringLiteral(
         "background: %1;"
-        "border: 2px solid rgba(255,255,255,0.95);"
+        "border: none;"
         "border-radius: %2px;"
         "color: white;"
         "font: 900 %3pt 'Trebuchet MS';"
@@ -1415,19 +1500,19 @@ void GameWindow::refreshPlayerSelector()
     auto* menu = new QMenu(playerSwitchButton);
     menu->setStyleSheet(QStringLiteral(
         "QMenu {"
-        "  background: rgba(255,255,255,0.98);"
-        "  border: 1px solid rgba(123, 153, 171, 0.85);"
-        "  border-radius: 10px;"
+        "  background: #ffffff;"
+        "  border: 1px solid #d8e2ef;"
+        "  border-radius: 12px;"
         "  padding: 6px;"
         "}"
         "QMenu::item {"
         "  padding: 8px 18px;"
-        "  color: #173142;"
+        "  color: #020617;"
         "  font: 800 9pt 'Trebuchet MS';"
         "}"
         "QMenu::item:selected {"
-        "  background: rgba(52, 124, 183, 0.16);"
-        "  border-radius: 7px;"
+        "  background: #f1f3f5;"
+        "  border-radius: 4px;"
         "}"
     ));
 
@@ -1451,8 +1536,19 @@ void GameWindow::refreshPlayerSelector()
 
 void GameWindow::refreshPortfolio()
 {
-    portfolioWidget->setPortfolio(buildPortfolioForPlayer(selectedPlayerUsername));
+    const QVector<PortfolioPropertyView> playerPortfolio = buildPortfolioForPlayer(selectedPlayerUsername);
+    portfolioWidget->setPortfolio(playerPortfolio);
     portfolioWidget->setSelectedPropertyId(selectedPropertyId);
+
+    if (propertyOwnedLabel != nullptr) {
+        int ownedCount = 0;
+        for (const PortfolioPropertyView& property : playerPortfolio) {
+            if (property.owned) {
+                ++ownedCount;
+            }
+        }
+        propertyOwnedLabel->setText(QStringLiteral("%1 / %2 owned").arg(ownedCount).arg(playerPortfolio.size()));
+    }
 }
 
 void GameWindow::refreshStats()
@@ -1473,22 +1569,22 @@ void GameWindow::refreshHistory()
     if (historyEntries.isEmpty()) {
         auto* emptyLabel = new QLabel(QStringLiteral("Belum ada transaksi yang tercatat."), sidebarPanel);
         emptyLabel->setWordWrap(true);
-        emptyLabel->setStyleSheet(QStringLiteral("color:#324b58;font:600 8pt 'Trebuchet MS';padding:12px 10px;"));
+        emptyLabel->setStyleSheet(QStringLiteral("color:#66727d;font:700 8pt 'Trebuchet MS';padding:12px 10px;"));
         historyEntriesLayout->addWidget(emptyLabel);
         historyEntriesLayout->addStretch(1);
         return;
     }
 
-    for (auto it = historyEntries.crbegin(); it != historyEntries.crend(); ++it) {
+    for (auto it = historyEntries.cbegin(); it != historyEntries.cend(); ++it) {
         auto* entryFrame = new QFrame(sidebarPanel);
         entryFrame->setStyleSheet(QStringLiteral(
-            "background: rgba(255,255,255,0.78);"
-            "border-left: 4px solid %1;"
-            "border-bottom: 1px solid rgba(211, 221, 226, 0.95);"
-        ).arg(historyAccentColor(*it)));
+            "background: #ffffff;"
+            "border: 1px solid #d8e2ef;"
+            "border-radius: 12px;"
+        ));
 
         auto* entryLayout = new QVBoxLayout(entryFrame);
-        entryLayout->setContentsMargins(10, 8, 10, 8);
+        entryLayout->setContentsMargins(12, 8, 12, 8);
         entryLayout->setSpacing(3);
 
         auto* metaLabel = new QLabel(
@@ -1498,18 +1594,23 @@ void GameWindow::refreshHistory()
                 .arg(it->actionType),
             entryFrame
         );
-        metaLabel->setStyleSheet(QStringLiteral("color:#8294a1;font:700 7pt 'Trebuchet MS';"));
+        metaLabel->setStyleSheet(QStringLiteral("color:#66809e;font:700 7pt 'Trebuchet MS';"));
         entryLayout->addWidget(metaLabel);
 
         auto* detailLabel = new QLabel(it->detail, entryFrame);
         detailLabel->setWordWrap(true);
-        detailLabel->setStyleSheet(QStringLiteral("color:#17232d;font:700 8.5pt 'Trebuchet MS';"));
+        detailLabel->setStyleSheet(QStringLiteral("color:#020617;font:700 10pt 'Trebuchet MS';"));
         entryLayout->addWidget(detailLabel);
 
         historyEntriesLayout->addWidget(entryFrame);
     }
 
     historyEntriesLayout->addStretch(1);
+    QTimer::singleShot(0, this, [this]() {
+        if (historyScroll != nullptr && historyScroll->verticalScrollBar() != nullptr) {
+            historyScroll->verticalScrollBar()->setValue(historyScroll->verticalScrollBar()->maximum());
+        }
+    });
 }
 
 void GameWindow::refreshBoardPawns()
@@ -1545,7 +1646,9 @@ void GameWindow::refreshBoardPawns()
             it.key() - 1,
             ownerUsername,
             accentColorForPlayer(ownerUsername),
-            it.value().mortgaged
+            it.value().mortgaged,
+            it.value().festivalMultiplier,
+            it.value().festivalDuration
         });
     }
     boardWidget->setOwners(ownerData);
@@ -1565,7 +1668,9 @@ void GameWindow::refreshSelectedPropertyDetails()
         ownerUsername,
         ownerUsername == QStringLiteral("BANK") ? QColor(70, 78, 88) : accentColorForPlayer(ownerUsername),
         state != nullptr && state->mortgaged,
-        state == nullptr ? 0 : state->buildingLevel
+        state == nullptr ? 0 : state->buildingLevel,
+        state == nullptr ? 1 : state->festivalMultiplier,
+        state == nullptr ? 0 : state->festivalDuration
     );
 }
 
@@ -1576,17 +1681,15 @@ void GameWindow::refreshActionAvailability()
     const bool hasGame = session.isReady() && currentPlayerOverview != nullptr && currentPlayer != nullptr && !session.isGameEnded();
     const bool canRoll = hasGame && !currentPlayerOverview->hasRolledThisTurn &&
         !(currentPlayerOverview->isInJail && currentPlayer->getJailTurns() > 3);
+    const bool canManageAssets = hasGame && !currentPlayerOverview->isInJail;
 
     rollButton->setEnabled(canRoll);
     setDiceButton->setEnabled(canRoll);
-    useSkillButton->setEnabled(hasGame && !currentPlayerOverview->hasUsedSkillThisTurn &&
-        !currentPlayerOverview->hasRolledThisTurn &&
-        !currentPlayerOverview->hasTakenActionThisTurn &&
-        !currentPlayer->getHand().empty());
+    useSkillButton->setEnabled(hasGame && canUseSkillBeforeMovementDice(*currentPlayer));
     payFineButton->setEnabled(hasGame && currentPlayerOverview->isInJail);
-    buildButton->setEnabled(hasGame);
-    mortgageButton->setEnabled(hasGame);
-    redeemButton->setEnabled(hasGame);
+    buildButton->setEnabled(canManageAssets);
+    mortgageButton->setEnabled(canManageAssets);
+    redeemButton->setEnabled(canManageAssets);
     saveButton->setEnabled(hasGame && !currentPlayerOverview->hasTakenActionThisTurn);
 }
 
@@ -1702,7 +1805,9 @@ void GameWindow::showPropertyNotice(const Player& player, const PropertyTile& pr
         ownerUsername,
         ownerUsername == QStringLiteral("BANK") ? QColor(70, 78, 88) : accentColorForPlayer(ownerUsername),
         state != nullptr && state->mortgaged,
-        state == nullptr ? 0 : state->buildingLevel
+        state == nullptr ? 0 : state->buildingLevel,
+        state == nullptr ? 1 : state->festivalMultiplier,
+        state == nullptr ? 0 : state->festivalDuration
     );
     layout->addWidget(card, 1);
 
@@ -2129,8 +2234,11 @@ int GameWindow::promptBoardTileSelection(const QString& title, const QVector<int
 bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile& property)
 {
     const int propertyId = property.getIndex() + 1;
+    const int originalPrice = property.getBuyPrice();
+    const int finalPrice = player.getDiscountedAmount(originalPrice);
+
     if (propertyConfigForId(propertyId) == nullptr) {
-        return player.canAfford(property.getBuyPrice());
+        return player.canAfford(finalPrice);
     }
 
     selectedPlayerUsername = QString::fromStdString(player.getUsername());
@@ -2154,13 +2262,16 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     card->setOwnershipInfo(QStringLiteral("BANK"), QColor(70, 78, 88), false, 0);
     layout->addWidget(card, 1);
 
-    auto* info = new QLabel(
-        QStringLiteral("%1 dapat membeli %2 seharga %3.")
-            .arg(QString::fromStdString(player.getUsername()))
-            .arg(MonopolyUi::singleLineTileName(property.getName()))
-            .arg(MonopolyUi::formatCurrency(property.getBuyPrice())),
-        &dialog
-    );
+    QString purchaseText = QStringLiteral("%1 dapat membeli %2 seharga %3.")
+        .arg(QString::fromStdString(player.getUsername()))
+        .arg(MonopolyUi::singleLineTileName(property.getName()))
+        .arg(MonopolyUi::formatCurrency(finalPrice));
+    if (finalPrice != originalPrice) {
+        purchaseText += QStringLiteral("\nDiskon aktif dari harga awal %1.")
+            .arg(MonopolyUi::formatCurrency(originalPrice));
+    }
+
+    auto* info = new QLabel(purchaseText, &dialog);
     info->setWordWrap(true);
     info->setAlignment(Qt::AlignCenter);
     info->setStyleSheet(QStringLiteral("color:#17232d;font:800 10pt 'Trebuchet MS';"));
@@ -2173,7 +2284,7 @@ bool GameWindow::promptPropertyPurchase(const Player& player, const PropertyTile
     auto* payButton = new QPushButton(QStringLiteral("PAY"), &dialog);
     payButton->setMinimumHeight(52);
     payButton->setCursor(Qt::PointingHandCursor);
-    payButton->setEnabled(player.canAfford(property.getBuyPrice()));
+    payButton->setEnabled(player.canAfford(finalPrice));
 
     auto* auctionButton = new QPushButton(QStringLiteral("AUCTION"), &dialog);
     auctionButton->setMinimumHeight(52);
@@ -2363,19 +2474,20 @@ void GameWindow::updateResponsiveLayout()
 {
     const int windowWidth = qMax(width(), minimumWidth());
     const int windowHeight = qMax(height(), minimumHeight());
-    const int shellMargin = std::clamp(windowWidth / 70, 14, 28);
-    const int shellSpacing = std::clamp(windowWidth / 90, 12, 22);
-    const int sidebarWidth = std::clamp(static_cast<int>(windowWidth * 0.29), 320, 460);
-    const int avatarSize = std::clamp(windowHeight / 10, 56, 82);
+    const int shellMargin = std::clamp(windowWidth / 110, 8, 16);
+    const int boardInset = std::clamp(windowWidth / 150, 6, 12);
+    const int shellSpacing = std::clamp(windowWidth / 115, 10, 16);
+    const int sidebarWidth = std::clamp(static_cast<int>(windowWidth * 0.235), 300, 360);
+    const int avatarSize = std::clamp(windowHeight / 13, 50, 62);
     const bool compactSidebar = windowHeight < 820;
-    const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 6 : 4), compactSidebar ? 112 : 170, compactSidebar ? 170 : 260);
-    const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 5 : 3), compactSidebar ? 132 : 210, compactSidebar ? 198 : 320);
-    const int historyMinHeight = std::clamp(windowHeight / (compactSidebar ? 7 : 4), compactSidebar ? 88 : 180, compactSidebar ? 150 : 290);
-    const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 17 : 12), compactSidebar ? 40 : 54, compactSidebar ? 52 : 78);
-    const int actionIcon = std::clamp(actionHeight / 3, compactSidebar ? 16 : 20, compactSidebar ? 20 : 30);
-    const int actionFont = std::clamp(actionHeight / 6, compactSidebar ? 7 : 9, compactSidebar ? 9 : 12);
-    const int playerNameFont = std::clamp(windowWidth / 80, 11, 18);
-    const int moneyFont = std::clamp(windowWidth / 64, 13, 22);
+    const int portfolioMinHeight = std::clamp(windowHeight / (compactSidebar ? 8 : 6), compactSidebar ? 102 : 125, compactSidebar ? 126 : 160);
+    const int portfolioMaxHeight = std::clamp(windowHeight / (compactSidebar ? 7 : 5), compactSidebar ? 112 : 135, compactSidebar ? 138 : 175);
+    const int historyMinHeight = std::clamp(windowHeight / (compactSidebar ? 7 : 5), compactSidebar ? 96 : 130, compactSidebar ? 135 : 210);
+    const int actionHeight = std::clamp(windowHeight / (compactSidebar ? 22 : 18), compactSidebar ? 34 : 38, compactSidebar ? 40 : 48);
+    const int actionIcon = std::clamp(actionHeight / 3, compactSidebar ? 13 : 15, compactSidebar ? 16 : 19);
+    const int actionFont = std::clamp(actionHeight / 8, compactSidebar ? 7 : 8, compactSidebar ? 8 : 9);
+    const int playerNameFont = std::clamp(windowWidth / 95, 10, 14);
+    const int moneyFont = std::clamp(windowWidth / 92, 16, 20);
     const int switchFont = std::clamp(windowWidth / 110, 8, 11);
 
     if (gamePageLayout != nullptr) {
@@ -2384,16 +2496,16 @@ void GameWindow::updateResponsiveLayout()
     }
 
     if (boardShellLayout != nullptr) {
-        boardShellLayout->setContentsMargins(shellMargin, shellMargin, shellMargin, shellMargin);
+        boardShellLayout->setContentsMargins(boardInset, boardInset, boardInset, boardInset);
     }
 
     if (sidebarPanel != nullptr) {
         sidebarPanel->setMinimumWidth(sidebarWidth);
-        sidebarPanel->setMaximumWidth(sidebarWidth + std::clamp(windowWidth / 80, 18, 28));
+        sidebarPanel->setMaximumWidth(sidebarWidth);
     }
 
     if (sidebarLayout != nullptr) {
-        sidebarLayout->setSpacing(0);
+        sidebarLayout->setSpacing(std::clamp(windowHeight / 95, 6, 9));
     }
 
     if (playerAvatarLabel != nullptr) {
@@ -2417,8 +2529,7 @@ void GameWindow::updateResponsiveLayout()
     }
 
     if (portfolioWidget != nullptr) {
-        portfolioWidget->setMinimumHeight(portfolioMinHeight);
-        portfolioWidget->setMaximumHeight(portfolioMaxHeight);
+        portfolioWidget->setFixedHeight(qBound(portfolioMinHeight, portfolioMinHeight, portfolioMaxHeight));
     }
 
     if (historyScroll != nullptr) {
@@ -2426,15 +2537,15 @@ void GameWindow::updateResponsiveLayout()
     }
 
     if (actionsLayout != nullptr) {
-        const int horizontalGap = std::clamp(sidebarWidth / 28, 10, 20);
-        const int verticalGap = std::clamp(windowHeight / (compactSidebar ? 110 : 70), compactSidebar ? 6 : 9, compactSidebar ? 10 : 16);
-        const int actionsPadding = std::clamp(sidebarWidth / 24, compactSidebar ? 10 : 14, compactSidebar ? 18 : 24);
-        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, std::clamp(actionsPadding - 4, compactSidebar ? 6 : 10, compactSidebar ? 12 : 20));
+        const int horizontalGap = std::clamp(sidebarWidth / 44, 6, 9);
+        const int verticalGap = std::clamp(windowHeight / (compactSidebar ? 145 : 120), 5, 8);
+        const int actionsPadding = std::clamp(sidebarWidth / 36, 6, 10);
+        actionsLayout->setContentsMargins(actionsPadding, 0, actionsPadding, 0);
         actionsLayout->setHorizontalSpacing(horizontalGap);
         actionsLayout->setVerticalSpacing(verticalGap);
 
         if (QWidget* actionsSection = actionsLayout->parentWidget()) {
-            const int actionsRowsHeight = (actionHeight * 4) + (verticalGap * 3) + actionsLayout->contentsMargins().bottom();
+            const int actionsRowsHeight = (actionHeight * 5) + (verticalGap * 4) + actionsLayout->contentsMargins().top() + actionsLayout->contentsMargins().bottom();
             actionsSection->setMinimumHeight(actionsRowsHeight);
             actionsSection->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Minimum);
         }

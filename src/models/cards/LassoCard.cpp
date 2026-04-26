@@ -38,10 +38,6 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
             continue;
         }
 
-        if (otherPlayer->isShieldActive()) {
-            continue;
-        }
-
         if (otherPlayer->isJailed()) {
             continue;
         }
@@ -62,6 +58,16 @@ void LassoCard::use(Player& player, GameContext& gameContext) {
 
     int destinationIndex = player.getPosition();
     Tile* destinationTile = board->getTile(destinationIndex);
+
+    if (target->consumeShield()) {
+        gameContext.showMessage(
+            target->getUsername() + " terlindungi ShieldCard dari LassoCard.");
+        gameContext.logEvent(
+            "KARTU",
+            target->getUsername() + " terlindungi ShieldCard dari LassoCard " +
+                player.getUsername() + ".");
+        return;
+    }
 
     target->moveTo(destinationIndex);
 

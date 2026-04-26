@@ -112,7 +112,7 @@ QString specialGlyph(const PortfolioPropertyView& property)
 PropertyPortfolioWidget::PropertyPortfolioWidget(QWidget *parent)
     : QWidget(parent)
 {
-    setMinimumHeight(210);
+    setMinimumHeight(150);
     setMinimumWidth(240);
     setMouseTracking(true);
 }
@@ -138,12 +138,12 @@ void PropertyPortfolioWidget::setSelectedPropertyId(int propertyId)
 
 QSize PropertyPortfolioWidget::minimumSizeHint() const
 {
-    return QSize(240, 210);
+    return QSize(240, 150);
 }
 
 QSize PropertyPortfolioWidget::sizeHint() const
 {
-    return QSize(260, 220);
+    return QSize(260, 176);
 }
 
 QColor PropertyPortfolioWidget::accentColorFor(const PortfolioPropertyView& property) const
@@ -184,8 +184,8 @@ void PropertyPortfolioWidget::paintEvent(QPaintEvent *event)
     QPainter painter(this);
     painter.setRenderHint(QPainter::Antialiasing);
 
-    const QRectF content = rect().adjusted(4, 4, -4, -4);
-    const qreal slotHeight = qBound<qreal>(19.0, content.height() * 0.098, 23.0);
+    const QRectF content = rect().adjusted(4, 2, -4, -2);
+    const qreal slotHeight = qBound<qreal>(14.0, content.height() * 0.098, 18.0);
     const qreal slotWidth = slotHeight * 0.74;
     const qreal compactWidth = slotWidth * 0.74;
     const qreal gap = qMax<qreal>(3.0, content.width() * 0.013);
@@ -226,7 +226,7 @@ void PropertyPortfolioWidget::paintEvent(QPaintEvent *event)
         if (ownsEverySlot && groupEntries.size() == layout.slotCount && layout.kind != GroupLayout::Kind::Railroads && layout.kind != GroupLayout::Kind::Utilities) {
             painter.save();
             painter.setPen(Qt::NoPen);
-            painter.setBrush(QColor(0, 0, 0, 18));
+            painter.setBrush(QColor(143, 168, 216, 28));
             painter.drawRoundedRect(frameRect.translated(shadowOffset, shadowOffset), 7, 7);
             painter.setBrush(frameFill(accent));
             painter.setPen(QPen(accent, 2.4));
@@ -283,7 +283,7 @@ void PropertyPortfolioWidget::drawStreetSlot(QPainter& painter, const SlotVisual
 
     if (visual.property.owned) {
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(0, 0, 0, 30));
+        painter.setBrush(QColor(143, 168, 216, 38));
         painter.drawRoundedRect(shadowRect, 3, 3);
 
         painter.setPen(QPen(QColor(176, 188, 198), 1.2));
@@ -356,7 +356,7 @@ void PropertyPortfolioWidget::drawSpecialSlot(QPainter& painter, const SlotVisua
 
     if (visual.property.owned) {
         painter.setPen(Qt::NoPen);
-        painter.setBrush(QColor(0, 0, 0, 26));
+        painter.setBrush(QColor(143, 168, 216, 34));
         painter.drawRoundedRect(shadowRect, 3, 3);
 
         painter.setPen(QPen(QColor(176, 188, 198), 1.2));
@@ -368,26 +368,7 @@ void PropertyPortfolioWidget::drawSpecialSlot(QPainter& painter, const SlotVisua
         painter.drawRoundedRect(visual.rect, 3, 3);
     }
 
-    if (visual.property.propertyType == PropertyType::UTILITY) {
-        const QString assetName = visual.property.code == QStringLiteral("PLN")
-            ? QStringLiteral("electric_company_icon.png")
-            : QStringLiteral("waterworks_icon.png");
-        const QPixmap icon = iconFor(assetName);
-        if (!icon.isNull()) {
-            painter.save();
-            painter.setOpacity(visual.property.owned ? 1.0 : 0.42);
-            const QRect iconRect = visual.rect.adjusted(7, 7, -7, -7).toRect();
-            const QSize scaledSize = icon.size().scaled(iconRect.size(), Qt::KeepAspectRatio);
-            const QRect target(
-                int(visual.rect.center().x() - scaledSize.width() / 2.0),
-                int(visual.rect.center().y() - scaledSize.height() / 2.0),
-                scaledSize.width(),
-                scaledSize.height()
-            );
-            painter.drawPixmap(target, icon);
-            painter.restore();
-        }
-    } else {
+    if (visual.property.propertyType == PropertyType::RAILROAD) {
         QFont railroadFont(QStringLiteral("Arial"), qMax(8, int(visual.rect.height() * 0.23)), QFont::Black);
         painter.setFont(railroadFont);
         painter.setPen(visual.property.owned

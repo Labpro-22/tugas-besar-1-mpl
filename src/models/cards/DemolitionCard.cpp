@@ -42,10 +42,6 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
             continue;
         }
 
-        if (otherPlayer->isShieldActive()) {
-            continue;
-        }
-
         const std::vector<PropertyTile*>& properties = otherPlayer->getProperties();
         for (PropertyTile* property : properties) {
             StreetTile* street = property == nullptr ? nullptr : property->asStreetTile();
@@ -107,6 +103,16 @@ void DemolitionCard::use(Player& player, GameContext& gameContext) {
 
     StreetTile* targetProperty = targetProperties[choice];
     Player* owner = targetOwners[choice];
+    if (owner->consumeShield()) {
+        gameContext.showMessage(
+            owner->getUsername() + " terlindungi ShieldCard dari DemolitionCard.");
+        gameContext.logEvent(
+            "KARTU",
+            owner->getUsername() + " terlindungi ShieldCard dari DemolitionCard " +
+                player.getUsername() + ".");
+        return;
+    }
+
     int destroyedLevel = targetProperty->getBuildingLevel();
     targetProperty->setBuildingLevel(0);
 

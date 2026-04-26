@@ -155,9 +155,20 @@ int Player::getDiscountedAmount(int amount) const {
 }
 
 int Player::consumeDiscountedAmount(int amount) {
-    // DiscountCard berlaku selama giliran aktif, jadi nilainya baru di-reset
-    // saat turn berikutnya dimulai melalui resetTurnState().
-    return getDiscountedAmount(amount);
+    int discountedAmount = getDiscountedAmount(amount);
+    if (amount > 0 && discountPercent > 0) {
+        discountPercent = 0;
+    }
+    return discountedAmount;
+}
+
+bool Player::consumeShield() {
+    if (!shieldActive) {
+        return false;
+    }
+
+    shieldActive = false;
+    return true;
 }
 
 bool Player::canAfford(int amount) const {

@@ -38,7 +38,16 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
 
     std::vector<Player*> activePlayers = turnManager->getActivePlayers();
     for (Player* otherPlayer : activePlayers) {
-        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt() || otherPlayer->isShieldActive()) {
+        if (otherPlayer == nullptr || otherPlayer == &player || otherPlayer->isBankrupt()) {
+            continue;
+        }
+
+        if (otherPlayer->consumeShield()) {
+            gameContext.showMessage(
+                otherPlayer->getUsername() + " terlindungi ShieldCard dari BirthdayCard.");
+            gameContext.logEvent(
+                "KARTU",
+                otherPlayer->getUsername() + " terlindungi ShieldCard dari BirthdayCard.");
             continue;
         }
 
@@ -57,6 +66,9 @@ void BirthdayCard::execute(Player& player, GameContext& gameContext) {
                     gameContext.getIO()->showMessage(
                         "Pembayaran ulang tahun dari " + otherPlayer->getUsername() +
                         " dibatalkan. Tidak ada transfer dana.");
+                }
+                if (settled && !otherPlayer->isBankrupt()) {
+                    logBirthdayPayment(gameContext, *otherPlayer, player, amountToPay);
                 }
             } else {
                 *otherPlayer -= amountToPay;

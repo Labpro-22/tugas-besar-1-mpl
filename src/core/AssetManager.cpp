@@ -224,6 +224,7 @@ void AssetManager::mortgageProperty(Player& player, GameContext& context) {
             true
         );
         if (selectedTileIndex < 0) {
+            io->showMessage("Gadai properti dibatalkan.");
             return;
         }
         Tile* tile = board->getTile(selectedTileIndex);
@@ -364,6 +365,7 @@ void AssetManager::redeemProperty(Player& player, GameContext& context) {
             true
         );
         if (selectedTileIndex < 0) {
+            io->showMessage("Unmortgage properti dibatalkan.");
             return;
         }
         Tile* tile = board->getTile(selectedTileIndex);
@@ -475,6 +477,7 @@ void AssetManager::buildProperty(Player& player, GameContext& context) {
             true
         );
         if (selectedTileIndex < 0) {
+            io->showMessage("Pembangunan dibatalkan.");
             return;
         }
 

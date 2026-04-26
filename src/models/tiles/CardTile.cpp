@@ -43,18 +43,6 @@ void CardTile::onLanded(Player& player, GameContext& gameContext) {
             }
         } catch (const DeckEmptyException& e) {
             gameContext.showError(e, player.getUsername());
-            if (gameContext.getLogger() != nullptr) {
-                int currentTurn = 0;
-                if (gameContext.getTurnManager() != nullptr) {
-                    currentTurn = gameContext.getTurnManager()->getCurrentTurn();
-                }
-                gameContext.getLogger()->log(
-                    currentTurn,
-                    player.getUsername(),
-                    "ERROR",
-                    e.getMessage()
-                );
-            }
         }
     }
 }

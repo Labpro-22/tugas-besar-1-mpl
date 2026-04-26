@@ -131,6 +131,13 @@ namespace {
             return "";
         }
 
+        std::string festivalMarker;
+        if (property->getPropertyType() == PropertyType::STREET &&
+            property->getFestivalDuration() > 0 &&
+            property->getFestivalMultiplier() > 1) {
+            festivalMarker = "F" + std::to_string(property->getFestivalMultiplier());
+        }
+
         std::string ownerLabel;
         for (int i = 0; i < static_cast<int>(players.size()); ++i) {
             if (property->getOwner() != nullptr &&
@@ -141,7 +148,7 @@ namespace {
         }
 
         if (property->getStatus() == PropertyStatus::MORTGAGED) {
-            return ownerLabel + "[M]";
+            return ownerLabel + "[M]" + festivalMarker;
         }
 
         if (property->getPropertyType() != PropertyType::STREET) {
@@ -150,14 +157,14 @@ namespace {
 
         int level = property->getBuildingLevel();
         if (level == 5) {
-            return ownerLabel + " *";
+            return ownerLabel + "*" + festivalMarker;
         }
 
         if (level > 0) {
-            return ownerLabel + " " + std::string(level, '^');
+            return ownerLabel + std::string(level, '^') + festivalMarker;
         }
 
-        return ownerLabel;
+        return ownerLabel + festivalMarker;
     }
 
     std::string getAnsiCode(const std::map<ColorGroup, std::string>& colorMap, ColorGroup colorGroup) {
@@ -208,6 +215,7 @@ void BoardRenderer::renderLegend(const std::vector<Player>& players) const {
     std::cout << " *             : Hotel\n";
     std::cout << " NN KODE       : Nomor petak 1-40 dan kode petak\n";
     std::cout << " PN            : Properti milik pemain N\n";
+    std::cout << " FN            : Festival aktif xN pada properti\n";
     std::cout << " N / (N)       : Bidak pemain, (N) = giliran aktif\n";
     std::cout << " IN:N / V:N    : Di penjara / hanya mampir penjara\n";
     std::cout << " [M]           : Properti digadaikan\n";

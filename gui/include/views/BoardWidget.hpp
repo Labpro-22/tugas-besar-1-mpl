@@ -36,6 +36,8 @@ public:
         QString ownerName;
         QColor accentColor;
         bool mortgaged = false;
+        int festivalMultiplier = 1;
+        int festivalDuration = 0;
     };
 
     explicit BoardWidget(QWidget *parent = nullptr);
