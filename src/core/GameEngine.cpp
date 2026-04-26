@@ -110,7 +110,6 @@ void GameEngine::startNewGame(const ConfigData& configData, const std::vector<st
     gameReady = true;
     gameEnded = false;
     currentTurnPrepared = false;
-    ensureTurnPrepared();
 }
 
 void GameEngine::loadGame(const ConfigData& configData, const GameState& gameState)
@@ -204,6 +203,15 @@ void GameEngine::loadGame(const ConfigData& configData, const GameState& gameSta
     currentTurnPrepared = true;
 }
 
+bool GameEngine::prepareCurrentTurn()
+{
+    if (!gameReady || gameEnded) {
+        return false;
+    }
+
+    return ensureTurnPrepared();
+}
+
 bool GameEngine::executeCommand(const Command& command)
 {
     if (!gameReady) {
@@ -256,7 +264,7 @@ const std::vector<Player>& GameEngine::getPlayers() const
 
 GameState GameEngine::snapshot() const
 {
-    return GameStateMapper::create(board, players, turnManager, skillDeck, logger);
+    return GameStateMapper::create(board, players, turnManager, skillDeck, getConfigData(), logger);
 }
 
 std::vector<Player*> GameEngine::determineWinner() const
@@ -362,7 +370,7 @@ bool GameEngine::finishTurnAndAdvance()
         return true;
     }
 
-    return beginCurrentTurn();
+    return true;
 }
 
 bool GameEngine::checkGameEnd() const

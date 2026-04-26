@@ -33,13 +33,9 @@ void GoToJailCard::execute(Player& player, GameContext& gameContext) {
         return;
     }
 
-    player.setPosition(10);
     player.setStatus(PlayerStatus::JAILED);
     player.setJailTurns(0);
     player.setConsecutiveDoubles(0);
-    if (gameContext.getIO() != nullptr && jailTileBase != nullptr) {
-        gameContext.getIO()->showPawnStep(player, jailTileBase->getIndex());
-    }
     gameContext.logEvent(
         "KARTU",
         player.getUsername() + " terkena GoToJailCard dan masuk Penjara.");

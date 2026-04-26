@@ -5,6 +5,7 @@
 
 #include "core/Board.hpp"
 #include "core/TurnManager.hpp"
+#include "models/config/ConfigData.hpp"
 #include "models/Player.hpp"
 #include "models/cards/SkillCard.hpp"
 #include "models/state/GameState.hpp"
@@ -23,6 +24,7 @@ GameState GameStateMapper::create(
     const std::vector<Player>& players,
     const TurnManager& turnManager,
     const CardDeck<SkillCard>& skillDeck,
+    const ConfigData& configData,
     TransactionLogger* logger
 ) {
     std::vector<PlayerState> playerStates;
@@ -94,6 +96,7 @@ GameState GameStateMapper::create(
         activePlayer == nullptr ? "" : activePlayer->getUsername(),
         propertyStates,
         skillDeck.getDeckState(),
-        logEntries
+        logEntries,
+        configData.getSourcePath()
     );
 }

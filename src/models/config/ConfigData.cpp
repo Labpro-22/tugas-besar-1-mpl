@@ -7,6 +7,8 @@ ConfigData::ConfigData(
     const std::vector<ActionTileConfig>& actionTileConfigs,
     const std::map<int, int>& railroadRents,
     const std::map<int, int>& utilityMultipliers,
+    const std::vector<std::string>& boardLayoutCodes,
+    const std::string& sourcePath,
     const TaxConfig& taxConfig,
     const SpecialConfig& specialConfig,
     const MiscConfig& miscConfig
@@ -15,6 +17,8 @@ ConfigData::ConfigData(
       actionTileConfigs(actionTileConfigs),
       railroadRents(railroadRents),
       utilityMultipliers(utilityMultipliers),
+      boardLayoutCodes(boardLayoutCodes),
+      sourcePath(sourcePath),
       taxConfig(taxConfig),
       specialConfig(specialConfig),
       miscConfig(miscConfig) {}
@@ -33,6 +37,14 @@ const std::map<int, int>& ConfigData::getRailroadRents() const {
 
 const std::map<int, int>& ConfigData::getUtilityMultipliers() const {
     return utilityMultipliers;
+}
+
+const std::vector<std::string>& ConfigData::getBoardLayoutCodes() const {
+    return boardLayoutCodes;
+}
+
+const std::string& ConfigData::getSourcePath() const {
+    return sourcePath;
 }
 
 const TaxConfig& ConfigData::getTaxConfig() const {

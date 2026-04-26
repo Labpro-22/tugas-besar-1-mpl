@@ -36,7 +36,6 @@ public:
     int promptInt(const std::string& prompt) override;
     int promptIntInRange(const std::string& prompt, int minValue, int maxValue) override;
     std::string promptText(const std::string& prompt) override;
-    int promptAuctionBid(const std::string& playerName, int highestBid, int balance) override;
     int promptAuctionBid(const PropertyTile& property, const Player& bidder, int highestBid) override;
     int promptAuctionBid(
         const PropertyTile& property,

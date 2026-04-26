@@ -16,12 +16,11 @@ GuiGameSession::GuiGameSession(QWidget* dialogParent)
 {
 }
 
-bool GuiGameSession::loadConfig(QString* errorMessage)
+bool GuiGameSession::loadConfig(const QString& configDir, QString* errorMessage)
 {
-    const QString configDir = MonopolyUi::findConfigDirectory();
     if (configDir.isEmpty()) {
         if (errorMessage != nullptr) {
-            *errorMessage = QStringLiteral("Folder config tidak ditemukan.");
+            *errorMessage = QStringLiteral("Folder config belum dipilih.");
         }
         return false;
     }
@@ -74,15 +73,16 @@ void GuiGameSession::setTurnChangedHandler(std::function<void()> handler)
     coreSession.setTurnChangedHandler(std::move(handler));
 }
 
-bool GuiGameSession::startNewGame(const std::vector<std::string>& playerNames, QString* errorMessage)
+bool GuiGameSession::startNewGame(const QString& configDir, const std::vector<std::string>& playerNames, QString* errorMessage)
 {
-    if (!configLoaded && !loadConfig(errorMessage)) {
+    if (!loadConfig(configDir, errorMessage)) {
         return false;
     }
 
     try {
         io.clearMessages();
         coreSession.startNewGame(configData, playerNames);
+        coreSession.prepareCurrentTurn();
         return true;
     } catch (const std::exception& exception) {
         return handleException(exception, errorMessage);
@@ -91,14 +91,18 @@ bool GuiGameSession::startNewGame(const std::vector<std::string>& playerNames, Q
 
 bool GuiGameSession::loadGame(const std::string& filename, QString* errorMessage)
 {
-    if (!configLoaded && !loadConfig(errorMessage)) {
-        return false;
-    }
-
     try {
         io.clearMessages();
         SaveManager saveManager;
-        coreSession.loadGame(configData, saveManager.loadGame(filename));
+        GameState gameState = saveManager.loadGame(filename);
+        QString configDir = QString::fromStdString(gameState.getConfigPath());
+        if (configDir.isEmpty()) {
+            configDir = MonopolyUi::findConfigDirectory();
+        }
+        if (!loadConfig(configDir, errorMessage)) {
+            return false;
+        }
+        coreSession.loadGame(configData, gameState);
         return true;
     } catch (const std::exception& exception) {
         return handleException(exception, errorMessage);
@@ -225,7 +229,9 @@ QString GuiGameSession::currentPlayerUsername() const
 bool GuiGameSession::executeCommand(const Command& command, QString* errorMessage)
 {
     try {
-        return coreSession.executeCommand(command);
+        const bool result = coreSession.executeCommand(command);
+        coreSession.prepareCurrentTurn();
+        return result;
     } catch (const std::exception& exception) {
         return handleException(exception, errorMessage);
     }

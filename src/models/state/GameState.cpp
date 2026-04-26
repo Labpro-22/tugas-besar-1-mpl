@@ -8,7 +8,8 @@ GameState::GameState()
 	  activePlayerUsername(""),
 	  propertyStates(),
 	  deckState(),
-	  logEntries() {}
+	  logEntries(),
+	  configPath("") {}
 
 GameState::GameState(
 	int currentTurn,
@@ -18,7 +19,8 @@ GameState::GameState(
 	const std::string& activePlayerUsername,
 	const std::vector<PropertyState>& propertyStates,
 	const std::vector<std::string>& deckState,
-	const std::vector<LogEntry>& logEntries
+	const std::vector<LogEntry>& logEntries,
+	const std::string& configPath
 ) : currentTurn(currentTurn),
 	maxTurn(maxTurn),
 	playerStates(playerStates),
@@ -26,7 +28,8 @@ GameState::GameState(
 	activePlayerUsername(activePlayerUsername),
 	propertyStates(propertyStates),
 	deckState(deckState),
-	logEntries(logEntries) {}
+	logEntries(logEntries),
+	configPath(configPath) {}
 
 int GameState::getCurrentTurn() const {
 	return currentTurn;
@@ -78,4 +81,8 @@ std::vector<LogEntry>& GameState::getLogEntries() {
 
 const std::vector<LogEntry>& GameState::getLogEntries() const {
 	return logEntries;
+}
+
+const std::string& GameState::getConfigPath() const {
+	return configPath;
 }

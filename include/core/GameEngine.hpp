@@ -29,6 +29,7 @@ public:
 
     void startNewGame(const ConfigData& configData, const std::vector<std::string>& playerNames);
     void loadGame(const ConfigData& configData, const GameState& gameState);
+    bool prepareCurrentTurn();
     bool executeCommand(const Command& command);
 
     bool isReady() const;

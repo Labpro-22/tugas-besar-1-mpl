@@ -19,6 +19,7 @@ private:
 
     std::vector<PropertyConfig> parsePropertyFile(const std::string& path) const;
     std::vector<ActionTileConfig> parseActionTileFile(const std::string& path) const;
+    std::vector<std::string> parseBoardLayoutFile(const std::string& path) const;
     std::map<int, int> parseRailroadFile(const std::string& path) const;
     std::map<int, int> parseUtilityFile(const std::string& path) const;
     TaxConfig parseTaxFile(const std::string& path) const;
